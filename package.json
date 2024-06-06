@@ -1,0 +1,22 @@
+{
+  "name": "pp_dmb",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "func_kenobi",
+  "license": "",
+  "dependencies": {
+    "@discord-player/extractor": "^4.4.7",
+    "@discordjs/opus": "^0.9.0",
+    "@discordjs/voice": "^0.17.0",
+    "discord-player": "^6.6.8",
+    "discord-speech-recognition": "^3.4.1",
+    "discord.js": "^14.15.1",
+    "dotenv": "^16.4.5",
+    "mediaplex": "^0.0.9",
+    "ytdl-core": "^4.11.5"
+  }
+}
