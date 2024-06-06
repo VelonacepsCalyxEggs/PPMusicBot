@@ -73,18 +73,17 @@ module.exports = {
                     guild: interaction.guildId
                  },
                 });
+
             // check if the queue is empty
             client.player.events.on("emptyQueue", (queue) => {
-                // Find a text channel with 'bot' in the name within the guild
-            
-                // Send the message if a suitable text channel is found
+
                 if (interaction.channel) {
                     interaction.channel.send("The queue is now empty!");
-                    guildQueue.clear()
                 } else {
                     console.log("No text channel with 'bot' in the name found.");
                 }
             });
+            
 
             client.player.events.on("emptyChannel", (queue) => {
 
@@ -134,7 +133,7 @@ module.exports = {
                 embed
                     .setDescription(`**${song.title}** has been added to the queue`)
                     .setThumbnail(song.thumbnail)
-                    .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`}); 
+                    .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size}`}); 
                 if (result.tracks.length === 0) {
                     return interaction.followUp("No results");
                 }    
@@ -181,7 +180,7 @@ module.exports = {
                     embed
                         .setDescription(`**${song.title}** has been added to the queue`)
                         .setThumbnail(song.thumbnail)
-                        .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`  });
+                        .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size}`  });
                     if (result.tracks.length === 0) {
                         return interaction.followUp("No results");
                     }
@@ -202,7 +201,7 @@ module.exports = {
                 embed
                         .setDescription(`**${song.title}** has been added to the queue`)
                         .setThumbnail(song.thumbnail)
-                        .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}` });
+                        .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size}` });
                 if (result.tracks.length === 0) {
                     return interaction.followUp("No results");
                 }
@@ -239,7 +238,7 @@ module.exports = {
                     embed
                     .setDescription(`**${song.title}** has been added to the queue!`)
                     .setThumbnail(song.thumbnail)
-                    .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`});
+                    .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size}`});
                 } catch (error) {
                     console.error('Error searching the file:', error.message);
                     interaction.followUp('Oops! Something went wrong while searching the file.');
