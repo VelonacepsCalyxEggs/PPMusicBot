@@ -83,7 +83,7 @@ client.on("ready", async () => {
         }], 
         status: 'dnd' 
     });
-    client.channels.get('1129406347448950845').send('The bot is online.');
+    client.channels.cache.get('1129406347448950845').send('The bot is online.')
     console.log(`[${new Date()}] Bot is online.`)
 });
 
