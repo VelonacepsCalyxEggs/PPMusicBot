@@ -4,3 +4,4 @@ package-lock.json
 config
 config/botCfg.js
 cache
+quotes.json
