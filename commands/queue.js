@@ -10,7 +10,6 @@ function formatDuration(ms) {
   minutes = minutes % 60;
   let days = Math.floor(hours / 24);
   hours = hours % 24;
-
   return `${days} days : ${hours} hours : ${minutes} minutes : ${seconds} seconds`;
 }
 
@@ -51,7 +50,10 @@ module.exports = {
       totalDurationMs += durationMs;
     }
     
-    const totalDurationFormatted = formatDuration(totalDurationMs);
+    let totalDurationFormatted = formatDuration(totalDurationMs);
+    if (String(totalDurationFormatted).includes("NaN")) {
+      totalDurationFormatted = "∞";
+    }
     let embed = new EmbedBuilder();
     embed
     .setDescription(

@@ -10,7 +10,9 @@ function formatDuration(durationMs) {
 
     const secondsFormatted = seconds < 10 ? '0' + seconds : seconds;
     const minutesFormatted = minutes < 10 ? '0' + minutes : minutes;
-
+    if (hours == NaN || minutes == NaN || seconds == NaN) {
+        return "∞"
+    }
     let result = `${minutes}:${secondsFormatted}`;
     if (hours > 0) {
         result = `${hours}:${minutesFormatted}:${secondsFormatted}`;

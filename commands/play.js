@@ -2,18 +2,22 @@ const { SlashCommandBuilder } = require("@discordjs/builders");
 const { EmbedBuilder, AttachmentFlags, Embed, InteractionCollector } = require("discord.js");
 const { QueryType, GuildQueue, useQueue, Player } = require("discord-player");
 const https = require('https');
+const http = require('http')
 const fs = require('fs');
 const path = require('path');
+const { Track } = require("discord-player");
 
 const downloadFile = (file, url) => {
     return new Promise((resolve, reject) => {
         const fileExtension = path.extname(file);
-
-        // Set the local path where you want to save the downloaded file
-        const localPath = 'C:/Server/DSMBot/PP_DMB/cache/' + Math.random() * 999; + fileExtension;
+        // Corrected the random number generation and concatenation with file extension
+        const localPath = 'C:/Server/DSMBot/PP_DMB/cache/' + Math.random().toString().slice(2, 11) + fileExtension;
         const writeStream = fs.createWriteStream(localPath);
 
-        https.get(url, (res) => {
+        // Determine the protocol from the URL
+        const protocol = url.startsWith('https') ? https : http;
+
+        protocol.get(url, (res) => {
             res.pipe(writeStream);
 
             writeStream.on('finish', () => {
@@ -27,7 +31,6 @@ const downloadFile = (file, url) => {
         });
     });
 };
-
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("play")
@@ -86,8 +89,8 @@ module.exports = {
         let embed = new EmbedBuilder();
         if (interaction.options.getSubcommand() === "song") {
             let argument = interaction.options.getString("searchterm");
-                let urlRegex = new RegExp("https?://(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)");
-                if (String(argument).includes('watch?v=')) {
+            
+                if (String(argument).includes('watch?v=') || (String(argument).includes('youtu.be'))) {
               
                 let result = await client.player.search(argument, {
                     requestedBy: interaction.user,
@@ -126,38 +129,71 @@ module.exports = {
                 }
             }
             
-            else if (urlRegex.test(argument)) {
-                console.log('File?')
+            else if (String(argument).includes('http') || String(argument).includes('https')) {
+                console.log('URL Detected');
+                let argument = interaction.options.getString("searchterm");
                 try {
+                    // Check if the URL has a port, indicating a live stream
+                    if (/:([0-9]+)/.test(argument)) { // Regex to check for a port number
+
+                        console.log('Live stream detected');
+                        // create a stream using ytdl-core with audioonly filter
+                        let result = await player.search(argument, {
+                            requestedBy: interaction.user,
+                            searchEngine: QueryType.AUTO,
+   
+                        });
+    
+                        song = result.tracks[0];
+                        song.duration = "∞"
+                        
+
+                        // Send a message to the channel about the added track
+                        if (argument == "http://95.31.138.156:55060/stream" || argument == "http://www.funckenobi42.space:55060/stream" || argument == "192.168.0.50:55060/stream") {
+                            embed
+                            .setDescription(`**The 42 Radio** has been added to the queue`)
+                            .setThumbnail("http://www.funckenobi42.space/42.png")
+                            .setFooter({ text: `Duration: ∞ Position: ${guildQueue.tracks.size}`});
+                            song.title = "The 42 Radio"
+                            song.author = "func_kenobi"
+                            song.thumbnail = "http://www.funckenobi42.space/42.png"
+                        }
+                        else {
+                        embed
+                            .setDescription(`**${song.title}** has been added to the queue`)
+                            .setThumbnail(song.thumbnail)
+                            .setFooter({ text: `Duration: ∞ Position: ${guildQueue.tracks.size}`});
+                        }
+                        guildQueue.addTrack(song);
+                    } else {
+                    file = argument.split('?')[0]
+                    file = String(file).replace('?', '')
                     // Search for the attached file (without playing it)
-                    let result = await player.search(argument, {
-                        requestedBy: message.author,
-                        searchEngine: QueryType.FILE,
-                        // ... (other options if needed)
-                    });
-        
-                    // Add the search result to your custom tracks list
-                    // For example:
-                    // myCustomTracks.push(searchResult.tracks[0]);
-                    
-                    message.reply('Attached file added to custom tracks list!');
-                    song = result.tracks[0];
-                    embed
-                        .setDescription(`**${song.title}** has been added to the queue`)
-                        .setThumbnail(song.thumbnail)
-                        .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size}`  });
-                    if (result.tracks.length === 0) {
-                        return interaction.followUp("No results");
-                    }
-        
-                    guildQueue.addTrack(song);
+
+                        const localPath = await downloadFile(file, argument);
+                        // Search for the attached file (without playing it)
+                        let result = await player.search(localPath, {
+                            requestedBy: interaction.user,
+                            searchEngine: QueryType.FILE,
+   
+                        });
+                        song = result.tracks[0];
+                        console.log(song)
+                        guildQueue.addTrack(song);     
+                        embed
+                            .setDescription(`**${song.title}** has been added to the queue`)
+                            .setThumbnail(song.thumbnail)
+                            .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size}`}); 
+                        if (result.tracks.length === 0) {
+                            return interaction.followUp("No results");
+                        }  
+                    }        
                 } catch (error) {
                     console.error('Error searching the file:', error.message);
                     message.reply('Oops! Something went wrong while searching the file.');
                 }
             }
             else {
-               
                 let result = await client.player.search(argument, {
                     requestedBy: interaction.user,
                     searchEngine: QueryType.YOUTUBE_SEARCH
@@ -210,6 +246,7 @@ module.exports = {
                 }
             }
         } 
+        console.log(song)
         // Play the song
         if (!guildQueue.isPlaying() && guildQueue.tracks.size> 0) {
             // Start playing the first track in the guildQueue
