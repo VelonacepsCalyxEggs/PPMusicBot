@@ -86,7 +86,7 @@ module.exports = {
         let embed = new EmbedBuilder();
         if (interaction.options.getSubcommand() === "song") {
             let argument = interaction.options.getString("searchterm");
-                let urlRegex = new RegExp("https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)");
+                let urlRegex = new RegExp("https?://(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)");
                 if (String(argument).includes('watch?v=')) {
               
                 let result = await client.player.search(argument, {
