@@ -7,6 +7,7 @@ const path = require('path');
 const { type } = require('os');
 
 const { TOKEN, CLIENT_ID } = require('./config/botCfg');
+//const { TOKEN, CLIENT_ID } = require('./config/devBotCfg');
 
 const client = new Client({
     intents: [
@@ -83,7 +84,9 @@ client.on("ready", async () => {
         }], 
         status: 'dnd' 
     });
-    client.channels.cache.get('1129406347448950845').send('The bot is online.')
+    if (client.channels.cache.get('1129406347448950845')) {
+        client.channels.cache.get('1129406347448950845').send('The bot is online.')
+    }
     console.log(`[${new Date()}] Bot is online.`)
 });
 
@@ -119,6 +122,42 @@ client.on("interactionCreate", async interaction => {
         }
     }
 });
+
+// check if the queue is empty
+client.player.events.on("emptyQueue", (queue) => {
+    interaction = queue.metadata
+    if (interaction.channel) {
+        interaction.channel.send("The queue is now empty!");
+    } else {
+        console.log("No text channel with 'bot' in the name found.");
+    }
+});
+
+
+client.player.events.on("emptyChannel", (queue) => {
+    interaction = queue.metadata
+    if (interaction.channel) {
+        try {
+        queue.delete()
+        console.log('Managed to delete a queue like a normal person.')
+        interaction.channel.send("Left the channel, since I am alone.");
+        }
+        catch(error) {
+            client.player.nodes.delete(queue)
+            console.log('Managed to delete a queue like a crazy person.')
+            interaction.channel.send("Left the channel, since I am alone.");
+        }
+    } else {
+        console.log("No text channel found.");
+    }
+});
+
+client.player.events.on("playerFinish", (queue) => {
+    if (queue.tracks.size !== 0) {
+    queue.tracks.at(0).startedPlaying = new Date()
+    }
+});
+
 
 client.login(TOKEN);
 

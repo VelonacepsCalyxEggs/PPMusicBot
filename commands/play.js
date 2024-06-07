@@ -65,57 +65,22 @@ module.exports = {
         if (!guildQueue) {
             console.log(`[${new Date().toISOString()}] Created a new queue for guild ${interaction.guild.name}`)
             guildQueue = new GuildQueue(player, {
-                  leaveOnEnd: false,
-                  leaveOnEmpty: false,
-                  leaveOnStop: false,
-                  guild: interaction.guild,
-                  metadata: {
-                    guild: interaction.guildId
-                 },
+                    leaveOnEnd: false,
+                    leaveOnEmpty: false,
+                    leaveOnStop: false,
+                    guild: interaction.guild,
+                    metadata: interaction,
                 });
-
-            // check if the queue is empty
-            client.player.events.on("emptyQueue", (queue) => {
-
-                if (interaction.channel) {
-                    interaction.channel.send("The queue is now empty!");
-                } else {
-                    console.log("No text channel with 'bot' in the name found.");
-                }
-            });
-            
-
-            client.player.events.on("emptyChannel", (queue) => {
-
-                if (interaction.channel) {
-                    try {
-                    guildQueue.delete()
-                    console.log('Managed to delete a queue like a normal person.')
-                    interaction.channel.send("Left the channel, since I am alone.");
-                    }
-                    catch(error) {
-                        client.player.nodes.delete(guildQueue)
-                        console.log('Managed to delete a queue like a crazy person.')
-                        interaction.channel.send("Left the channel, since I am alone.");
-                    }
-                } else {
-                    console.log("No text channel with 'bot' in the name found.");
-                }
-            });
-
-            client.player.events.on("playerFinish", (queue) => {
-                if (queue.tracks.size !== 0) {
-                queue.tracks.at(0).startedPlaying = new Date()
-                }
-            });
-
         }
         else {
+            if (guildQueue.deleted) {
+                guildQueue.revive()
+            }
             console.log(`[${new Date().toISOString()}] Using an existing queue for guild ${interaction.guild.name}`)
         }
 
 
-        // Wait until you are connected to the channel
+        // Wait until  connected to the channel
         if (!guildQueue.connection) await guildQueue.connect(interaction.member.voice.channel);
 
         let embed = new EmbedBuilder();
@@ -124,7 +89,7 @@ module.exports = {
                 let urlRegex = new RegExp("https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)");
                 if (String(argument).includes('watch?v=')) {
               
-                var result = await client.player.search(argument, {
+                let result = await client.player.search(argument, {
                     requestedBy: interaction.user,
                     searchEngine: QueryType.YOUTUBE_VIDEO
                 });
@@ -140,7 +105,7 @@ module.exports = {
             }
             else if (String(argument).includes('playlist?list=')) {
                 
-                var result = await client.player.search(argument, {
+                let result = await client.player.search(argument, {
                     requestedBy: interaction.user,
                     searchEngine: QueryType.YOUTUBE_PLAYLIST
                 });
@@ -165,7 +130,7 @@ module.exports = {
                 console.log('File?')
                 try {
                     // Search for the attached file (without playing it)
-                    var result = await player.search(argument, {
+                    let result = await player.search(argument, {
                         requestedBy: message.author,
                         searchEngine: QueryType.FILE,
                         // ... (other options if needed)
@@ -193,7 +158,7 @@ module.exports = {
             }
             else {
                
-                var result = await client.player.search(argument, {
+                let result = await client.player.search(argument, {
                     requestedBy: interaction.user,
                     searchEngine: QueryType.YOUTUBE_SEARCH
                 });
@@ -251,6 +216,7 @@ module.exports = {
             const tracks = guildQueue.tracks.toArray();
             guildQueue.tracks.at(0).startedPlaying = new Date()
             await guildQueue.play(tracks[0], {nodeOptions: {
+                metadata: interaction,
                 noEmitInsert: true,
                 leaveOnStop: false,
                 leaveOnEmpty: false,
