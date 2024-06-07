@@ -158,6 +158,12 @@ client.player.events.on("playerFinish", (queue) => {
     }
 });
 
+client.player.events.on("playerError", (queue, error) => {
+    if (client.channels.cache.get('1129406347448950845')) {
+        client.channels.cache.get('1129406347448950845').send(`The player had an error: \n \`\`\`js \n${error}\`\`\``)
+    }
+});
+
 
 client.login(TOKEN);
 
