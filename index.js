@@ -47,7 +47,8 @@ client.on("ready", async () => {
     // Define a list of commands that are restricted to specific guilds
     const restrictedCommands = {
         'scan': '644950708160036864',
-        'updquotes': '644950708160036864'
+        'updquotes': '644950708160036864',
+        'playin': '644950708160036864',
         // ... add more commands and their respective guild IDs
     };
 
