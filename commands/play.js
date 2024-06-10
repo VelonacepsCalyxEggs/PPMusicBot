@@ -246,7 +246,6 @@ module.exports = {
                 }
             }
         } 
-        console.log(song)
         // Play the song
         if (!guildQueue.isPlaying() && guildQueue.tracks.size> 0) {
             // Start playing the first track in the guildQueue

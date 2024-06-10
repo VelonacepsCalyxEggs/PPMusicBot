@@ -190,7 +190,6 @@ module.exports = {
    
                         });
                         song = result.tracks[0];
-                        console.log(song)
                         guildQueue.addTrack(song);     
                         embed
                             .setDescription(`**${song.title}** has been added to the queue`)

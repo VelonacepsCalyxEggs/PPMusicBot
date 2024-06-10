@@ -137,20 +137,16 @@ client.player.events.on("emptyQueue", (queue) => {
 
 client.player.events.on("emptyChannel", (queue) => {
     interaction = queue.metadata
-    if (interaction.channel) {
         try {
-        queue.delete()
-        console.log('Managed to delete a queue like a normal person.')
-        interaction.channel.send("Left the channel, since I am alone.");
+            queue.delete()
+            console.log('Managed to delete a queue like a normal person.')
+            interaction.channel.send("Left the channel, since I am alone.");
         }
-        catch(error) {
+        catch(error) { 
             client.player.nodes.delete(queue)
             console.log('Managed to delete a queue like a crazy person.')
             interaction.channel.send("Left the channel, since I am alone.");
         }
-    } else {
-        console.log("No text channel found.");
-    }
 });
 
 client.player.events.on("playerFinish", (queue) => {
@@ -163,6 +159,25 @@ client.player.events.on("playerError", (queue, error) => {
     if (client.channels.cache.get('1129406347448950845')) {
         client.channels.cache.get('1129406347448950845').send(`The player had an error: \n \`\`\`js \n${error}\`\`\``)
     }
+});
+
+client.player.events.on("connectionDestroyed", (queue, error) => {
+    if (queue) {
+        try {
+            queue.delete()
+            console.log('Managed to delete a queue like a normal person.')
+            interaction.channel.send("Left the channel, since I am alone.");
+        }
+        catch(error) { 
+            client.player.nodes.delete(queue)
+            console.log('Managed to delete a queue like a crazy person.')
+            interaction.channel.send("Left the channel, since I am alone.");
+        }
+    }
+});
+
+client.player.events.on("connection", (queue, error) => {
+    console.log(`[${new Date().toISOString()}] Connected sucsessfully.`);
 });
 
 
