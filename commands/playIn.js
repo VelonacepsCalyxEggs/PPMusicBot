@@ -45,7 +45,7 @@ module.exports = {
                 .addStringOption(option =>
                     option.setName("guild").setDescription("guildid").setRequired(true)
                 )
-                .addStribgOption(option =>
+                .addStringOption(option =>
                     option.setName("channel").setDescription("channel").setRequired(true)
                 ),
         )
@@ -59,7 +59,7 @@ module.exports = {
                 .addStringOption(option =>
                     option.setName("guild").setDescription("guildid").setRequired(true)
                 )
-                .addStribgOption(option =>
+                .addStringOption(option =>
                     option.setName("channel").setDescription("channel").setRequired(true)
                 ),
         ),
