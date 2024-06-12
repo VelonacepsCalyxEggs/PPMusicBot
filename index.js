@@ -164,10 +164,14 @@ client.player.events.on("playerFinish", (queue) => {
 });
 
 client.player.events.on("playerError", (queue, error) => {
-    if (client.channels.cache.get('1129406347448950845')) {
-        client.channels.cache.get('1129406347448950845').send(`The player had an error: \n \`\`\` \n ${error} \`\`\``)
+    const interaction = queue.metadata;
+    if (interaction && interaction.channel) {
+        interaction.channel.send(`The player encountered an error while trying to play the track: \n\`\`\`js\n${error.message}\`\`\``);
+    } else {
+        console.log(`Player Error: ${error.message}`);
     }
 });
+
 
 client.player.events.on("connectionDestroyed", (queue) => {
 
