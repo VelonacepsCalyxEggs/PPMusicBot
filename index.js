@@ -125,12 +125,21 @@ client.on("interactionCreate", async interaction => {
 });
 
 // check if the queue is empty
-client.player.events.on("emptyQueue", (queue) => {
-    interaction = queue.metadata
-    if (interaction.channel) {
-        interaction.channel.send("The queue is now empty!");
-    } else {
-        console.log("No text channel with 'bot' in the name found.");
+client.player.events.on("emptyChannel", (queue) => {
+    interaction = queue.metadata;
+    if (!interaction.channel) {
+        console.log("No text channel found.");
+        return;
+    }
+    try {
+        if (queue.connection) {
+            queue.connection.disconnect(); // properly disconnect the bot from the voice channel
+        }
+        queue.delete(); // then delete the queue
+        console.log('Managed to delete a queue like a normal person.');
+        interaction.channel.send("Left the channel, since I am alone.");
+    } catch(error) { 
+        console.error('Error when handling emptyChannel:', error);
     }
 });
 
@@ -140,13 +149,12 @@ client.player.events.on("emptyChannel", (queue) => {
         try {
             queue.delete()
             console.log('Managed to delete a queue like a normal person.')
-            interaction.channel.send("Left the channel, since I am alone.");
         }
         catch(error) { 
             client.player.nodes.delete(queue)
             console.log('Managed to delete a queue like a crazy person.')
-            interaction.channel.send("Left the channel, since I am alone.");
         }
+        interaction.channel.send("Left the channel, since I am alone.");
 });
 
 client.player.events.on("playerFinish", (queue) => {
@@ -157,24 +165,26 @@ client.player.events.on("playerFinish", (queue) => {
 
 client.player.events.on("playerError", (queue, error) => {
     if (client.channels.cache.get('1129406347448950845')) {
-        client.channels.cache.get('1129406347448950845').send(`The player had an error: \n \`\`\`js \n${error}\`\`\``)
+        client.channels.cache.get('1129406347448950845').send(`The player had an error: \n \`\`\` \n ${error} \`\`\``)
     }
 });
 
-client.player.events.on("connectionDestroyed", (queue, error) => {
-    if (queue) {
-        try {
-            queue.delete()
-            console.log('Managed to delete a queue like a normal person.')
-            interaction.channel.send("Left the channel, since I am alone.");
-        }
-        catch(error) { 
-            client.player.nodes.delete(queue)
-            console.log('Managed to delete a queue like a crazy person.')
-            interaction.channel.send("Left the channel, since I am alone.");
-        }
+client.player.events.on("connectionDestroyed", (queue) => {
+
+    const interaction = queue.metadata;
+    if (!interaction || !interaction.channel) {
+        console.log("No interaction or channel found.");
+        return;
+    }
+    try {
+        queue.delete();
+        console.log('Managed to delete a queue like a normal person.');
+        interaction.channel.send("Left the channel, since I am alone.");
+    } catch(error) { 
+        console.error('Error when handling connectionDestroyed:', error);
     }
 });
+
 
 client.player.events.on("connection", (queue, error) => {
     console.log(`[${new Date().toISOString()}] Connected sucsessfully.`);
