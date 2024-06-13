@@ -149,12 +149,11 @@ client.player.events.on("emptyChannel", (queue) => {
         try {
             queue.delete()
             console.log('Managed to delete a queue like a normal person.')
+            interaction.channel.send("Left the channel, since I am alone.");
         }
         catch(error) { 
-            client.player.nodes.delete(queue)
-            console.log('Managed to delete a queue like a crazy person.')
+            console.log('no queue was deleted')
         }
-        interaction.channel.send("Left the channel, since I am alone.");
 });
 
 client.player.events.on("playerFinish", (queue) => {
