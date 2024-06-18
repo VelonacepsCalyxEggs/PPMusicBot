@@ -57,6 +57,9 @@ client.on("ready", async () => {
         'scan': '644950708160036864',
         'updquotes': '644950708160036864',
         'playin': '644950708160036864',
+        'movein': '644950708160036864',
+        'queuein': '644950708160036864',
+        'removein': '644950708160036864',
         // ... add more commands and their respective guild IDs
     };
 
