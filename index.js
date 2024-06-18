@@ -2,6 +2,14 @@ const { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType } = re
 const { Player } = require("discord-player")
 const { ExtractorPlugin } = require('@discord-player/extractor');
 
+const { Client: PgClient } = require('pg');
+const dbConfig = require('./config/dbCfg'); // Make sure the path is correct
+
+// PostgreSQL client setup using the imported config
+const pgClient = new PgClient(dbConfig);
+
+pgClient.connect();
+
 const fs = require('fs');
 const path = require('path');
 const { type } = require('os');
@@ -105,23 +113,22 @@ client.on("interactionCreate", async interaction => {
     catch(error)
     {
         console.error(error);
-        // Read the JSON file containing the messages
-        dir = 'C:\\Server\\DSMBot\\PP_DMB'
-        const jsonFilePath = path.join(dir, 'quotes.json');
-        const messagesJson = fs.readFileSync(jsonFilePath);
-        const messages = JSON.parse(messagesJson);
+        try {
+            // Fetch a random quote from the database
+            const res = await pgClient.query('SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1');
+            const randomQuote = res.rows[0].quote;
+            const quoteLines = randomQuote.split('\n');
+            const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
+            const randomLine = quoteLines[randomLineIndex];
     
-        // Select a random message from the array
-        const randomIndex = Math.floor(Math.random() * messages.length);
-        const randomQuote = messages[randomIndex];
-        try
-        {
-            await interaction.reply({content: `There was an error executing this command\n ${randomQuote}: \`\`\`js\n ${error} \`\`\``});
-        }
-        catch(error_follow){
-            await interaction.followUp({content: `There was an error executing this command\n ${randomQuote}: \`\`\`js\n ${error} \`\`\``});
+            // Reply with the random line and the error message
+            await interaction.reply({content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``});
+        } catch (error_follow) {
+            // If the initial reply fails, use followUp
+            await interaction.followUp({content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error_follow}\`\`\``});
         }
     }
+    
 });
 
 // check if the queue is empty
