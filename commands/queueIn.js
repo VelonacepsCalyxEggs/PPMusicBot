@@ -17,11 +17,11 @@ module.exports = {
     data: new SlashCommandBuilder()
     .setName("queuein")
     .setDescription("show the queue in a guild")
-    .addNumberOption(option =>
-        option.setName("page").setDescription("page number").setRequired(false)
-    )
     .addStringOption(option =>
         option.setName("guild").setDescription("guildid").setRequired(true)
+    )
+    .addNumberOption(option =>
+        option.setName("page").setDescription("page number").setRequired(false)
     ),
     
     execute: async ({ client, interaction }) => {
