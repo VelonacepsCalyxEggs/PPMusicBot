@@ -182,7 +182,7 @@ client.player.events.on("connectionDestroyed", (queue) => {
     try {
         queue.delete();
         console.log('Managed to delete a queue like a normal person.');
-        interaction.channel.send("Left the channel, since I am alone.");
+        interaction.channel.send("Left the channel since I was manually disconnected.");
     } catch(error) { 
         console.error('Error when handling connectionDestroyed:', error);
     }
