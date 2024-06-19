@@ -30,54 +30,57 @@ module.exports = {
         if (!queue) {
             return interaction.reply('There is no queue bruv.');
         }
-    if (!queue.size) return interaction.reply('There are no songs in the queue.');
+        if (queue.size == 0) return interaction.reply('There are no songs in the queue.');
 
-
-
-    let page = interaction.options.getNumber("page", false) ?? 1;
-
-    const multiple = 10;
-
-    const maxPages = Math.ceil(queue.size / multiple);
-
-    if (page < 1 || page > maxPages) page = 1;
-
-    const end = page * multiple;
-    const start = end - multiple;
-
-    const tracks = queue.tracks.toArray().slice(start, end);
-    const allTracks = queue.tracks.toArray()
-    let totalDurationMs = 0;
+        let page = interaction.options.getNumber("page", false) ?? 1;
     
-    for (const track of allTracks) {
-      const durationParts = track.duration.split(':').reverse();
-      const durationMs = durationParts.reduce((total, part, index) => {
-          return total + parseInt(part, 10) * Math.pow(60, index) * 1000;
-      }, 0);
-      totalDurationMs += durationMs;
-    }
+        const multiple = 10;
     
-    let totalDurationFormatted = formatDuration(totalDurationMs);
-    if (String(totalDurationFormatted).includes("NaN")) {
-      totalDurationFormatted = "∞";
-    }
-    let embed = new EmbedBuilder();
-    embed
-    .setDescription(
-      `${tracks
-        .map(
-          (track, i) =>
-            `${start + ++i} - [${track.title}](${track.url}) ~ [${track.duration}] \n [${track.requestedBy.toString()}]`
+        const maxPages = Math.ceil(queue.size / multiple);
+    
+        if (page < 1 || page > maxPages) page = 1;
+    
+        const end = page * multiple;
+        const start = end - multiple;
+    
+        const tracks = queue.tracks.toArray().slice(start, end);
+        const allTracks = queue.tracks.toArray()
+        let totalDurationMs = 0;
+            
+        for (const track of allTracks) {
+          try {
+          const durationParts = track.duration.split(':').reverse();
+          const durationMs = durationParts.reduce((total, part, index) => {
+              return total + parseInt(part, 10) * Math.pow(60, index) * 1000;
+          }, 0);
+          totalDurationMs += durationMs;
+            }
+          catch {
+            continue
+          }
+        }
+        
+        let totalDurationFormatted = formatDuration(totalDurationMs);
+        if (String(totalDurationFormatted).includes("NaN")) {
+          totalDurationFormatted = "∞";
+        }
+        let embed = new EmbedBuilder();
+        embed
+        .setDescription(
+          `${tracks
+            .map(
+              (track, i) =>
+                `${start + ++i} - [${track.title}](${track.url}) ~ [${track.duration}] \n [${track.requestedBy.toString()}]`
+            )
+            .join("\n")}`
         )
-        .join("\n")}`
-    )
-    .setFooter({
-      text: `Page ${page} of ${maxPages} | track ${start + 1} to ${
-        end > queue.size ? `${queue.size}` : `${end}`
-      } of ${queue.size}. Total Duration: ${totalDurationFormatted}.`,
-      iconURL: interaction.user.displayAvatarURL({ dynamic: true }),
-    });
-
-    return interaction.reply({ ephemeral: true, embeds: [embed] }).catch(console.error);
-    },
-  };
+        .setFooter({
+          text: `Page ${page} of ${maxPages} | track ${start + 1} to ${
+            end > queue.size ? `${queue.size}` : `${end}`
+          } of ${queue.size}. Total Duration: ${totalDurationFormatted}.`,
+          iconURL: interaction.user.displayAvatarURL({ dynamic: true }),
+        });
+    
+        return interaction.reply({ ephemeral: true, embeds: [embed] }).catch(console.error);
+        },
+      };

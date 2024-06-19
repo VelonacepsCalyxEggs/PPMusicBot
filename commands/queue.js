@@ -25,7 +25,7 @@ module.exports = {
         if (!queue) {
             return interaction.reply('There is no queue bruv.');
         }
-    if (!queue.size) return interaction.reply('There are no songs in the queue.');
+    if (queue.size == 0) return interaction.reply('There are no songs in the queue.');
 
     let page = interaction.options.getNumber("page", false) ?? 1;
 
@@ -41,13 +41,18 @@ module.exports = {
     const tracks = queue.tracks.toArray().slice(start, end);
     const allTracks = queue.tracks.toArray()
     let totalDurationMs = 0;
-    
+        
     for (const track of allTracks) {
+      try {
       const durationParts = track.duration.split(':').reverse();
       const durationMs = durationParts.reduce((total, part, index) => {
           return total + parseInt(part, 10) * Math.pow(60, index) * 1000;
       }, 0);
       totalDurationMs += durationMs;
+        }
+      catch {
+        continue
+      }
     }
     
     let totalDurationFormatted = formatDuration(totalDurationMs);

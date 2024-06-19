@@ -97,8 +97,7 @@ module.exports = {
                     requestedBy: interaction.user,
                     searchEngine: QueryType.YOUTUBE_VIDEO
                 });
-                song = result.tracks[0];
-                //guildQueue.addTrack(song);     
+                song = result.tracks[0];   
                 embed
                     .setDescription(`**${song.title}** has been added to the queue`)
                     .setThumbnail(song.thumbnail)
@@ -109,7 +108,7 @@ module.exports = {
             }
             else if (String(argument).includes('playlist?list=')) {
                 
-                result = await client.player.search(argument, {
+                let result = await client.player.search(argument, {
                     requestedBy: interaction.user,
                     searchEngine: QueryType.YOUTUBE_PLAYLIST
                 });
@@ -117,13 +116,17 @@ module.exports = {
                 if (!playlist) {
                     return interaction.followUp("No results");
                 }
-                let i = 1;
+                let i = 0;
                 for (track in result.tracks) {
-                    guildQueue.addTrack(result.tracks[i]);
-                    i++;
+                    if (i == 0) {
+                        song = result.tracks[i]
+                    } else {
+                        guildQueue.addTrack(result.tracks[i]);
+                        i++;
+                    }
                 }
                 result.tracks[0].startedPlaying = new Date()
-                song = result.tracks[0]
+
                 embed
                     .setDescription(`**${result.tracks.length} songs from ${playlist.title}** have been added to the queue`)
                     .setThumbnail(playlist.thumbnail);
@@ -187,8 +190,7 @@ module.exports = {
                         if (result.tracks.length === 0) {
                             return interaction.followUp("No results");
                         }  
-                    } 
-                //guildQueue.addTrack(song);          
+                    }        
                 } catch (error) {
                     console.error('Error searching the file:', error.message);
                     message.reply('Oops! Something went wrong while searching the file.');
