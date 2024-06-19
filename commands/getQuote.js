@@ -32,22 +32,29 @@ module.exports = {
             // Fetch a random quote
             const res = await pgClient.query('SELECT * FROM quotes ORDER BY RANDOM() LIMIT 1');
             quote = res.rows[0].quote;
+            context = res.rows[0].context;
             authors = res.rows[0].authors;
         }
 
-
         let authorsText = 'Unknown';
         if (authors) {
-            // Assuming 'authors' is a string with user IDs separated by spaces
-            const authorIds = authors.split(' '); // Split the string into an array of IDs
+            // Split the authors string into an array of authors
+            const authorList = authors.split(',').map(author => author.trim());
             const authorNames = [];
-            for (const authorId of authorIds) {
-                try {
-                    const user = await client.users.fetch(String(authorId.trim()).replace(',', ''));
-                    authorNames.push(user.username); // Collect the usernames
-                } catch (fetchError) {
-                    console.error(`Could not fetch user with ID ${authorId}:`, fetchError);
-                    authorNames.push('Unknown'); // In case the user cannot be fetched
+            for (let author of authorList) {
+                if (author) {
+                    // If the author is a Discord ID, fetch the username
+                    author = author.replace(/<@!?|>/g, '').replace('!', '').replace(',', '')
+                    try {
+                        const user = await client.users.fetch(author.replace(/<@!?|>/g, '').replace('!', '').replace(',', ''));
+                        authorNames.push(user.username);
+                    } catch (fetchError) {
+                        console.error(`Could not fetch user:`, fetchError);
+                        authorNames.push(author);
+                    }
+                } else {
+                    // If the author is not a Discord ID, use the name directly
+                    authorNames.push('Unknown');
                 }
             }
             authorsText = authorNames.join(' & ');
@@ -55,7 +62,7 @@ module.exports = {
 
         let embed = new EmbedBuilder();
         embed
-            .setDescription(`**Quote:** \n ${quote}`)
+            .setDescription(`**Quote:** \n ${quote} \n`)
             .setFooter({
                 text: `Quote by: ${authorsText}`,
                 iconURL: interaction.user.displayAvatarURL({ dynamic: true }),
@@ -63,6 +70,5 @@ module.exports = {
 
         // Reply with the embed, visible to all users
         return interaction.reply({ embeds: [embed], ephemeral: false }).catch(console.error);
-
     },
 };

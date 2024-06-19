@@ -39,14 +39,32 @@ module.exports = {
                     const splitMessage = message.content.split('\n');
                     const contextLineIndex = splitMessage.findIndex(line => /^\*.*\*$/.test(line));
                     const context = contextLineIndex !== -1 ? splitMessage[contextLineIndex].replace(/\*/g, '') : '';
-                    const authorsLineIndex = splitMessage.length - 1;
-                    const authorsLine = splitMessage[authorsLineIndex].match(/^<@.+/) ? splitMessage.pop() : null;
+                    const quoteLines = splitMessage.slice(0, -1); // All lines except the last one
+                    const authorsLine = splitMessage[splitMessage.length - 1];
+
                     // Remove the context line if it exists
                     if (contextLineIndex !== -1) {
-                        splitMessage.splice(contextLineIndex, 1);
+                        quoteLines.splice(contextLineIndex, 1);
                     }
-                    const quote = splitMessage.join('\n').trim();
-                    const authors = authorsLine ? authorsLine.replace(/<@/g, '').replace(/>/g, '').split(' & ') : [];
+                    const quote = quoteLines.join('\n').trim();
+
+                    // Process the authors line (Step 1 & 2)
+                    let authors;
+                    if(authorsLine && authorsLine.includes('(c)') || authorsLine.includes('(с)') || authorsLine.includes('©')) {
+                        // Correctly identify and process the author line
+                        authors = authorsLine.replace(/\(c\)/ig, '').trim(); // Remove the (c) and trim
+                        authors = [authors]; // Ensure authors is an array (Step 3)
+                    } else if (authorsLine && authorsLine.includes('<@')) {
+                        authors = authorsLine.replace(/<@/g, '').replace(/>/g, '').split(' ');
+                    } else {
+                        authors = ['Unknown'];
+                    }
+
+                    // Trim whitespace from each author's name and remove any remaining unwanted symbols
+                    authors = authors.map(author => author.trim().replace(/[&]/g, '')).filter(author => author !== '');
+
+
+
                     return { context, quote, authors };
                 }));
                 
