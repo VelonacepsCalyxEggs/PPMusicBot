@@ -82,8 +82,9 @@ module.exports = {
             console.log(`[${new Date().toISOString()}] Using an existing queue for guild ${interaction.guild.name}`)
         }
 
-
-        // Wait until  connected to the channel
+        console.log(Object.prototype.toString.call(guildQueue));
+        console.log(guildQueue.constructor.name);
+        // Wait until connected to the channel
         if (!guildQueue.connection) await guildQueue.connect(interaction.member.voice.channel);
 
         let embed = new EmbedBuilder();
@@ -97,7 +98,7 @@ module.exports = {
                     searchEngine: QueryType.YOUTUBE_VIDEO
                 });
                 song = result.tracks[0];
-                guildQueue.addTrack(song);     
+                //guildQueue.addTrack(song);     
                 embed
                     .setDescription(`**${song.title}** has been added to the queue`)
                     .setThumbnail(song.thumbnail)
@@ -108,7 +109,7 @@ module.exports = {
             }
             else if (String(argument).includes('playlist?list=')) {
                 
-                let result = await client.player.search(argument, {
+                result = await client.player.search(argument, {
                     requestedBy: interaction.user,
                     searchEngine: QueryType.YOUTUBE_PLAYLIST
                 });
@@ -116,11 +117,13 @@ module.exports = {
                 if (!playlist) {
                     return interaction.followUp("No results");
                 }
-                let i = 0;
+                let i = 1;
                 for (track in result.tracks) {
                     guildQueue.addTrack(result.tracks[i]);
                     i++;
                 }
+                result.tracks[0].startedPlaying = new Date()
+                song = result.tracks[0]
                 embed
                     .setDescription(`**${result.tracks.length} songs from ${playlist.title}** have been added to the queue`)
                     .setThumbnail(playlist.thumbnail);
@@ -128,7 +131,6 @@ module.exports = {
                     return interaction.followUp("No songs in the playlist.");
                 }
             }
-            
             else if (String(argument).includes('http') || String(argument).includes('https')) {
                 console.log('URL Detected');
                 let argument = interaction.options.getString("searchterm");
@@ -164,7 +166,6 @@ module.exports = {
                             .setThumbnail(song.thumbnail)
                             .setFooter({ text: `Duration: ∞ Position: ${guildQueue.tracks.size}`});
                         }
-                        guildQueue.addTrack(song);
                     } else {
                     file = argument.split('?')[0]
                     file = String(file).replace('?', '')
@@ -178,8 +179,7 @@ module.exports = {
    
                         });
                         song = result.tracks[0];
-                        console.log(song)
-                        guildQueue.addTrack(song);     
+                        console.log(song)  
                         embed
                             .setDescription(`**${song.title}** has been added to the queue`)
                             .setThumbnail(song.thumbnail)
@@ -187,7 +187,8 @@ module.exports = {
                         if (result.tracks.length === 0) {
                             return interaction.followUp("No results");
                         }  
-                    }        
+                    } 
+                //guildQueue.addTrack(song);          
                 } catch (error) {
                     console.error('Error searching the file:', error.message);
                     message.reply('Oops! Something went wrong while searching the file.');
@@ -207,7 +208,7 @@ module.exports = {
                     return interaction.followUp("No results");
                 }
                            
-                guildQueue.addTrack(song);
+                //guildQueue.addTrack(song);
             }
             // Search for the song using the discord-player
 
@@ -226,16 +227,17 @@ module.exports = {
                     var result = await player.search(localPath, {
                         requestedBy: interaction.user,
                         searchEngine: QueryType.FILE,
-                        // ... (other options if needed)
+                        // ... (other options if nSeeded)
                     });
+                    song = result.tracks[0];
 
-                    guildQueue.addTrack(result.tracks[0])
+                    //guildQueue.addTrack(song)
                     // Add the search result to your custom tracks list
                     // For example:
                     // myCustomTracks.push(searchResult.tracks[0]);
 
                     interaction.followUp('Attached file added to queue!');
-                    song = result.tracks[0];
+
                     embed
                     .setDescription(`**${song.title}** has been added to the queue!`)
                     .setThumbnail(song.thumbnail)
@@ -246,28 +248,19 @@ module.exports = {
                 }
             }
         } 
-        // Play the song
-        if (!guildQueue.isPlaying() && guildQueue.tracks.size> 0) {
+            // Play the song
             // Start playing the first track in the guildQueue
-            const tracks = guildQueue.tracks.toArray();
-            guildQueue.tracks.at(0).startedPlaying = new Date()
-            await guildQueue.play(tracks[0], {nodeOptions: {
+            await guildQueue.play(song, {nodeOptions: {
                 metadata: interaction,
                 noEmitInsert: true,
                 leaveOnStop: false,
                 leaveOnEmpty: false,
                 leaveOnEnd: false,
                 pauseOnEmpty: true,
-                preferBridgedMetadata: true,
+                //preferBridgedMetadata: true,
                 disableBiquad: true,
         }});
-            //await guildQueue.play(guildQueue.tracks[0]);
-                    
-        } else if (guildQueue.tracks.size === 0) {
-            // The guildQueue is empty, handle this scenario appropriately
-            console.log('The queue is empty.');
-            return interaction.followUp('There are no songs in the queue to play.');
-        }
+
 
         // Respond with the embed containing information about the player
         await interaction.editReply({

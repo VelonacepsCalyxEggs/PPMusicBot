@@ -17,12 +17,11 @@ module.exports = {
             await interaction.reply("There are no songs in the queue");
             return;
         }
-
+        
         const currentSong = queue.currentTrack
-        queuePlayer = new GuildQueuePlayerNode(queue);
 
         // Skip the current song
-		queuePlayer.skip()
+        queue.node.skip()
         let embed = new EmbedBuilder();
         // Return an embed to the user saying the song has been skipped
         embed

@@ -172,6 +172,14 @@ client.player.events.on("playerFinish", (queue) => {
     }
 });
 
+client.player.events.on("audioTrackAdd", (queue) => {
+    if (queue.tracks.size !== 0) {
+    queue.tracks.at(0).startedPlaying = new Date()
+    }
+});
+
+
+
 client.player.events.on("playerError", (queue, error) => {
     const interaction = queue.metadata;
     if (interaction && interaction.channel) {
@@ -181,6 +189,22 @@ client.player.events.on("playerError", (queue, error) => {
     }
 });
 
+
+client.player.events.on("emptyQueue", (queue) => {
+
+    const interaction = queue.metadata;
+    if (!interaction || !interaction.channel) {
+        console.log("No interaction or channel found.");
+        return;
+    }
+    try {
+        //queue.delete();
+        //console.log('Managed to delete a queue like a normal person.');
+        interaction.channel.send("The queue is now empty.");
+    } catch(error) { 
+        console.error('Error when handling emptyQueue:', error);
+    }
+});
 
 client.player.events.on("connectionDestroyed", (queue) => {
 
