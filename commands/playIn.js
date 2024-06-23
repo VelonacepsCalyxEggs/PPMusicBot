@@ -60,7 +60,10 @@ module.exports = {
                     option.setName("guild").setDescription("guildid").setRequired(true)
                 )
                 .addStringOption(option =>
-                    option.setName("channel").setDescription("channel").setRequired(true)
+                    option.setName("vcchannel").setDescription("vc channel id").setRequired(true)
+                )
+                .addStringOption(option =>
+                    option.setName("textchannel").setDescription("text channel id").setRequired(true)
                 ),
         ),
     execute: async ({ client, interaction }) => {
@@ -68,14 +71,16 @@ module.exports = {
         await interaction.deferReply();
     
         let guild_id_opt = interaction.options.getString("guild");
-        let guild_channel_id = interaction.options.getString("channel");
+        let guild_channel_id = interaction.options.getString("vcchannel");
+        let guild_textchannel_id = interaction.options.getString("textchannel");
 
+        interaction.channel = guild_textchannel_id
         // Create a play guildQueue for the server
         const { player } = client; // Access the player instance from the client
 
         let guildQueue = useQueue(guild_id_opt)
         let currentGuild = client.guilds.cache.get(guild_id_opt)
-
+        interaction.member.channelid
         // If there is no guildQueue for the guild, create one
         if (!guildQueue) {
             console.log(`[${new Date().toISOString()}] Created a new queue for guild ${interaction.guild.name}`)
@@ -95,7 +100,7 @@ module.exports = {
         }
 
          // Wait until connected to the channel
-         if (!guildQueue.connection) await guildQueue.connect(interaction.member.voice.channel);
+         if (!guildQueue.connection) await guildQueue.connect(guild_channel_id);
 
          let embed = new EmbedBuilder();
          if (interaction.options.getSubcommand() === "song") {

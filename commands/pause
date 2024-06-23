@@ -1,23 +1,41 @@
-const { SlashCommandBuilder } = require("@discordjs/builders")
+const { SlashCommandBuilder } = require("@discordjs/builders");
+const { useQueue, GuildQueuePlayerNode } = require("discord-player");
+const { EmbedBuilder } = require("discord.js");
+
 
 module.exports = {
-	data: new SlashCommandBuilder()
+    data: new SlashCommandBuilder()
         .setName("pause")
-        .setDescription("Pauses the current song"),
-	execute: async ({ client, interaction }) => {
-        // Get the queue for the server
-		const queue = client.player.getQueue(interaction.guildId)
+        .setDescription("Pauses the current queue."),
 
-        // Check if the queue is empty
-		if (!queue)
-		{
-			await interaction.reply("There are no songs in the queue")
-			return;
+    execute: async ({ client, interaction }) => {
+        // Get the queue for the server
+        const queue = useQueue(interaction.guildId);
+
+        // If there is no queue, return
+        if (!queue) {
+            await interaction.reply("There is no queue to pause...");
+            return;
+        }
+
+		if (queue.node.isPaused) {
+			queue.node.resume() // Unpauses the queue
+		}
+		else {
+			queue.node.pause() // Pauses the queue
 		}
 
-        // Pause the current song
-		queue.setPaused(true);
+        // Create the embed
+        let embed = new EmbedBuilder();
+        embed
+            .setDescription(`Currently playing: **${currentSong.title}** by **${currentSong.author}** from [source](${currentSong.url})`)
+            .setThumbnail(currentSong.thumbnail)
+            .setFooter({
+                text: `Elapsed time: ${currentPositionFormatted} / ${currentSong.duration}`,
+                iconURL: interaction.user.displayAvatarURL({ dynamic: true }),
+            });
 
-        await interaction.reply("Player has been paused.")
-	},
-}
+        // Reply with the embed
+        return interaction.reply({ ephemeral: true, embeds: [embed] }).catch(console.error);
+    },
+};

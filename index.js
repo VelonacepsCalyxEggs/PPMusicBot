@@ -97,7 +97,7 @@ client.on("ready", async () => {
         status: 'dnd' 
     });
     if (client.channels.cache.get('1129406347448950845')) {
-        client.channels.cache.get('1129406347448950845').send('The bot is online.')
+        //client.channels.cache.get('1129406347448950845').send('The bot is online.')
     }
     console.log(`[${new Date()}] Bot is online.`)
 });
@@ -157,9 +157,9 @@ client.player.events.on("emptyChannel", (queue) => {
 client.player.events.on("emptyChannel", (queue) => {
     interaction = queue.metadata
         try {
+            interaction.channel.send("Left the channel, since I am alone.");
             queue.delete()
             console.log('Managed to delete a queue like a normal person.')
-            interaction.channel.send("Left the channel, since I am alone.");
         }
         catch(error) { 
             console.log('no queue was deleted')
