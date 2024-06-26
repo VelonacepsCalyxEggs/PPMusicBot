@@ -134,37 +134,21 @@ client.on("interactionCreate", async interaction => {
     
 });
 
-// check if the queue is empty
+
 client.player.events.on("emptyChannel", (queue) => {
-    interaction = queue.metadata;
-    if (!interaction.channel) {
-        console.log("No text channel found.");
-        return;
-    }
+    const interaction = queue.metadata;
     try {
-        if (queue.connection) {
-            queue.connection.disconnect(); // properly disconnect the bot from the voice channel
+        if (queue.connection.state.status == 'destroyed') {
+            return; // exit if the connection is not active, meaning the bot was disconnected
         }
-        queue.delete(); // then delete the queue
-        console.log('Managed to delete a queue like a normal person.');
         interaction.channel.send("Left the channel, since I am alone.");
+        queue.delete();
+        console.log('Managed to delete a queue like a normal person.');
     } catch(error) { 
-        console.error('Error when handling emptyChannel:', error);
+        console.log('No queue was deleted:', error);
     }
 });
 
-
-client.player.events.on("emptyChannel", (queue) => {
-    interaction = queue.metadata
-        try {
-            interaction.channel.send("Left the channel, since I am alone.");
-            queue.delete()
-            console.log('Managed to delete a queue like a normal person.')
-        }
-        catch(error) { 
-            console.log('no queue was deleted')
-        }
-});
 
 client.player.events.on("playerFinish", (queue) => {
     if (queue.tracks.size !== 0) {
@@ -189,38 +173,45 @@ client.player.events.on("playerError", (queue, error) => {
     }
 });
 
-
+// check if the queue is empty
 client.player.events.on("emptyQueue", (queue) => {
 
-    const interaction = queue.metadata;
-    if (!interaction || !interaction.channel) {
-        console.log("No interaction or channel found.");
-        return;
-    }
-    try {
-        //queue.delete();
-        //console.log('Managed to delete a queue like a normal person.');
-        interaction.channel.send("The queue is now empty.");
-    } catch(error) { 
-        console.error('Error when handling emptyQueue:', error);
+    if (queue.connection.state.status != 'Destroyed') {
+        const interaction = queue.metadata;
+        if (!interaction || !interaction.channel) {
+            console.log("No interaction or channel found.");
+            return;
+        }
+        try {
+            //queue.delete();
+            //console.log('Managed to delete a queue like a normal person.');
+            interaction.channel.send("The queue is now empty.");
+        } catch(error) { 
+            console.error('Error when handling emptyQueue:', error);
+        }
     }
 });
 
 client.player.events.on("connectionDestroyed", (queue) => {
-
     const interaction = queue.metadata;
     if (!interaction || !interaction.channel) {
         console.log("No interaction or channel found.");
         return;
     }
     try {
+        console.log(queue.connection.state.status)
+        if (queue.connection.state.status != 'destroyed') {
+            interaction.channel.send("Left the channel since I was manually disconnected.");
+        } else {
+            return; // exit if the disconnection was not manual
+        }
         queue.delete();
         console.log('Managed to delete a queue like a normal person.');
-        interaction.channel.send("Left the channel since I was manually disconnected.");
     } catch(error) { 
         console.error('Error when handling connectionDestroyed:', error);
     }
 });
+
 
 
 client.player.events.on("connection", (queue, error) => {
