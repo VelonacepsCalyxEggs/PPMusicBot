@@ -116,7 +116,7 @@ module.exports = {
                  embed
                      .setDescription(`**${song.title}** has been added to the queue`)
                      .setThumbnail(song.thumbnail)
-                     .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size}`}); 
+                     .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`}); 
                  if (result.tracks.length === 0) {
                      return interaction.followUp("No results");
                  }    
@@ -173,7 +173,7 @@ module.exports = {
                              embed
                              .setDescription(`**The 42 Radio** has been added to the queue`)
                              .setThumbnail("http://www.funckenobi42.space/42.png")
-                             .setFooter({ text: `Duration: ∞ Position: ${guildQueue.tracks.size}`});
+                             .setFooter({ text: `Duration: ∞ Position: ${guildQueue.tracks.size + 1}`});
                              song.title = "The 42 Radio"
                              song.author = "func_kenobi"
                              song.thumbnail = "http://www.funckenobi42.space/42.png"
@@ -182,7 +182,7 @@ module.exports = {
                          embed
                              .setDescription(`**${song.title}** has been added to the queue`)
                              .setThumbnail(song.thumbnail)
-                             .setFooter({ text: `Duration: ∞ Position: ${guildQueue.tracks.size}`});
+                             .setFooter({ text: `Duration: ∞ Position: ${guildQueue.tracks.size + 1}`});
                          }
                      } else {
                      file = argument.split('?')[0]
@@ -201,7 +201,7 @@ module.exports = {
                          embed
                              .setDescription(`**${song.title}** has been added to the queue`)
                              .setThumbnail(song.thumbnail)
-                             .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size}`}); 
+                             .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`}); 
                          if (result.tracks.length === 0) {
                              return interaction.followUp("No results");
                          }  
@@ -220,7 +220,7 @@ module.exports = {
                  embed
                          .setDescription(`**${song.title}** has been added to the queue`)
                          .setThumbnail(song.thumbnail)
-                         .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size}` });
+                         .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}` });
                  if (result.tracks.length === 0) {
                      return interaction.followUp("No results");
                  }
@@ -258,7 +258,7 @@ module.exports = {
                      embed
                      .setDescription(`**${song.title}** has been added to the queue!`)
                      .setThumbnail(song.thumbnail)
-                     .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size}`});
+                     .setFooter({ text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`});
                  } catch (error) {
                      console.error('Error searching the file:', error.message);
                      interaction.followUp('Oops! Something went wrong while searching the file.');
