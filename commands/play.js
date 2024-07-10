@@ -252,6 +252,7 @@ module.exports = {
         } 
             // Play the song
             // Start playing the first track in the guildQueue
+            console.log(song)
             await guildQueue.play(song, {nodeOptions: {
                 metadata: interaction,
                 noEmitInsert: true,
@@ -260,7 +261,6 @@ module.exports = {
                 leaveOnEnd: false,
                 pauseOnEmpty: true,
                 //preferBridgedMetadata: true,
-                disableBiquad: true,
         }});
 
 

@@ -13,7 +13,6 @@ module.exports = {
                     { name: 'Fisher-Yates', value: 'fy' },
                     { name: 'Durstenfeld', value: 'df' },
                     { name: 'Sattolo', value: 'st' },
-                    { name: 'Shuffle By Title', value: 'ti'}
                 )),
     execute: async ({ interaction }) => {
         let queue = useQueue(interaction.guildId);
@@ -22,7 +21,7 @@ module.exports = {
         }
         if (!queue.size) return interaction.reply('There are no songs in the queue to shuffle.');
 
-        const shuffleAlgorithm = interaction.options.getString('category') || 'fy';
+        const shuffleAlgorithm = interaction.options.getString('algorithm') || 'fy';
         var tracks = queue.tracks.toArray();
 
         // Shuffle based on the selected algorithm

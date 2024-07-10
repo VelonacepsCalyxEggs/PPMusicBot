@@ -31,10 +31,15 @@ module.exports = {
 
         // If there is no queue, return
         if (!queue) {
-            await interaction.reply("There are no songs playing!");
+            await interaction.reply("There is no queue.");
             return;
         }
 
+        if (!queue.currentTrack) {
+            await interaction.reply("There are no songs playing.");
+            return;
+        }
+        
         const currentSong = queue.currentTrack;
 
         // Calculate the elapsed time

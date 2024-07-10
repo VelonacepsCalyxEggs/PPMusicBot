@@ -8,24 +8,35 @@ module.exports = {
         .setDescription("removes the track with an index.")
         .addNumberOption(option =>
             option.setName('position').setDescription("index").setRequired(true)
+        )
+        .addNumberOption(option =>
+            option.setName('position2').setDescription("index 2").setRequired(false)
         ),
     execute: async ({ client, interaction }) => {
-        console.log(`[${Date.now()}] A /remove command issued: [\n By: ${interaction.user}\n Guild: ${interaction.guild.name}\n Channel: ${interaction.channel.name}\n}`)
         let queue = useQueue(interaction.guildId);
         if (!queue) {
             return interaction.reply('There is no queue to remove music bruv.');
         }
         if (!queue.size) return interaction.reply('There are no songs in the queue to remove.');
-        try {
             var tracks = queue.tracks.toArray();
-            tracks.splice(interaction.options.getNumber('position') - 1, 1)
-            queue.clear();
-            for (let i = 0; i < tracks.length; i++) {
-                queue.addTrack(tracks[i]);
-              }       
+            
+            if (!interaction.options.getNumber('position2')) {
+                tracks.splice(interaction.options.getNumber('position') - 1, 1)
+                queue.clear();
+                for (let i = 0; i < tracks.length; i++) {
+                    queue.addTrack(tracks[i]);
+                }    
+                return interaction.reply('The track has been removed!')
+            } else {
+                tracks.splice(interaction.options.getNumber('position') - 1, interaction.options.getNumber('position2'))
+                queue.clear();
+                for (let i = 0; i < tracks.length; i++) {
+                    queue.addTrack(tracks[i]);
+                }  
+                return interaction.reply(`The tracks from ${interaction.options.getNumber('position')} to ${interaction.options.getNumber('position2')} have been removed!`)
             }
-        catch(e) {
-            return interaction.reply(`Either you did something stupid, or I did something stoopid, here's the stoopid: \n \`\`\`${e}\`\`\``)
-        }
-        return interaction.reply('The track has been removed!')
+
+
+
+
     }}
