@@ -14,7 +14,7 @@
     "@discordjs/voice": "^0.17.0",
     "@distube/ytdl-core": "^4.13.5",
     "discord-player": "^6.6.10",
-    "discord-player-youtubei": "^1.0.9",
+    "discord-player-youtubei": "^1.1.6",
     "discord-speech-recognition": "^3.4.1",
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",

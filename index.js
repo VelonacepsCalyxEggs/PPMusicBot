@@ -1,9 +1,10 @@
 const { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType } = require('discord.js');
 const { Player } = require("discord-player")
 const { ExtractorPlugin } = require('@discord-player/extractor');
-
+const { YoutubeiExtractor } = require("discord-player-youtubei")
 const { Client: PgClient } = require('pg');
 const dbConfig = require('./config/dbCfg'); // Make sure the path is correct
+const youtubeCfg = require('./config/ytCfg')
 
 // PostgreSQL client setup using the imported config
 const pgClient = new PgClient(dbConfig);
@@ -37,8 +38,10 @@ async function main() {
         }
     })
 
-    await client.player.extractors.loadDefault();
 
+    await client.player.extractors.register(YoutubeiExtractor, {
+        authentication: youtubeCfg
+    })
     // List of all commands
     const commands = [];
     client.commands = new Collection();
@@ -199,7 +202,7 @@ async function main() {
     // check if the queue is empty
     client.player.events.on("emptyQueue", (queue) => {
 
-        if (queue.connection.state.status != 'Destroyed') {
+        if (queue.connection.state.status != 'destroyed') {
             const interaction = queue.metadata;
             if (!interaction || !interaction.channel) {
                 console.log("No interaction or channel found.");
@@ -238,7 +241,7 @@ async function main() {
 
 
     client.player.events.on("connection", (queue, error) => {
-        console.log(`[${new Date().toISOString()}] Connected sucsessfully.`);
+        
     });
 
 
