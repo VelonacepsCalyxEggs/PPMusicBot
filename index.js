@@ -38,7 +38,7 @@ async function main() {
         }
     })
 
-
+    await client.player.extractors.loadDefault()
     await client.player.extractors.register(YoutubeiExtractor, {
         authentication: youtubeCfg
     })
@@ -132,10 +132,10 @@ async function main() {
                 const randomLine = quoteLines[randomLineIndex];
         
                 // Reply with the random line and the error message
-                await interaction.reply({content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``});
+                await interaction.followUp({content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``});
             } catch (error_follow) {
                 // If the initial reply fails, use followUp
-                await interaction.followUp({content: `Oops! Something went wrong. \n\nError details: \`\`\`js\n${error_follow}\`\`\``});
+                await interaction.reply({content: `Oops! Something went wrong. \n\nError details: \`\`\`js\n${error_follow}\`\`\``});
             }
         }
         
@@ -166,7 +166,7 @@ async function main() {
     client.player.events.on("audioTrackAdd", (queue) => {
         if (queue.tracks.size !== 0) {
         queue.tracks.at(0).startedPlaying = new Date()
-        console.log(queue.node.isPlaying())
+        //console.log(queue.node.isPlaying())
         }
     });
 
