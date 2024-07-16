@@ -131,7 +131,7 @@ module.exports = {
                 let i = 0;
                 for (track in result.tracks) {
                     if (i == 0) {
-                        song = result.tracks[i]
+                        playlistSong = result.tracks[i]
 
                     } else {
                         guildQueue.addTrack(result.tracks[i])
@@ -141,6 +141,15 @@ module.exports = {
                 }
                 result.tracks[0].startedPlaying = new Date()
 
+                await guildQueue.play(playlistSong, {nodeOptions: {
+                    metadata: interaction,
+                    noEmitInsert: true,
+                    leaveOnStop: false,
+                    leaveOnEmpty: false,
+                    leaveOnEnd: false,
+                    pauseOnEmpty: true,
+                    //preferBridgedMetadata: true,
+                }});
                 embed
                     .setDescription(`**${result.tracks.length} songs from ${playlist.title}** have been added to the queue`)
                     .setThumbnail(playlist.thumbnail);
@@ -310,7 +319,7 @@ module.exports = {
                         result.tracks[0].thumbnail = `http://www.funckenobi42.space${row.path_to_cover}`
                         result.tracks[0].url = `http://www.funckenobi42.space`
                         result.tracks[0].startedPlaying = new Date()
-                        song = result.tracks[i]
+                        playlistSong = result.tracks[i]
 
                     } else {
                         console.log('Iterating')
@@ -331,6 +340,15 @@ module.exports = {
                 }
                 matchType = searchResult.rows[0].match_type;
                 console.log(matchType)
+                await guildQueue.play(playlistSong, {nodeOptions: {
+                    metadata: interaction,
+                    noEmitInsert: true,
+                    leaveOnStop: false,
+                    leaveOnEmpty: false,
+                    leaveOnEnd: false,
+                    pauseOnEmpty: true,
+                    //preferBridgedMetadata: true,
+                }});
                 embed
                 .setDescription(`**${searchResult.rows.length} songs ** found by ** ${matchType} ** have been added to the queue`)
                 .setThumbnail(`http://www.funckenobi42.space${searchResult.rows[0].path_to_cover}`);
@@ -361,6 +379,7 @@ module.exports = {
         } 
             // Play the song
             // Start playing the first track in the guildQueue
+        if (song) {
             await guildQueue.play(song, {nodeOptions: {
                 metadata: interaction,
                 noEmitInsert: true,
@@ -370,7 +389,7 @@ module.exports = {
                 pauseOnEmpty: true,
                 //preferBridgedMetadata: true,
         }});
-
+        }
 
         // Respond with the embed containing information about the player
         await interaction.editReply({

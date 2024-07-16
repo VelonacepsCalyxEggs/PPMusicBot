@@ -163,8 +163,8 @@ async function main() {
         }
     });
 
-    client.player.events.on("audioTrackAdd", (queue) => {
-        if (queue.tracks.size !== 0) {
+    client.player.events.on("audioTrackAdd", async (queue, track) => {
+        if (queue.tracks.size != 0) {
         queue.tracks.at(0).startedPlaying = new Date()
         //console.log(queue.node.isPlaying())
         }
