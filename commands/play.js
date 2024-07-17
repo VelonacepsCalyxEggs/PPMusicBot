@@ -379,16 +379,21 @@ module.exports = {
         } 
             // Play the song
             // Start playing the first track in the guildQueue
-        if (song) {
-            await guildQueue.play(song, {nodeOptions: {
-                metadata: interaction,
-                noEmitInsert: true,
-                leaveOnStop: false,
-                leaveOnEmpty: false,
-                leaveOnEnd: false,
-                pauseOnEmpty: true,
-                //preferBridgedMetadata: true,
-        }});
+        try {
+            if (song) {
+                await guildQueue.play(song, {nodeOptions: {
+                    metadata: interaction,
+                    noEmitInsert: true,
+                    leaveOnStop: false,
+                    leaveOnEmpty: false,
+                    leaveOnEnd: false,
+                    pauseOnEmpty: true,
+                    //preferBridgedMetadata: true,
+            }});
+            }
+        }
+        catch(err) {
+            
         }
 
         // Respond with the embed containing information about the player
