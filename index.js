@@ -106,7 +106,7 @@ async function main() {
             //client.channels.cache.get('1129406347448950845').send('The bot is online.')
         }
         console.log(`[${new Date()}] Bot is online.`)
-        //console.log(client.player.scanDeps());client.player.on('debug',console.log).events.on('debug',(_,m)=>console.log(m));
+        console.log(client.player.scanDeps());client.player.on('debug',console.log).events.on('debug',(_,m)=>console.log(m));
     });
 
     client.on("interactionCreate", async interaction => {
@@ -123,7 +123,6 @@ async function main() {
         catch(error)
         {
             console.error(error);
-            try {
                 // Fetch a random quote from the database
                 const res = await pgClient.query('SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1');
                 const randomQuote = res.rows[0].quote;
@@ -132,14 +131,10 @@ async function main() {
                 const randomLine = quoteLines[randomLineIndex];
         
                 // Reply with the random line and the error message
-                await interaction.followUp({content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``});
-            } catch (error_follow) {
-                // If the initial reply fails, use followUp
-                await interaction.reply({content: `Oops! Something went wrong. \n\nError details: \`\`\`js\n${error_follow}\`\`\``});
-            }
-        }
+                await interaction.channel.send({content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``});
+
         
-    });
+        }});
 
 
     client.player.events.on("emptyChannel", (queue) => {
@@ -160,6 +155,8 @@ async function main() {
     client.player.events.on("playerFinish", (queue) => {
         if (queue.tracks.size !== 0) {
         queue.tracks.at(0).startedPlaying = new Date()
+        } else {
+            queue.currentTrack.startedPlaying = new Date()
         }
     });
 
