@@ -131,7 +131,13 @@ async function main() {
                 const randomLine = quoteLines[randomLineIndex];
         
                 // Reply with the random line and the error message
-                await interaction.channel.send({content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``});
+                if (interaction.deferred) {
+                    await interaction.editReply({content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``});
+                }
+                else {
+                    await interaction.channel.send({content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``});
+                }
+                
 
         
         }});
@@ -161,6 +167,7 @@ async function main() {
     });
 
     client.player.events.on("audioTrackAdd", async (queue, track) => {
+        console.log('track added')
         if (queue.tracks.size != 0) {
         queue.tracks.at(0).startedPlaying = new Date()
         //console.log(queue.node.isPlaying())
