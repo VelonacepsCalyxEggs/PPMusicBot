@@ -129,7 +129,6 @@ const handleFromDbCommand = async (client, interaction, guildQueue) => {
             if (searchResult.rows.length === 0) {
                 return interaction.followUp("No results found");
             }
-            console.log(searchResult.rows)
             
             if (searchResult.rows.length > 1) {
                 let i = 0;
@@ -165,17 +164,17 @@ const handleFromDbCommand = async (client, interaction, guildQueue) => {
                 }
             }
             else {
-                pathToSong = row.local;
+                pathToSong = searchResult.rows[0].local;
                 let result = await client.player.search(pathToSong, {
                     requestedBy: interaction.user,
                     searchEngine: QueryType.FILE,
                 });
-                result.tracks[0].title = row.name;
-                result.tracks[0].author = row.author;
-                result.tracks[0].thumbnail = `http://www.funckenobi42.space${row.path_to_cover}`
+                result.tracks[0].title = searchResult.rows[0].name;
+                result.tracks[0].author = searchResult.rows[0].author;
+                result.tracks[0].thumbnail = `http://www.funckenobi42.space${searchResult.rows[0].path_to_cover}`
                 result.tracks[0].url = `http://www.funckenobi42.space`
                 result.tracks[0].startedPlaying = new Date()
-                await guildQueue.play(result.tracks[i], { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false, guild: interaction.guild } });
+                await guildQueue.play(result.tracks[0], { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false, guild: interaction.guild } });
             }
             
     const embed = createEmbed(
