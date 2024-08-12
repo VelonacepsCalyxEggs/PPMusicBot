@@ -37,33 +37,21 @@ const createEmbed = (description, thumbnail, footer) => {
 };
 
 const handleSongCommand = async (client, interaction, guildQueue) => {
-    const argument = interaction.options.getString("searchterm");
+    const argument = interaction.options.getString("url");
     let result, song, embed;
 
     if (argument.includes('watch?v=') || argument.includes('youtu.be')) {
-        result = await client.player.search(argument, {
-            requestedBy: interaction.user,
-            searchEngine: QueryType.YOUTUBE
-        });
-        song = result.tracks[0];
-        if (!song) return interaction.followUp("No results or Couldn't extract the track from YouTube.");
-        embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
+        //result = await client.player.search(argument, {
+        //    requestedBy: interaction.user,
+        //    searchEngine: QueryType.YOUTUBE
+        //});
+        //song = result.tracks[0];
+        //if (!song) return interaction.followUp("No results or Couldn't extract the track from YouTube.");
+        //embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
+        return interaction.followUp("YOUTUBE IS DEAD, MUSIC IS FUEL.");
     } else if (argument.includes('playlist?list=')) {
-        result = await client.player.search(argument, {
-            requestedBy: interaction.user,
-            searchEngine: QueryType.AUTO
-        });
-        const playlist = result.playlist;
-        if (!playlist) return interaction.followUp("No results");
-        for (let i = 0; i < result.tracks.length; i++) {
-            if (i === 0) {
-                await guildQueue.play(result.tracks, { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false, guild: interaction.guild } });
-            } else {
-                await guildQueue.addTrack(result.tracks[i]);
-            }
-        }
-        embed = createEmbed(`**${result.tracks.length} songs from ${playlist.title}** have been added to the queue`, playlist.thumbnail, null);
-    } else if (argument.includes('http') || argument.includes('https')) {
+        return interaction.followUp("YOUTUBE IS DEAD, MUSIC IS FUEL.");
+    } else if (argument.includes('http') || argument.includes('https') && !argument.includes('youtube') && !argument.includes('youtu.be')) {
         const localPath = await downloadFile(argument.split('?')[0], argument);
         result = await client.player.search(localPath, {
             requestedBy: interaction.user,
@@ -72,15 +60,10 @@ const handleSongCommand = async (client, interaction, guildQueue) => {
         song = result.tracks[0];
         if (!song) return interaction.followUp("No results");
         embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
-    } else {
-        result = await client.player.search(argument, {
-            requestedBy: interaction.user,
-            searchEngine: QueryType.YOUTUBE_SEARCH
-        });
-        song = result.tracks[0];
-        embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
     }
-
+    else {
+        return interaction.followUp("GABELLA... url didn't fit the specifications.");
+    }
     if (song) {
         await guildQueue.play(song, { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false, guild: interaction.guild } });
     }
@@ -129,10 +112,11 @@ const handleFromDbCommand = async (client, interaction, guildQueue) => {
             if (searchResult.rows.length === 0) {
                 return interaction.followUp("No results found");
             }
-            
+
             if (searchResult.rows.length > 1) {
                 let i = 0;
                 for (const row of searchResult.rows) {
+                    console.log(row)
                     if (i == 0) {
                         // Assuming you want to play the first result
                         pathToSong = row.local;
@@ -153,12 +137,13 @@ const handleFromDbCommand = async (client, interaction, guildQueue) => {
                             requestedBy: interaction.user,
                             searchEngine: QueryType.FILE,
                         });
-                        console.log(result)
+                        if (result.tracks[0]) {
                         result.tracks[0].title = row.name;
                         result.tracks[0].author = row.author;
                         result.tracks[0].thumbnail = `http://www.funckenobi42.space${row.path_to_cover}`
                         result.tracks[0].url = `http://www.funckenobi42.space`
                         await guildQueue.play(result.tracks[0], { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false, guild: interaction.guild } });
+                        }
                     }
                     i++
                 }
@@ -176,7 +161,6 @@ const handleFromDbCommand = async (client, interaction, guildQueue) => {
                 result.tracks[0].startedPlaying = new Date()
                 await guildQueue.play(result.tracks[0], { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false, guild: interaction.guild } });
             }
-            
     const embed = createEmbed(
         `**${searchResult.rows.length} songs** found by **${searchResult.rows[0].match_type}** have been added to the queue`,
         `http://www.funckenobi42.space${searchResult.rows[0].path_to_cover}`,
@@ -194,7 +178,7 @@ module.exports = {
                 .setName("song")
                 .setDescription("plays a song")
                 .addStringOption(option =>
-                    option.setName("searchterm").setDescription("url/search/playlist").setRequired(true)
+                    option.setName("url").setDescription("url").setRequired(true)
                 )
         )
         .addSubcommand(subcommand =>

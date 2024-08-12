@@ -3,12 +3,13 @@ const { Player } = require("discord-player")
 const { ExtractorPlugin } = require('@discord-player/extractor');
 const { YoutubeiExtractor } = require("discord-player-youtubei")
 const { Client: PgClient } = require('pg');
-const dbConfig = require('./config/dbCfg'); // Make sure the path is correct
+const dbConfig = require('./config/dbCfg'); 
 const youtubeCfg = require('./config/ytCfg')
 
 // PostgreSQL client setup using the imported config
+console.log('Loading DB config...')
 const pgClient = new PgClient(dbConfig);
-
+console.log('Connecting to DB...')
 pgClient.connect();
 
 const fs = require('fs');
@@ -19,7 +20,7 @@ const { TOKEN, CLIENT_ID } = require('./config/botCfg');
 //const { TOKEN, CLIENT_ID } = require('./config/devBotCfg');
 
 async function main() {
-
+    console.log('Starting main...')
     const client = new Client({
         intents: [
             GatewayIntentBits.Guilds,
@@ -29,7 +30,7 @@ async function main() {
         ]
     });
 
-
+    console.log('Initializing player...')
     // Add the player on the client
     client.player = new Player(client, {
         ytdlOptions: {
@@ -37,16 +38,18 @@ async function main() {
             highWaterMark: 1 << 25
         }
     })
-
+    console.log('Loading default extractors.')
     await client.player.extractors.loadDefault()
-    await client.player.extractors.register(YoutubeiExtractor, {
-        authentication: youtubeCfg
-    })
+    //console.log('Loading Youtubei extractor.')
+    //await client.player.extractors.register(YoutubeiExtractor, {
+    //    authentication: youtubeCfg
+    //})
+    
     // List of all commands
     const commands = [];
     client.commands = new Collection();
 
-    const commandsPath = path.join(__dirname, "commands"); // E:\yt\discord bot\js\intro\commands
+    const commandsPath = path.join(__dirname, "commands"); 
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
     for(const file of commandFiles)
     {
@@ -56,8 +59,9 @@ async function main() {
         client.commands.set(command.data.name, command);
         commands.push(command.data.toJSON());
     }
-
+    console.log('Waiting for client...')
     client.on("ready", async () => {
+        console.log('Client is ready!')
         // Define a list of commands that are restricted to specific guilds
         const restrictedCommands = {
             'scan': '644950708160036864',
@@ -71,7 +75,7 @@ async function main() {
 
         // Get all ids of the servers
         const guild_ids = client.guilds.cache.map(guild => guild.id);
-
+        console.log('Registering bot...')
         const rest = new REST({version: '9'}).setToken(TOKEN);
 
         for (const guildId of guild_ids) {
