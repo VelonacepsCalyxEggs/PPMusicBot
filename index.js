@@ -44,7 +44,7 @@ async function main() {
     //await client.player.extractors.register(YoutubeiExtractor, {
     //    authentication: youtubeCfg
     //})
-    
+
     // List of all commands
     const commands = [];
     client.commands = new Collection();
@@ -146,6 +146,29 @@ async function main() {
         
         }});
 
+    client.on('voiceStateUpdate', async (oldState, newState) => {
+        if (oldState.channelId !== newState.channelId) {
+            const userId = newState.id;
+            const oldChannel = oldState.channelId;
+            const newChannel = newState.channelId;
+            const serverName = newState.guild.id;
+            const timestamp = new Date();
+    
+            const query = `
+                INSERT INTO discord_data_join (user_id, old_channel, new_channel, timestamp, server_id)
+                VALUES ($1, $2, $3, $4, $5)
+            `;
+            const values = [userId, oldChannel, newChannel, timestamp, serverName];
+    
+            try {
+                await pgClient.query(query, values);
+                console.log(`User ${userId} moved from ${oldChannel} to ${newChannel} in server ${serverName} at ${timestamp}`);
+            } catch (err) {
+                console.error('Error saving voice state:', err);
+            }
+        }
+    });
+        
 
     client.player.events.on("emptyChannel", (queue) => {
         const interaction = queue.metadata;
