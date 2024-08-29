@@ -37,7 +37,7 @@ const createEmbed = (description, thumbnail, footer) => {
 };
 
 const handleSongCommand = async (client, interaction, guildQueue) => {
-    const argument = interaction.options.getString("url");
+    const argument = interaction.options.getString("music");
     let result, song, embed;
 
     if (argument.includes('watch?v=') || argument.includes('youtu.be')) {
