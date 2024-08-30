@@ -57,12 +57,11 @@ const handleSongCommand = async (client, interaction, guildQueue) => {
         });
         const playlist = result.playlist;
         if (!playlist) return interaction.followUp("No results");
+
+        //await guildQueue.play(result.tracks, { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false, guild: interaction.guild } });
+
         for (let i = 0; i < result.tracks.length; i++) {
-            if (i === 0) {
-                await guildQueue.play(result.tracks, { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false, guild: interaction.guild } });
-            } else {
                 await guildQueue.play(result.tracks[i], { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false, guild: interaction.guild } });
-            }
             // Search for the song using the discord-player
         }
         embed = createEmbed(`**${result.tracks.length} songs from ${playlist.title}** have been added to the queue`, result.thumbnail, null);
