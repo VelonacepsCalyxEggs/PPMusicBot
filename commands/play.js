@@ -40,10 +40,36 @@ const handleSongCommand = async (client, interaction, guildQueue) => {
     const argument = interaction.options.getString("music");
     let result, song, embed;
 
-    if (argument.includes('watch?v=') || argument.includes('youtu.be')) {
+    if (argument.includes('http://www.funckenobi42.space:55060/stream')) {
+
+                console.log('Live stream detected');
+                // create a stream using ytdl-core with audioonly filter
+                let result = await client.player.search(argument, {
+                    requestedBy: interaction.user,
+                    searchEngine: QueryType.ARBITRARY,
+
+                });
+                if (!song) return interaction.followUp("No results");
+                song = result.tracks[0];
+                song.duration = "∞"
+                embed = createEmbed(`**${"Chuvaev FM"}** has been added to the queue`, "https://t4.ftcdn.net/jpg/03/86/82/73/360_F_386827376_uWOOhKGk6A4UVL5imUBt20Bh8cmODqzx.jpg", `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
+    }
+    else if ((argument.includes('http') || argument.includes('https')) && 
+    !(argument.includes('watch?v=') || argument.includes('youtu.be') || argument.includes('youtube.com'))) {
+        console.log('URL detected');
+        const localPath = await downloadFile(argument.split('?')[0], argument);
+        result = await client.player.search(localPath, {
+            requestedBy: interaction.user,
+            searchEngine: QueryType.FILE
+        });
+        song = result.tracks[0];
+        if (!song) return interaction.followUp("No results");
+        embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
+    }
+    else if (argument.includes('watch?v=') || argument.includes('youtu.be') || argument.includes('youtube.com')) {
         result = await client.player.search(argument, {
             requestedBy: interaction.user,
-            searchEngine: QueryType.YOUTUBE
+            searchEngine: QueryType.AUTO
         });
         song = result.tracks[0];
         if (!song) return interaction.followUp("No results or Couldn't extract the track from YouTube.");
@@ -66,15 +92,6 @@ const handleSongCommand = async (client, interaction, guildQueue) => {
         }
         embed = createEmbed(`**${result.tracks.length} songs from ${playlist.title}** have been added to the queue`, result.thumbnail, null);
         //return interaction.followUp("YOUTUBE IS DEAD, MUSIC IS FUEL.");
-    } else if (argument.includes('http') || argument.includes('https') && !argument.includes('youtube') && !argument.includes('youtu.be')) {
-        const localPath = await downloadFile(argument.split('?')[0], argument);
-        result = await client.player.search(localPath, {
-            requestedBy: interaction.user,
-            searchEngine: QueryType.FILE
-        });
-        song = result.tracks[0];
-        if (!song) return interaction.followUp("No results");
-        embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
     }
     else {
         result = await client.player.search(argument, {

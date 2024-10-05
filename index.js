@@ -40,10 +40,10 @@ async function main() {
     })
     console.log('Loading default extractors.')
     await client.player.extractors.loadDefault()
-    //console.log('Loading Youtubei extractor.')
-    //await client.player.extractors.register(YoutubeiExtractor, {
-    //    authentication: youtubeCfg
-    //})
+    console.log('Loading Youtubei extractor.')
+    await client.player.extractors.register(YoutubeiExtractor, {
+        authentication: youtubeCfg.YTTOKEN
+    })
 
     // List of all commands
     const commands = [];
@@ -278,5 +278,24 @@ async function main() {
 
     client.login(TOKEN);
 }
-main()
+
+async function startBot() {
+    try {
+        await main();
+    } catch (error) {
+        fs.writeFile('./logs/crash_log.txt', error.toString(), err => {
+            if (err) {
+                console.error('Error writing crash log:', err);
+            } else {
+                console.log('Crash log file written successfully.');
+            }
+            console.log('Restarting...');
+            setTimeout(startBot, 5000); // Restart the bot after a delay
+        });
+    }
+}
+
+
+// Start the bot
+startBot();
 

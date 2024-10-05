@@ -12,7 +12,8 @@ module.exports = {
                 .setRequired(false)
                 .addChoices(
                     { name: 'Queue', value: '1' },
-                    { name: 'Track', value: '2' }
+                    { name: 'Track', value: '2' },
+                    { name: 'Off', value: '3' }
                 )),
     execute: async ({ client, interaction }) => {
         // Get the queue for the server
@@ -28,6 +29,7 @@ module.exports = {
             await interaction.reply("There are no songs playing.");
             return;
         }
+        let repeatModeString = '';
         const repeatModeUser = interaction.options.getString('mode');
         if (repeatModeUser == '1') {
             queue.setRepeatMode(QueueRepeatMode.QUEUE)
@@ -37,11 +39,13 @@ module.exports = {
             queue.setRepeatMode(QueueRepeatMode.TRACK)
             repeatModeString = 'TRACK'
         }
-        else {
+        else if (repeatModeUser == '3') {
             queue.setRepeatMode(QueueRepeatMode.OFF)
             repeatModeString = 'OFF'
         }
-
+        else {
+            return interaction.reply('What?')
+        }
         // Create the embed
         let embed = new EmbedBuilder();
         embed
