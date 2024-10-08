@@ -110,7 +110,7 @@ async function main() {
             //client.channels.cache.get('1129406347448950845').send('The bot is online.')
         }
         console.log(`[${new Date()}] Bot is online.`)
-        console.log(client.player.scanDeps());client.player.on('debug',console.log).events.on('debug',(_,m)=>console.log(m));
+        console.log(client.player.scanDeps());//client.player.on('debug',console.log).events.on('debug',(_,m)=>console.log(m));
     });
 
     client.on("interactionCreate", async interaction => {

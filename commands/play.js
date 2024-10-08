@@ -66,13 +66,13 @@ const handleSongCommand = async (client, interaction, guildQueue) => {
         if (!song) return interaction.followUp("No results");
         embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
     }
-    else if (argument.includes('watch?v=') || argument.includes('youtu.be') || argument.includes('youtube.com')) {
+    else if ((argument.includes('watch?v=') || argument.includes('youtu.be') || argument.includes('youtube.com')) && !argument.includes('playlist?list=')) {
         result = await client.player.search(argument, {
             requestedBy: interaction.user,
             searchEngine: QueryType.AUTO
         });
         song = result.tracks[0];
-        if (!song) return interaction.followUp("No results or Couldn't extract the track from YouTube.");
+        if (!song) return interaction.followUp("No results or couldn't extract the track from YouTube.");
         embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
         //return interaction.followUp("YOUTUBE IS DEAD, MUSIC IS FUEL.");
     } else if (argument.includes('playlist?list=')) {
@@ -84,13 +84,22 @@ const handleSongCommand = async (client, interaction, guildQueue) => {
         const playlist = result.playlist;
         if (!playlist) return interaction.followUp("No results");
 
-        //await guildQueue.play(result.tracks, { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false, guild: interaction.guild } });
-
-        for (let i = 0; i < result.tracks.length; i++) {
-                await guildQueue.play(result.tracks[i], { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false, guild: interaction.guild } });
-            // Search for the song using the discord-player
-        }
-        embed = createEmbed(`**${result.tracks.length} songs from ${playlist.title}** have been added to the queue`, result.thumbnail, null);
+        // Honestly, it's probably me being dumb, but I'll still rant about this here...
+        // If I do guildQueue.play(playlist.tracks, ...) it adds only the first track from the playlist.
+        // but if I do playlist.tracks[1] it adds all the tracks from the playlist. same with [2] [3] ... [n]. Why would that happen...
+        // that caused the playlist duplication bug, which was adding playlists in ariphmetic progression... jesus ducking christ...
+        await guildQueue.play(result.tracks[0], { 
+            nodeOptions: { 
+                metadata: interaction, 
+                noEmitInsert: true, 
+                leaveOnEnd: false, 
+                leaveOnEmpty: false, 
+                leaveOnStop: false, 
+                guild: interaction.guild 
+            } 
+        });
+        
+        embed = createEmbed(`**${result.tracks.length} songs from ${playlist.title}** have been added to the queue`, playlist.thumbnail, null);
         //return interaction.followUp("YOUTUBE IS DEAD, MUSIC IS FUEL.");
     }
     else {
