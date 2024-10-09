@@ -100,7 +100,7 @@ async function main() {
 
         client.user.setPresence({ 
             activities: [{ 
-                name: 'some based tunes...', 
+                name: 'Sebya zablokiruyte...', 
                 type: ActivityType.Listening, 
                 url: 'http://www.funckenobi42.space' 
             }], 
@@ -279,20 +279,37 @@ async function main() {
     client.login(TOKEN);
 }
 
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    handleCrash(reason);
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    handleCrash(error);
+});
+
 async function startBot() {
     try {
         await main();
     } catch (error) {
-        fs.writeFile('./logs/crash_log.txt', error.toString(), err => {
-            if (err) {
-                console.error('Error writing crash log:', err);
-            } else {
-                console.log('Crash log file written successfully.');
-            }
-            console.log('Restarting...');
-            setTimeout(startBot, 5000); // Restart the bot after a delay
-        });
+        handleCrash(error);
     }
+}
+
+function handleCrash(error) {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] ${error.message}\n${error.stack}\n`;
+
+    fs.writeFile('./logs/crash_log.txt', logMessage, err => {
+        if (err) {
+            console.error('Error writing crash log:', err);
+        } else {
+            console.log('Crash log file written successfully.');
+        }
+        console.log('Restarting...');
+        setTimeout(startBot, 5000); // Restart the bot after a delay
+    });
 }
 
 
