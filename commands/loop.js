@@ -18,7 +18,11 @@ module.exports = {
     execute: async ({ client, interaction }) => {
         // Get the queue for the server
         const queue = useQueue(interaction.guildId);
-
+        const repeatDict = {
+            0: 'Off',
+            1: 'Track',
+            2: 'Queue',
+        }
         // If there is no queue, return
         if (!queue) {
             await interaction.reply("There is no queue.");
@@ -44,14 +48,16 @@ module.exports = {
             repeatModeString = 'OFF'
         }
         else {
-            return interaction.reply('What?')
+
+            return interaction.reply(`Current looping mode is ${repeatDict[queue.repeatMode]}.`)
         }
+
         // Create the embed
         let embed = new EmbedBuilder();
         embed
             .setDescription(`Current looping mode is now ${repeatModeString}`)
 
         // Reply with the embed
-        return interaction.reply({ ephemeral: true, embeds: [embed] }).catch(console.error);
+        return interaction.reply({ ephemeral: false, embeds: [embed] }).catch(console.error);
     },
 };

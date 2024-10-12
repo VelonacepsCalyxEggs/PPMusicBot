@@ -246,7 +246,9 @@ module.exports = {
                 )
         ),
     execute: async ({ client, interaction }) => {
+
         await interaction.deferReply();
+        
         if (!interaction.member.voice.channel) {
             return interaction.followUp("You need to be in a Voice Channel to play a song.");
         }

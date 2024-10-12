@@ -1,10 +1,11 @@
-const { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, DiscordAPIError } = require('discord.js');
 const { Player } = require("discord-player")
 const { ExtractorPlugin } = require('@discord-player/extractor');
 const { YoutubeiExtractor } = require("discord-player-youtubei")
 const { Client: PgClient } = require('pg');
 const dbConfig = require('./config/dbCfg'); 
 const youtubeCfg = require('./config/ytCfg')
+const { exec } = require('child_process');
 
 // PostgreSQL client setup using the imported config
 console.log('Loading DB config...')
@@ -18,6 +19,8 @@ const { type } = require('os');
 
 const { TOKEN, CLIENT_ID } = require('./config/botCfg');
 //const { TOKEN, CLIENT_ID } = require('./config/devBotCfg');
+
+let client;
 
 async function main() {
     console.log('Starting main...')
@@ -112,13 +115,13 @@ async function main() {
         console.log(`[${new Date()}] Bot is online.`)
         console.log(client.player.scanDeps());//client.player.on('debug',console.log).events.on('debug',(_,m)=>console.log(m));
     });
-
+    
     client.on("interactionCreate", async interaction => {
         if(!interaction.isCommand()) return;
 
         const command = client.commands.get(interaction.commandName);
         if(!command) return;
-
+        
         try
         {   
             console.log(`[${new Date().toISOString()}] Command: ${interaction.commandName} | User: ${interaction.user.tag} | Guild: ${interaction.guild.name}`);
@@ -279,14 +282,9 @@ async function main() {
     client.login(TOKEN);
 }
 
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+process.on('DiscordAPIError', (reason, promise) => {
+    console.error('DiscordAPIError at:', promise, 'reason:', reason);
     handleCrash(reason);
-});
-
-process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error);
-    handleCrash(error);
 });
 
 async function startBot() {
@@ -301,18 +299,25 @@ function handleCrash(error) {
     const timestamp = new Date().toISOString();
     const logMessage = `[${timestamp}] ${error.message}\n${error.stack}\n`;
 
-    fs.writeFile('./logs/crash_log.txt', logMessage, err => {
+    fs.writeFile('./logs/crash_log.txt', logMessage, async err => {
         if (err) {
             console.error('Error writing crash log:', err);
         } else {
             console.log('Crash log file written successfully.');
         }
+
         console.log('Restarting...');
-        setTimeout(startBot, 5000); // Restart the bot after a delay
+        
+        // Restart the application
+        exec('node index.js', (err, stdout, stderr) => {
+            if (err) {
+                console.error(`Error restarting application: ${err}`);
+                return;
+            }
+            console.log(`Application restarted: ${stdout}`);
+        });
     });
 }
-
-
 // Start the bot
 startBot();
 
