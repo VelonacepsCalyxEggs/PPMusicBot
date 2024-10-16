@@ -209,6 +209,7 @@ const handleFromDbCommand = async (client, interaction, guildQueue) => {
                 result.tracks[0].startedPlaying = new Date()
                 await guildQueue.play(result.tracks[0], { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false, guild: interaction.guild } });
             }
+            console.log(searchResult.rows[0].path_to_cover)
     const embed = createEmbed(
         `**${searchResult.rows.length} songs** found by **${searchResult.rows[0].match_type}** have been added to the queue`,
         `http://www.funckenobi42.space${searchResult.rows[0].path_to_cover}`,

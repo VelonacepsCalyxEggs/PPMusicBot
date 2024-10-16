@@ -6,6 +6,7 @@ const { Client: PgClient } = require('pg');
 const dbConfig = require('./config/dbCfg'); 
 const youtubeCfg = require('./config/ytCfg')
 const { exec } = require('child_process');
+const axios = require('axios');
 
 // PostgreSQL client setup using the imported config
 console.log('Loading DB config...')
@@ -115,39 +116,56 @@ async function main() {
         console.log(`[${new Date()}] Bot is online.`)
         console.log(client.player.scanDeps());//client.player.on('debug',console.log).events.on('debug',(_,m)=>console.log(m));
     });
-    
-    client.on("interactionCreate", async interaction => {
-        if(!interaction.isCommand()) return;
 
-        const command = client.commands.get(interaction.commandName);
-        if(!command) return;
-        
-        try
-        {   
-            console.log(`[${new Date().toISOString()}] Command: ${interaction.commandName} | User: ${interaction.user.tag} | Guild: ${interaction.guild.name}`);
-            await command.execute({client, interaction});
+    // Function to check Discord status
+    async function checkDiscordStatus() {
+        try {
+            const response = await axios.get('https://discordstatus.com/api/v2/status.json');
+            const status = response.data.status.description;
+            return status;
+        } catch (error) {
+            console.error('Error fetching Discord status:', error);
+            return 'Error fetching status';
         }
-        catch(error)
-        {
+    }
+    
+    client.on('interactionCreate', async interaction => {
+        if (!interaction.isCommand()) return;
+    
+        const command = client.commands.get(interaction.commandName);
+        if (!command) return;
+    
+        try {
+            console.log(`[${new Date().toISOString()}] Command: ${interaction.commandName} | User: ${interaction.user.tag} | Guild: ${interaction.guild.name}`);
+            
+            const status = await checkDiscordStatus();
+            console.log('Discord API Status:', status); // Logs the status for your reference
+    
+            await command.execute({ client, interaction });
+    
+        } catch (error) {
             console.error(error);
-                // Fetch a random quote from the database
-                const res = await pgClient.query('SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1');
-                const randomQuote = res.rows[0].quote;
-                const quoteLines = randomQuote.split('\n');
-                const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
-                const randomLine = quoteLines[randomLineIndex];
-        
-                // Reply with the random line and the error message
-                if (interaction.deferred) {
-                    await interaction.editReply({content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``});
-                }
-                else {
-                    await interaction.channel.send({content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``});
-                }
-                
-
-        
-        }});
+    
+            // Fetch a random quote from the database
+            const res = await pgClient.query('SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1');
+            const randomQuote = res.rows[0].quote;
+            const quoteLines = randomQuote.split('\n');
+            const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
+            const randomLine = quoteLines[randomLineIndex];
+    
+            // Reply with the random line and the error message
+            if (interaction.deferred) {
+                await interaction.editReply({
+                    content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``
+                });
+            } else {
+                await interaction.channel.send({
+                    content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``
+                });
+            }
+        }
+    });
+    
 
     client.on('voiceStateUpdate', async (oldState, newState) => {
         if (oldState.channelId !== newState.channelId) {
@@ -282,42 +300,62 @@ async function main() {
     client.login(TOKEN);
 }
 
-process.on('DiscordAPIError', (reason, promise) => {
-    console.error('DiscordAPIError at:', promise, 'reason:', reason);
-    handleCrash(reason);
-});
-
 async function startBot() {
     try {
         await main();
     } catch (error) {
-        handleCrash(error);
+        if (shouldHandleError(error)) {
+            handleCrash(error);
+        } else {
+            throw error;
+        }
     }
 }
+
+function shouldHandleError(error) {
+    // Customize this function to decide which errors to handle
+    // For instance, only handle 'terminated' errors
+    return error.message === 'terminated';
+}
+
+process.on('uncaughtException', (error) => {
+    if (shouldHandleError(error)) {
+        handleCrash(error);
+    }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    if (shouldHandleError(reason)) {
+        handleCrash(reason);
+    }
+});
 
 function handleCrash(error) {
     const timestamp = new Date().toISOString();
     const logMessage = `[${timestamp}] ${error.message}\n${error.stack}\n`;
-
     fs.writeFile('./logs/crash_log.txt', logMessage, async err => {
         if (err) {
             console.error('Error writing crash log:', err);
         } else {
             console.log('Crash log file written successfully.');
         }
-
+        console.error('Caught terminated error:', error);
         console.log('Restarting...');
+        setTimeout(() => {
+            exec('node index.js', (err, stdout, stderr) => {
+                if (err) {
+                    console.error(`Error restarting application: ${err}`);
+                    return;
+                }
+                console.log(`Application restarted: ${stdout}`);
+                process.exit(1);
+            });
+        }, 1000); // Wait for 1 second before restarting
         
-        // Restart the application
-        exec('node index.js', (err, stdout, stderr) => {
-            if (err) {
-                console.error(`Error restarting application: ${err}`);
-                return;
-            }
-            console.log(`Application restarted: ${stdout}`);
-        });
     });
 }
+
+
 // Start the bot
 startBot();
 
