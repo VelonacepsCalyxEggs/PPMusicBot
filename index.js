@@ -137,15 +137,13 @@ async function main() {
     
         try {
             console.log(`[${new Date().toISOString()}] Command: ${interaction.commandName} | User: ${interaction.user.tag} | Guild: ${interaction.guild.name}`);
-            
-            const status = await checkDiscordStatus();
-            console.log('Discord API Status:', status); // Logs the status for your reference
     
             await command.execute({ client, interaction });
     
         } catch (error) {
             console.error(error);
-    
+            const status = await checkDiscordStatus();
+            console.log('Discord API Status:', status); // Logs the status for your reference
             // Fetch a random quote from the database
             const res = await pgClient.query('SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1');
             const randomQuote = res.rows[0].quote;
@@ -156,11 +154,11 @@ async function main() {
             // Reply with the random line and the error message
             if (interaction.deferred) {
                 await interaction.editReply({
-                    content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``
+                    content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\`\n 'Discord API Status: ${status}`
                 });
             } else {
                 await interaction.channel.send({
-                    content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\``
+                    content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\`\n 'Discord API Status: ${status}`
                 });
             }
         }
@@ -313,8 +311,7 @@ async function startBot() {
 }
 
 function shouldHandleError(error) {
-    // Customize this function to decide which errors to handle
-    // For instance, only handle 'terminated' errors
+    // only handle 'terminated' errors
     return error.message === 'terminated';
 }
 
@@ -333,28 +330,15 @@ process.on('unhandledRejection', (reason, promise) => {
 function handleCrash(error) {
     const timestamp = new Date().toISOString();
     const logMessage = `[${timestamp}] ${error.message}\n${error.stack}\n`;
-    fs.writeFile('./logs/crash_log.txt', logMessage, async err => {
+    
+    fs.writeFile('./logs/crash_log.txt', logMessage, (err) => {
         if (err) {
             console.error('Error writing crash log:', err);
-        } else {
-            console.log('Crash log file written successfully.');
         }
         console.error('Caught terminated error:', error);
-        console.log('Restarting...');
-        setTimeout(() => {
-            exec('node index.js', (err, stdout, stderr) => {
-                if (err) {
-                    console.error(`Error restarting application: ${err}`);
-                    return;
-                }
-                console.log(`Application restarted: ${stdout}`);
-                process.exit(1);
-            });
-        }, 1000); // Wait for 1 second before restarting
-        
+        process.exit(1);  // Exit to trigger the restart
     });
 }
-
 
 // Start the bot
 startBot();
