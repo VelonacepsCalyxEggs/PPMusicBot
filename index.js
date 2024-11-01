@@ -66,7 +66,7 @@ async function main() {
     console.log('Waiting for client...')
     client.on("ready", async () => {
         console.log('Client is ready!')
-        // Define a list of commands that are restricted to specific guilds
+        // a list of commands that are restricted to specific guilds
         const restrictedCommands = {
             'scan': '644950708160036864',
             'updquotes': '644950708160036864',
@@ -100,16 +100,11 @@ async function main() {
             .catch(console.error);
         }
 
-        const { ActivityType } = require('discord.js')
 
-        client.user.setPresence({ 
-            activities: [{ 
-                name: 'Sebya zablokiruyte...', 
-                type: ActivityType.Listening, 
-                url: 'http://www.funckenobi42.space' 
-            }], 
-            status: 'dnd' 
-        });
+        updateBotStatusMessage()
+        // Call the function every 45 minutes
+        setInterval(updateBotStatusMessage, 45 * 60 * 1000);
+
         if (client.channels.cache.get('1129406347448950845')) {
             //client.channels.cache.get('1129406347448950845').send('The bot is online.')
         }
@@ -129,6 +124,19 @@ async function main() {
         }
     }
     
+    // Function to update the status message.
+    async function updateBotStatusMessage() {
+        console.log("Updating bot status message...")
+        statusList = [":satellite: :satellite: :satellite:", "sqrt(1764)", "Wow! I can change status messages now!", "Something, something uptime 99%...", "func_kenobi is neither dead nor alive, until I look inzide the box.", "/fortytwo/secret"]
+        client.user.setPresence({ 
+            activities: [{ 
+                name: statusList[Math.floor(Math.random() * statusList.length)], 
+                url: 'http://www.funckenobi42.space' 
+            }], 
+            status: 'dnd' 
+        });
+    }
+
     client.on('interactionCreate', async interaction => {
         if (!interaction.isCommand()) return;
     
@@ -275,7 +283,6 @@ async function main() {
             return;
         }
         try {
-            console.log(queue.connection.state.status)
             if (queue.connection.state.status != 'destroyed') {
                 interaction.channel.send("I was manually disconnected.");
             } else {
