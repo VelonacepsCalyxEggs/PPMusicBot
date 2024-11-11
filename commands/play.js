@@ -37,7 +37,7 @@ const createEmbed = (description, thumbnail, footer) => {
 };
 
 const handleSongCommand = async (client, interaction, guildQueue) => {
-    const argument = interaction.options.getString("music");
+    let argument = interaction.options.getString("music");
     let result, song, embed;
 
     if (argument.includes('http://www.funckenobi42.space:55060/stream')) {
@@ -67,6 +67,15 @@ const handleSongCommand = async (client, interaction, guildQueue) => {
         embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
     }
     else if ((argument.includes('watch?v=') || argument.includes('youtu.be') || argument.includes('youtube.com')) && !argument.includes('playlist?list=')) {
+        if (argument.includes('si=')) {
+            let parts = argument.split("si=");
+
+            if (parts.length > 1) {
+                argument = parts[0];
+            }
+            console.log(argument);
+
+        }
         result = await client.player.search(argument, {
             requestedBy: interaction.user,
             searchEngine: QueryType.AUTO

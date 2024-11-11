@@ -16,12 +16,9 @@ pgClient.connect();
 
 const fs = require('fs');
 const path = require('path');
-const { type } = require('os');
 
 const { TOKEN, CLIENT_ID } = require('./config/botCfg');
 //const { TOKEN, CLIENT_ID } = require('./config/devBotCfg');
-
-let client;
 
 async function main() {
     console.log('Starting main...')
@@ -47,17 +44,21 @@ async function main() {
     console.log('Loading Youtubei extractor.')
     await client.player.extractors.register(YoutubeiExtractor, {
         authentication: youtubeCfg.YTTOKEN
-    })
+    });
 
     // List of all commands
     const commands = [];
     client.commands = new Collection();
 
+    console.log("Searching commands...")
     const commandsPath = path.join(__dirname, "commands"); 
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+    console.log("Sorting commands...")
     for(const file of commandFiles)
     {
+        console.log(file)
         const filePath = path.join(commandsPath, file);
+        console.log(`Importing ${filePath}...`)
         const command = require(filePath);
 
         client.commands.set(command.data.name, command);
@@ -105,6 +106,7 @@ async function main() {
         // Call the function every 45 minutes
         setInterval(updateBotStatusMessage, 45 * 60 * 1000);
 
+
         if (client.channels.cache.get('1129406347448950845')) {
             //client.channels.cache.get('1129406347448950845').send('The bot is online.')
         }
@@ -131,6 +133,7 @@ async function main() {
         client.user.setPresence({ 
             activities: [{ 
                 name: statusList[Math.floor(Math.random() * statusList.length)], 
+                type: ActivityType.Custom,
                 url: 'http://www.funckenobi42.space' 
             }], 
             status: 'dnd' 
@@ -238,14 +241,7 @@ async function main() {
     });
 
     client.player.events.on("playerStart", (queue) => {
-        const interaction = queue.metadata;
-        if (!queue.isPlaying()) {
-            if (interaction && interaction.channel) {
-                interaction.channel.send(`*OMEGA ALERT, MEGA ULTRA UNKNOWN ASS ERROR DETECTED*\n Here's the queue Object, maybe it helps...:  \n\`\`\`js\n${queue}\`\`\``);
-            } else {
-                console.log(`*OMEGA ALERT, MEGA ULTRA UNKNOWN ASS ERROR DETECTED*\n Here's the queue Object, maybe it helps...:  \n\`\`\`js\n${queue}\`\`\``);
-            }
-        }
+
     });
 
     client.player.events.on("error", (queue, error) => {
@@ -254,6 +250,7 @@ async function main() {
             interaction.channel.send(`The queue encountered an error while trying to play the track: \n\`\`\`js\n${error.message}\`\`\``);
         } else {
             console.log(`Queue Error: ${error.message}`);
+            console.log(queue.currentTrack)
         }
     });
 
