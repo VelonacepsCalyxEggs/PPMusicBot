@@ -7,6 +7,8 @@ const fs = require('fs');
 const path = require('path');
 const { Client: PgClient } = require('pg');
 const dbConfig = require('../config/dbCfg'); // Make sure the path is correct
+const ytdl = require("@distube/ytdl-core");
+const { YoutubeiExtractor } = require("discord-player-youtubei");
 
 const downloadFile = (file, url) => {
     return new Promise((resolve, reject) => {
@@ -46,7 +48,7 @@ const handleSongCommand = async (client, interaction, guildQueue) => {
                 // create a stream using ytdl-core with audioonly filter
                 let result = await client.player.search(argument, {
                     requestedBy: interaction.user,
-                    searchEngine: QueryType.ARBITRARY,
+                    searchEngine: ytdl.FILE,
 
                 });
                 if (!song) return interaction.followUp("No results");
@@ -67,6 +69,7 @@ const handleSongCommand = async (client, interaction, guildQueue) => {
         embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
     }
     else if ((argument.includes('watch?v=') || argument.includes('youtu.be') || argument.includes('youtube.com')) && !argument.includes('playlist?list=')) {
+        console.log('Youtube URL detected');
         if (argument.includes('si=')) {
             let parts = argument.split("si=");
 
@@ -76,12 +79,17 @@ const handleSongCommand = async (client, interaction, guildQueue) => {
             console.log(argument);
 
         }
+        print(argument)
         result = await client.player.search(argument, {
             requestedBy: interaction.user,
             searchEngine: QueryType.AUTO
         });
         song = result.tracks[0];
-        if (!song) return interaction.followUp("No results or couldn't extract the track from YouTube.");
+        //console.log(result)
+        if (!song) {
+            return interaction.followUp("No results or couldn't extract the track from YouTube.");
+        }
+
         embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
         //return interaction.followUp("YOUTUBE IS DEAD, MUSIC IS FUEL.");
     } else if (argument.includes('playlist?list=')) {
@@ -112,6 +120,7 @@ const handleSongCommand = async (client, interaction, guildQueue) => {
         //return interaction.followUp("YOUTUBE IS DEAD, MUSIC IS FUEL.");
     }
     else {
+        console.log('Youtube Search detected');
         result = await client.player.search(argument, {
             requestedBy: interaction.user,
             searchEngine: QueryType.YOUTUBE_SEARCH

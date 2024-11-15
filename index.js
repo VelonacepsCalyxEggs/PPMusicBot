@@ -43,7 +43,7 @@ async function main() {
     await client.player.extractors.loadDefault()
     console.log('Loading Youtubei extractor.')
     await client.player.extractors.register(YoutubeiExtractor, {
-        authentication: youtubeCfg.YTTOKEN
+        //authentication: youtubeCfg.YTTOKEN
     });
 
     // List of all commands
@@ -111,7 +111,7 @@ async function main() {
             //client.channels.cache.get('1129406347448950845').send('The bot is online.')
         }
         console.log(`[${new Date()}] Bot is online.`)
-        console.log(client.player.scanDeps());//client.player.on('debug',console.log).events.on('debug',(_,m)=>console.log(m));
+        console.log(client.player.scanDeps());client.player.on('debug',console.log).events.on('debug',(_,m)=>console.log(m));
     });
 
     // Function to check Discord status
