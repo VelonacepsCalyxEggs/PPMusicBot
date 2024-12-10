@@ -79,7 +79,6 @@ const handleSongCommand = async (client, interaction, guildQueue) => {
             console.log(argument);
 
         }
-        print(argument)
         result = await client.player.search(argument, {
             requestedBy: interaction.user,
             searchEngine: QueryType.AUTO
@@ -265,7 +264,7 @@ module.exports = {
                 )
         ),
     execute: async ({ client, interaction }) => {
-
+        
         await interaction.deferReply();
         
         if (!interaction.member.voice.channel) {
