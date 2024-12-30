@@ -14,7 +14,7 @@ pgClient.connect();
 const downloadFile = (file: string, url: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         const fileExtension = path.extname(file);
-        const localPath = 'C:/Server/DSMBot/PP_DMB/cache/' + Math.random().toString().slice(2, 11) + fileExtension;
+        const localPath = 'C:/Server/DSMBot/PP_DMB_TS/cache/' + Math.random().toString().slice(2, 11) + fileExtension;
         const writeStream = fs.createWriteStream(localPath);
         const protocol = url.startsWith('https') ? https : http;
 

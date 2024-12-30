@@ -26,16 +26,24 @@ const pgClient = new pg_1.Client(dbCfg_1.default);
 pgClient.connect();
 const downloadFile = (file, url) => {
     return new Promise((resolve, reject) => {
+        console.log(`download file excecuted with ${url}`);
         const fileExtension = path_1.default.extname(file);
-        const localPath = 'C:/Server/DSMBot/PP_DMB/cache/' + Math.random().toString().slice(2, 11) + fileExtension;
+        const localPath = 'C:/Server/DSMBot/PP_DMB_TS/cache/' + Math.random().toString().slice(2, 11) + fileExtension;
         const writeStream = fs_1.default.createWriteStream(localPath);
         const protocol = url.startsWith('https') ? https_1.default : http_1.default;
+        console.log(localPath);
+        console.log(protocol);
+        console.log(`Trying to start download.`);
         protocol.get(url, (res) => {
+            console.log(`Starting download.`);
             res.pipe(writeStream);
             writeStream.on('finish', () => {
                 writeStream.close();
                 console.log('Download completed! File saved at:', localPath);
                 resolve(localPath);
+            });
+            writeStream.on('error', (error) => {
+                console.log(error);
             });
         }).on('error', (err) => {
             console.error('Error downloading file:', err.message);
@@ -139,6 +147,7 @@ const handleSongCommand = (player, interaction, guildQueue) => __awaiter(void 0,
 });
 const handleFileCommand = (player, interaction, guildQueue) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
+    console.log('File handler');
     const file = (_a = interaction.options.get('file')) === null || _a === void 0 ? void 0 : _a.attachment;
     if (!file) {
         return interaction.followUp("No file attachment found");
@@ -203,6 +212,7 @@ const handleFromDbCommand = (player, interaction, guildQueue) => __awaiter(void 
             requestedBy: interaction.user,
             searchEngine: discord_player_1.QueryType.FILE,
         });
+        console.log(row.path_to_cover);
         if (result.tracks[0]) {
             const workingTrack = result.tracks[0];
             workingTrack.title = row.name;
