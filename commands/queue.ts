@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
+import { EmbedBuilder, CommandInteraction, Client, ActionRowBuilder, ButtonBuilder, ButtonStyle, Message } from 'discord.js';
 import { useQueue } from 'discord-player';
 
 function formatDuration(ms: number): string {
@@ -82,6 +82,98 @@ export const command = {
                 iconURL: interaction.user.displayAvatarURL(),
             });
 
-        return interaction.reply({ ephemeral: true, embeds: [embed] }).catch(console.error);
+        const actionRow = new ActionRowBuilder<ButtonBuilder>()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('first_page')
+                    .setLabel('First')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(page === 1),
+                new ButtonBuilder()
+                    .setCustomId('prev_page')
+                    .setLabel('Previous')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(page === 1),
+                new ButtonBuilder()
+                    .setCustomId('next_page')
+                    .setLabel('Next')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(page === maxPages),
+                new ButtonBuilder()
+                    .setCustomId('last_page')
+                    .setLabel('Last')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(page === maxPages)
+            );
+
+        await interaction.reply({ ephemeral: true, embeds: [embed], components: [actionRow] }).catch(console.error);
+        const message = await interaction.fetchReply() as Message;
+
+        const filter = (i: any) => ['prev_page', 'next_page', 'first_page', 'last_page'].includes(i.customId);
+        const collector = message.createMessageComponentCollector({ filter, time: 60000 });
+
+        collector.on('collect', async (i: any) => {
+            if (i.customId === 'prev_page') {
+                page--;
+            } else if (i.customId === 'next_page') {
+                page++;
+            } else if (i.customId === 'last_page') {
+                page = maxPages;
+            } else if (i.customId === 'first_page') {
+                page = 1;
+            }
+            if (page < 1) page = 1;
+            if (page > maxPages) page = maxPages;
+
+            const end = page * multiple;
+            const start = end - multiple;
+
+            const tracks = queue.tracks.toArray().slice(start, end);
+            const description = tracks
+                .map(
+                    (track, i) =>
+                        `${start + ++i} - [${track.title}](${track.url}) ~ [${track.duration}] \n [${track.requestedBy ? track.requestedBy.toString() : 'Unknown'}]`
+                )
+                .join('\n');
+
+            const updatedEmbed = new EmbedBuilder()
+                .setDescription(description || 'No tracks found in the current queue.')
+                .setFooter({
+                    text: `Page ${page} of ${maxPages} | track ${start + 1} to ${
+                        end > queue.size ? `${queue.size}` : `${end}`
+                    } of ${queue.size}. Total Duration: ${totalDurationFormatted}.`,
+                    iconURL: interaction.user.displayAvatarURL(),
+                });
+
+            const updatedActionRow = new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('first_page')
+                        .setLabel('First')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(page === 1),
+                    new ButtonBuilder()
+                        .setCustomId('prev_page')
+                        .setLabel('Previous')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(page === 1),
+                    new ButtonBuilder()
+                        .setCustomId('next_page')
+                        .setLabel('Next')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(page === maxPages),
+                    new ButtonBuilder()
+                        .setCustomId('last_page')
+                        .setLabel('Last')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(page === maxPages)
+                );
+
+            await i.update({ embeds: [updatedEmbed], components: [updatedActionRow] });
+        });
+
+        collector.on('end', collected => {
+            console.log(`Collected ${collected.size} interactions.`);
+        });
     },
 };
