@@ -205,15 +205,17 @@ const handleFromDbCommand = async (player: Player, interaction: CommandInteracti
     // Search the database for matches in song name, author, and album
     const searchQuery = `
         SELECT *, 
-        CASE 
-            WHEN name ILIKE $1 THEN 'name' 
-            WHEN author ILIKE $1 THEN 'author' 
-            WHEN album ILIKE $1 THEN 'album' 
-        END AS match_type
+            CASE 
+                WHEN name ILIKE $1 THEN 'name' 
+                WHEN author ILIKE $1 THEN 'author' 
+                WHEN album ILIKE $1 THEN 'album' 
+                ELSE 'none' 
+            END AS match_type
         FROM music 
         WHERE name ILIKE $1 
         OR author ILIKE $1 
         OR album ILIKE $1
+        ORDER BY "order";
     `;
 
     const searchValues = [`%${argument}%`];
