@@ -288,8 +288,6 @@ async function main() {
             } else {
                 return;
             }
-            queue.delete();
-            console.log('Managed to delete a queue like a normal person.');
         } catch (error) {
             console.error('Error when handling connectionDestroyed:', error);
         }
