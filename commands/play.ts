@@ -4,7 +4,8 @@ import { QueryType, useQueue, GuildQueue, Player, useMainPlayer, Track } from 'd
 import https from 'https';
 import http from 'http';
 import fs from 'fs';
-import path from 'path';
+import fs_promises from 'fs/promises';
+import path, { resolve } from 'path';
 import { Client as PgClient } from 'pg';
 import dbConfig from '../config/dbCfg'; // Make sure the path is correct
 
@@ -52,14 +53,30 @@ const handleSongCommand = async (player: Player, interaction: CommandInteraction
     if ((argument.includes('http') || argument.includes('https')) &&
         !(argument.includes('watch?v=') || argument.includes('youtu.be') || argument.includes('youtube.com'))) {
         console.log('URL detected');
-        const localPath = await downloadFile(argument.split('?')[0], argument);
-        result = await player.search(localPath, {
-            requestedBy: interaction.user,
-            searchEngine: QueryType.FILE
-        });
-        song = result.tracks[0];
-        if (!song) return interaction.followUp('No results');
-        embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
+        if(argument.includes('stream') || argument.includes(':')) {
+            console.log('live stream detected')
+            if (argument.includes('funckenobi42.space')) {
+                argument = 'http://127.0.0.1:55060/stream.mp3'
+            }
+            console.log(argument)
+            result = await player.search(argument, {
+                requestedBy: interaction.user,
+                searchEngine: QueryType.AUTO
+            });
+            song = result.tracks[0];
+            if (!song) return interaction.followUp('No results');
+            song.duration = '∞';
+            embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
+        } else {
+            const localPath = await downloadFile(argument.split('?')[0], argument);
+            result = await player.search(localPath, {
+                requestedBy: interaction.user,
+                searchEngine: QueryType.FILE
+            });
+            song = result.tracks[0];
+            if (!song) return interaction.followUp('No results');
+            embed = createEmbed(`**${song.title}** has been added to the queue`, song.thumbnail, `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`);
+        }
     } else if ((argument.includes('watch?v=') || argument.includes('youtu.be') || argument.includes('youtube.com')) && !argument.includes('playlist?list=')) {
         console.log('YouTube URL detected');
         if (argument.includes('si=')) {
@@ -123,6 +140,7 @@ const handleSongCommand = async (player: Player, interaction: CommandInteraction
 };
 
 interface DbTrack {
+    id: number;
     name: string;
     author: string;
     album: string;
@@ -216,7 +234,7 @@ const handleFromDbCommand = async (player: Player, interaction: CommandInteracti
             workingTrack.title = row.name;
             workingTrack.author = row.author;
             workingTrack.thumbnail = `https://www.funckenobi42.space${row.path_to_cover}`;
-            workingTrack.url = `https://www.funckenobi42.space`;
+            workingTrack.url = `https://www.funckenobi42.space/music/track/${row.id}`;
             if (isFirst) {
                 workingTrack.startedPlaying = new Date();
             }
@@ -232,14 +250,28 @@ const handleFromDbCommand = async (player: Player, interaction: CommandInteracti
     } else {
         await playTrack(searchResult.rows[0], interaction, player, guildQueue, true);
     }
-
-    const embed = new EmbedBuilder()
+    let embed: EmbedBuilder;
+    if (searchResult.rows.length > 1) {
+        embed = new EmbedBuilder()
         .setDescription(`**${searchResult.rows.length} songs** found by **${searchResult.rows[0].match_type}** have been added to the queue`)
         .setThumbnail(`https://www.funckenobi42.space${searchResult.rows[0].path_to_cover}`);
+    } else {
+        
+        let cover: string;
+        try {
+            await fs_promises.access(resolve("C:/Server/nodeTSWebNest/www.funckenobi42.space/public", searchResult.rows[0].path_to_disk_cover));
+            cover = searchResult.rows[0].path_to_disk_cover;
+        } catch (error) {
+            cover = searchResult.rows[0].path_to_cover;
+        }
+        
+        embed = new EmbedBuilder()
+        .setDescription(`**${searchResult.rows[0].name}** by **${searchResult.rows[0].author}** from **${searchResult.rows[0].album}**`)
+        .setThumbnail(`https://www.funckenobi42.space${cover}`);
 
+    }
     await interaction.editReply({ embeds: [embed] });
 
-    console.log(searchResult.rows[0].path_to_cover);
 };
 
 export { handleFromDbCommand };
