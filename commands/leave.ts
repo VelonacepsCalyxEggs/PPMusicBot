@@ -4,8 +4,8 @@ import { useQueue } from 'discord-player';
 
 export const command = {
     data: new SlashCommandBuilder()
-        .setName('skip')
-        .setDescription('Skips the current song'),
+        .setName('leave')
+        .setDescription('Drops the queue and leaves from the channel.'),
 
     execute: async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
         // Get the queue for the server
