@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, VoiceState, Interaction, TextChannel, CommandInteraction } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, VoiceState, Interaction, TextChannel, CommandInteraction, ClientUser } from 'discord.js';
 import { Player, GuildQueue, Track } from 'discord-player';
 import { DefaultExtractors } from '@discord-player/extractor';
 import { YoutubeiExtractor } from 'discord-player-youtubei';
@@ -7,8 +7,8 @@ import dbConfig from './config/dbCfg';
 import youtubeCfg from './config/ytCfg';
 import { exec } from 'child_process';
 import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
+import fs, { readFileSync } from 'fs';
+import path, { resolve } from 'path';
 import { TOKEN, CLIENT_ID } from './config/botCfg';
 import { SlashCommandBuilder } from '@discordjs/builders';
 
@@ -111,8 +111,8 @@ async function main() {
         
 
         updateBotStatusMessage();
-        // Call the function every 45 minutes
-        setInterval(updateBotStatusMessage, 45 * 60 * 1000);
+        // Call the function every 1 minute
+        setInterval(updateBotStatusMessage, 1 * 60 * 1000);
 
         if (client.channels.cache.get('1129406347448950845')) {
             // (client.channels.cache.get('1129406347448950845') as TextChannel).send('The bot is online.')
@@ -135,19 +135,35 @@ async function main() {
     }
 
     // Function to update the status message.
+    const pathToStatus: string = resolve('./resources/status.json');
+    interface StatusMessage {
+        status: string;
+    }
+    //const statusList: string[] = [
+    //    ':satellite: :satellite: :satellite:',
+    //    'sqrt(1764)',
+    //    'Wow! I can change status messages now!',
+    //    'Something, something uptime 99%...',
+    //    'func_kenobi is neither dead nor alive, until I look inzide the box.',
+    //    '/fortytwo/secret'
+    //];
+    // statusList[Math.floor(Math.random() * statusList.length)]
+    let currentStatus: string = '';
     async function updateBotStatusMessage() {
+        const data: string = readFileSync(pathToStatus, { encoding: 'utf-8' });
+        const parsedData: StatusMessage = JSON.parse(data);
+        if (currentStatus == parsedData.status) return;
         console.log('Updating bot status message...');
-        const statusList = [':satellite: :satellite: :satellite:', 'sqrt(1764)', 'Wow! I can change status messages now!', 'Something, something uptime 99%...', 'func_kenobi is neither dead nor alive, until I look inzide the box.', '/fortytwo/secret'];
-        (client.user as any).setPresence({
+        currentStatus = parsedData.status;
+        (client.user as ClientUser).setPresence({
             activities: [{
-                name: statusList[Math.floor(Math.random() * statusList.length)],
+                name: currentStatus,
                 type: ActivityType.Custom,
                 url: 'http://www.funckenobi42.space'
             }],
             status: 'dnd'
         });
     }
-
     client.on('interactionCreate', async (interaction: Interaction) => {
         if (!interaction.isCommand()) return;
     
@@ -213,8 +229,6 @@ async function main() {
                 return; 
             }
             (interaction.channel as TextChannel).send("Everyone left the channel.");
-            queue.delete();
-            console.log('Managed to delete a queue like a normal person.');
         } catch (error) {
             console.log('No queue was deleted:', error);
         }
