@@ -18,13 +18,13 @@ export const command = {
         const queue = useQueue(interaction.guild);
 
         // If there is no queue, return
-        if (!queue) {
+        if (!queue || queue.size == 0) {
             await interaction.reply('There is no queue!');
             return;
         }
         
         const currentSong = queue.currentTrack;
-        if (!currentSong) return interaction.followUp('No song is currently playing.');
+        if (!currentSong) return interaction.reply('No song is currently playing.');
 
         // Add the current song
         queue.addTrack(currentSong);
