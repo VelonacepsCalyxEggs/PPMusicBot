@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, Voic
 import { Player, GuildQueue, Track } from 'discord-player';
 import { DefaultExtractors } from '@discord-player/extractor';
 import { YoutubeiExtractor } from 'discord-player-youtubei';
-import { Client as PgClient } from 'pg';
+import { Client as PgClient, Pool } from 'pg';
 import dbConfig from './config/dbCfg';
 import youtubeCfg from './config/ytCfg';
 import { exec } from 'child_process';
@@ -24,9 +24,9 @@ interface ExtendedTrack<T> extends Track<T> {
 
 // PostgreSQL client setup using the imported config
 console.log('Loading DB config...');
-const pgClient = new PgClient(dbConfig);
+const pool = new Pool(dbConfig);
 console.log('Connecting to DB...');
-pgClient.connect();
+pool.connect();
 
 async function main() {
     console.log('Starting main...');
@@ -50,25 +50,28 @@ async function main() {
         // authentication: youtubeCfg.YTTOKEN
     });
 
-    
     const commandsPath = path.join(__dirname, 'commands');
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js')); // Change to .js
-    commandFiles.forEach(file => {
-        console.log(file);
-    });
-    const commandData = [];
-    const commands: Map<string, Command> = new Map();
-    console.log('Sorting commands...');
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+    
+    const commands: Map<string, any> = new Map();
     
     for (const file of commandFiles) {
-        console.log(file);
         const filePath = path.join(commandsPath, file);
-        console.log(`Importing ${filePath}...`);
-        const { command } = require(filePath) as { command: Command };
-        
-        commands.set(command.data.name, command);
-        commandData.push(command.data.toJSON());
+        try {
+            const module = require(filePath);
+            if (module.command) {
+                commands.set(module.command.data.name, module.command);
+                console.log(`Successfully loaded command: ${module.command.data.name}`);
+            } else {
+                console.warn(`File ${file} has no exported command`);
+            }
+        } catch (error) {
+            console.error(`Error loading command ${file}:`, error);
+        }
     }
+    
+    // When registering commands:
+    const commandData = Array.from(commands.values()).map(c => c.data.toJSON());
     
     
     console.log('Waiting for client...');
@@ -81,7 +84,8 @@ async function main() {
             playin: '644950708160036864',
             movein: '644950708160036864',
             queuein: '644950708160036864',
-            removein: '644950708160036864'
+            removein: '644950708160036864',
+            scanquotes: '644950708160036864'
             // ... add more commands and their respective guild IDs
         };
 
@@ -110,10 +114,11 @@ async function main() {
         }
         
 
-        updateBotStatusMessage();
+        updateBotStatusMessage(true);
         // Call the function every 1 minute
-        setInterval(updateBotStatusMessage, 1 * 60 * 1000);
-
+        setInterval( function() { updateBotStatusMessage(false); }, 1 * 60 * 1000 );
+        // Call the function every 30 minute
+        setInterval( function() { updateBotStatusMessage(true); }, 30 * 60 * 1000 );
         if (client.channels.cache.get('1129406347448950845')) {
             // (client.channels.cache.get('1129406347448950845') as TextChannel).send('The bot is online.')
         }
@@ -149,10 +154,10 @@ async function main() {
     //];
     // statusList[Math.floor(Math.random() * statusList.length)]
     let currentStatus: string = '';
-    async function updateBotStatusMessage() {
+    async function updateBotStatusMessage(forceUpdate: boolean) {
         const data: string = readFileSync(pathToStatus, { encoding: 'utf-8' });
         const parsedData: StatusMessage = JSON.parse(data);
-        if (currentStatus == parsedData.status) return;
+        if (currentStatus == parsedData.status && !forceUpdate) return;
         console.log('Updating bot status message...');
         currentStatus = parsedData.status;
         (client.user as ClientUser).setPresence({
@@ -180,7 +185,7 @@ async function main() {
             const status = await checkDiscordStatus();
             console.log('Discord API Status:', status); // Logs the status for your reference
             // Fetch a random quote from the database
-            const res = await pgClient.query('SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1');
+            const res = await pool.query('SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1');
             const randomQuote = res.rows[0].quote;
             const quoteLines = randomQuote.split('\n');
             const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
@@ -214,7 +219,7 @@ async function main() {
             const values = [userId, oldChannel, newChannel, timestamp, serverName];
     
             try {
-                await pgClient.query(query, values);
+                await pool.query(query, values);
                 console.log(`User ${userId} moved from ${oldChannel} to ${newChannel} in server ${serverName} at ${timestamp}`);
             } catch (err) {
                 console.error('Error saving voice state:', err);
