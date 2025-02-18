@@ -18,7 +18,7 @@ export const command = {
         const queue = useQueue(interaction.guild);
 
         // If there is no queue, return
-        if (!queue || queue.size == 0) {
+        if (!queue) {
             await interaction.reply('There is no queue!');
             return;
         }
