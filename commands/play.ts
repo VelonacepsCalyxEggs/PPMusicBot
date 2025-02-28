@@ -198,82 +198,187 @@ const handleFromDbCommand = async (player: Player, interaction: CommandInteracti
         return interaction.followUp("No search argument provided.");
     }
 
-    // PostgreSQL client setup using the imported config
     const pgClient = new PgClient(dbConfig);
     await pgClient.connect();
 
-    // Search the database for matches in song name, author, and album
-    const searchQuery = `
-        SELECT *, 
-            CASE 
-                WHEN name ILIKE $1 THEN 'name' 
-                WHEN author ILIKE $1 THEN 'author' 
-                WHEN album ILIKE $1 THEN 'album' 
-                ELSE 'none' 
-            END AS match_type
-        FROM music 
-        WHERE name ILIKE $1 
-        OR author ILIKE $1 
-        OR album ILIKE $1
-        ORDER BY "order";
-    `;
+    try {
+        // Parse special search filters
+        const albumMatch = argument.match(/album:"([^"]+)"/i);
+        const artistMatch = argument.match(/artist:"([^"]+)"/i);
+        const authorMatch = argument.match(/author:"([^"]+)"/i);
 
-    const searchValues = [`%${argument}%`];
-    const searchResult = await pgClient.query(searchQuery, searchValues);
-    if (searchResult.rows.length === 0) {
-        return interaction.followUp("No results found");
-    }
+        let searchResult: any;
+        let resultDescription: string;
+        let isExactMatch = false;
 
-    const playTrack = async (row: DbTrack, interaction: CommandInteraction, player: Player, guildQueue: GuildQueue, isFirst: boolean) => {
-        const pathToSong = row.local;
-        const result = await player.search(pathToSong, {
-            requestedBy: interaction.user,
-            searchEngine: QueryType.FILE,
-        });
-        console.log(row.path_to_cover)
-        if (result.tracks[0]) {
-            const workingTrack = (result.tracks[0] as ExtendedTrack<unknown>)
-            workingTrack.title = row.name;
-            workingTrack.author = row.author;
-            workingTrack.thumbnail = `https://www.funckenobi42.space${row.path_to_cover}`;
-            workingTrack.url = `https://www.funckenobi42.space/music/track/${row.id}`;
-            if (isFirst) {
-                workingTrack.startedPlaying = new Date();
+        const getSuggestions = async (column: string, term: string) => {
+            try {
+                const result = await pgClient.query(
+                    `SELECT DISTINCT ${column} FROM music 
+                     WHERE ${column} ILIKE $1 
+                     ORDER BY ${column} LIMIT 5`,
+                    [`%${term}%`]
+                );
+                return result.rows.map(r => r[column]);
+            } catch (error) {
+                return [];
+            }
+        };
+
+        if (albumMatch) {
+            const albumName = albumMatch[1];
+            // First try exact match
+            let exactResult = await pgClient.query(
+                `SELECT * FROM music 
+                 WHERE album ILIKE $1 
+                 ORDER BY "order", name`,
+                [albumName]
+            );
+            
+            if (exactResult.rows.length > 0) {
+                isExactMatch = true;
+                searchResult = exactResult;
+                resultDescription = `album "${albumName}"`;
+            } else {
+                // Try partial match
+                searchResult = await pgClient.query(
+                    `SELECT * FROM music 
+                     WHERE album ILIKE $1 
+                     ORDER BY "order", name 
+                     LIMIT 50`,
+                    [`%${albumName}%`]
+                );
+                
+                if (searchResult.rows.length === 0) {
+                    const suggestions = await getSuggestions('album', albumName);
+                    let reply = `No albums found matching "${albumName}"`;
+                    if (suggestions.length > 0) {
+                        reply += `\nDid you mean:\n${suggestions.map(s => `• ${s}`).join('\n')}`;
+                    }
+                    return interaction.followUp(reply);
+                }
+                resultDescription = `albums containing "${albumName}"`;
+            }
+        } else if (artistMatch || authorMatch) {
+            const artistName = (artistMatch || authorMatch)?.[1] || '';
+            // Try exact match first
+            let exactResult = await pgClient.query(
+                `SELECT * FROM music 
+                 WHERE author ILIKE $1 
+                 ORDER BY album, "order"`,
+                [artistName]
+            );
+
+            if (exactResult.rows.length > 0) {
+                isExactMatch = true;
+                searchResult = exactResult;
+                resultDescription = `artist "${artistName}"`;
+            } else {
+                // Fallback to partial match
+                searchResult = await pgClient.query(
+                    `SELECT * FROM music 
+                     WHERE author ILIKE $1 
+                     ORDER BY album, "order" 
+                     LIMIT 50`,
+                    [`%${artistName}%`]
+                );
+
+                if (searchResult.rows.length === 0) {
+                    const suggestions = await getSuggestions('author', artistName);
+                    let reply = `No artists found matching "${artistName}"`;
+                    if (suggestions.length > 0) {
+                        reply += `\nDid you mean:\n${suggestions.map(s => `• ${s}`).join('\n')}`;
+                    }
+                    return interaction.followUp(reply);
+                }
+                resultDescription = `artists containing "${artistName}"`;
+            }
+        } else {
+            // General search with smart matching
+            const tokens = argument.trim().split(/\s+/).filter(t => t.length > 0);
+            if (tokens.length === 0) {
+                return interaction.followUp("Please provide valid search terms.");
             }
 
-            await guildQueue.play(workingTrack, { nodeOptions: { metadata: interaction, noEmitInsert: true, leaveOnEnd: false, leaveOnEmpty: false, leaveOnStop: false} });
-        }
-    };
+            const searchQuery = `
+                SELECT *, 
+                    (${tokens.map((_, i) => `
+                        (CASE WHEN name ILIKE $${i + 1} THEN 3 ELSE 0 END) +
+                        (CASE WHEN author ILIKE $${i + 1} THEN 2 ELSE 0 END) +
+                        (CASE WHEN album ILIKE $${i + 1} THEN 1 ELSE 0 END)
+                    `).join(' + ')} AS relevance
+                FROM music 
+                WHERE ${tokens.map((_, i) => 
+                    `(name ILIKE $${i + 1} OR author ILIKE $${i + 1} OR album ILIKE $${i + 1})`
+                ).join(' AND ')}
+                ORDER BY relevance DESC, LENGTH(name)
+                LIMIT 50;
+            `;
+            
+            const searchValues = tokens.map(t => `%${t}%`);
+            searchResult = await pgClient.query(searchQuery, searchValues);
 
-    if (searchResult.rows.length > 1) {
-        for (let i = 0; i < searchResult.rows.length; i++) {
-            await playTrack(searchResult.rows[i], interaction, player, guildQueue, i === 0);
+            if (searchResult.rows.length === 0) {
+                const suggestions = await getSuggestions('name', tokens.join(' '));
+                let reply = `No results found for "${argument}"`;
+                if (suggestions.length > 0) {
+                    reply += `\nDid you mean:\n${suggestions.map(s => `• ${s}`).join('\n')}`;
+                }
+                return interaction.followUp(reply);
+            }
+            resultDescription = `search for "${argument}"`;
         }
-    } else {
-        await playTrack(searchResult.rows[0], interaction, player, guildQueue, true);
+
+        // Track addition logic
+        const addedTracks = [];
+        for (const track of searchResult.rows) {
+            const pathToSong = track.local;
+            const result = await player.search(pathToSong, {
+                requestedBy: interaction.user,
+                searchEngine: QueryType.FILE,
+            });
+
+            if (result.tracks[0]) {
+                const workingTrack = result.tracks[0] as ExtendedTrack<unknown>;
+                workingTrack.title = track.name;
+                workingTrack.author = track.author;
+                workingTrack.thumbnail = `https://www.funckenobi42.space${track.path_to_cover}`;
+                workingTrack.url = `https://www.funckenobi42.space/music/track/${track.id}`;
+
+                await guildQueue.play(workingTrack, { 
+                    nodeOptions: { 
+                        metadata: interaction, 
+                        noEmitInsert: true,
+                        leaveOnEnd: false,
+                        leaveOnEmpty: false,
+                        leaveOnStop: false
+                    } 
+                });
+                addedTracks.push(track);
+            }
+        }
+
+        // Build response
+        const embed = new EmbedBuilder()
+            .setDescription(
+                `${isExactMatch ? 'Added' : 'Found'} **${addedTracks.length} tracks** from ${resultDescription}`
+            )
+            .setThumbnail(addedTracks[0]?.path_to_cover 
+                ? `https://www.funckenobi42.space${addedTracks[0].path_to_cover}` 
+                : null);
+
+        if (!isExactMatch) {
+            embed.setFooter({ text: 'Showing partial matches - use quotes for exact searches' });
+        }
+
+        await interaction.followUp({ embeds: [embed] });
+
+    } catch (error) {
+        console.error('Database search error:', error);
+        return interaction.followUp("An error occurred while processing your request.");
+    } finally {
+        await pgClient.end();
     }
-    let embed: EmbedBuilder;
-    if (searchResult.rows.length > 1) {
-        embed = new EmbedBuilder()
-        .setDescription(`**${searchResult.rows.length} songs** found by **${searchResult.rows[0].match_type}** have been added to the queue`)
-        .setThumbnail(`https://www.funckenobi42.space${searchResult.rows[0].path_to_cover}`);
-    } else {
-        
-        let cover: string;
-        try {
-            await fs_promises.access(resolve("C:/Server/nodeTSWebNest/www.funckenobi42.space/public", searchResult.rows[0].path_to_disk_cover));
-            cover = searchResult.rows[0].path_to_disk_cover;
-        } catch (error) {
-            cover = searchResult.rows[0].path_to_cover;
-        }
-        
-        embed = new EmbedBuilder()
-        .setDescription(`**${searchResult.rows[0].name}** by **${searchResult.rows[0].author}** from **${searchResult.rows[0].album}**`)
-        .setThumbnail(`https://www.funckenobi42.space${cover}`);
-
-    }
-    await interaction.editReply({ embeds: [embed] });
-
 };
 
 export { handleFromDbCommand };
