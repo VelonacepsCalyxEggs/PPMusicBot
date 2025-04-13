@@ -252,7 +252,7 @@ const handleFromDbCommand = async (player: Player, interaction: CommandInteracti
                 const suggestions = await getSuggestions('album', albumName);
                 resultDescription = `albums containing "${albumName}"`;
                 if (suggestions.length > 0) {
-                    resultDescription += `\nDid you mean:\n${suggestions.map(s => `• [${s}](https://www.funckenobi42.space/music/album/${Buffer.from(s).toString('base64')})`).join('\n')}`;
+                    resultDescription += `\nDid you mean:\n${suggestions.map(s => `• [${s}](https://www.funckenobi42.space/music/album/${Buffer.from(encodeURIComponent(s)).toString('base64')})`).join('\n')}`;
                 }
                 if (suggestions.length > 1) {
                     const embed = new EmbedBuilder()
@@ -418,7 +418,8 @@ const handleFromDbCommand = async (player: Player, interaction: CommandInteracti
         if (addedTracks.length > 1) {
             embedDescription = `${isExactMatch ? 'Added' : 'Found'} **${addedTracks.length} tracks** from ${resultDescription}`
         } else if (addedTracks.length != 0){
-            embedDescription = `Added [**${addedTracks[0].name}**](https://www.funckenobi42.space/music/track/${addedTracks[0]?.id}) by **${addedTracks[0].author}** from [**${addedTracks[0].album}**](https://www.funckenobi42.space/music/album/${Buffer.from(addedTracks[0]?.album).toString('base64')}).`
+            console.log(addedTracks[0]?.album)
+            embedDescription = `Added [**${addedTracks[0].name}**](https://www.funckenobi42.space/music/track/${addedTracks[0]?.id}) by **${addedTracks[0].author}** from [**${addedTracks[0].album}**](https://www.funckenobi42.space/music/album/${Buffer.from(encodeURIComponent(addedTracks[0]?.album)).toString('base64')}).`
             isExactMatch = true;
         }
         else{
