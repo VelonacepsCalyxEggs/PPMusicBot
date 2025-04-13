@@ -245,19 +245,24 @@ const handleFromDbCommand = async (player: Player, interaction: CommandInteracti
                     `SELECT * FROM music 
                      WHERE album ILIKE $1 
                      ORDER BY "order", name 
-                     LIMIT 50`,
+                     LIMIT 300`,
                     [`%${albumName}%`]
                 );
                 
-                if (searchResult.rows.length === 0) {
-                    const suggestions = await getSuggestions('album', albumName);
-                    let reply = `No albums found matching "${albumName}"`;
-                    if (suggestions.length > 0) {
-                        reply += `\nDid you mean:\n${suggestions.map(s => `• ${s}`).join('\n')}`;
-                    }
-                    return interaction.followUp(reply);
-                }
+                const suggestions = await getSuggestions('album', albumName);
                 resultDescription = `albums containing "${albumName}"`;
+                if (suggestions.length > 0) {
+                    resultDescription += `\nDid you mean:\n${suggestions.map(s => `• [${s}](https://www.funckenobi42.space/music/album/${Buffer.from(s).toString('base64')})`).join('\n')}`;
+                }
+                if (suggestions.length > 1) {
+                    const embed = new EmbedBuilder()
+                    .setDescription(
+                        resultDescription
+                    )
+                    embed.setFooter({ text: 'Addition of tracks was aborted, due to multiple matches.' });
+        
+                    return interaction.followUp({ embeds: [embed] });
+                }
             }
         } else if (artistMatch || authorMatch) {
             const artistName = (artistMatch || authorMatch)?.[1] || '';
@@ -279,43 +284,56 @@ const handleFromDbCommand = async (player: Player, interaction: CommandInteracti
                     `SELECT * FROM music 
                      WHERE author ILIKE $1 
                      ORDER BY album, "order" 
-                     LIMIT 50`,
+                     LIMIT 300`,
                     [`%${artistName}%`]
                 );
-
-                if (searchResult.rows.length === 0) {
-                    const suggestions = await getSuggestions('author', artistName);
-                    let reply = `No artists found matching "${artistName}"`;
-                    if (suggestions.length > 0) {
-                        reply += `\nDid you mean:\n${suggestions.map(s => `• ${s}`).join('\n')}`;
-                    }
-                    return interaction.followUp(reply);
-                }
+                const suggestions = await getSuggestions('author', artistName);
                 resultDescription = `artists containing "${artistName}"`;
+                if (suggestions.length > 0) {
+                    resultDescription += `\nDid you mean:\n${suggestions.map(s => `• ${s}`).join('\n')}`;
+                }
+                if (suggestions.length > 1) {
+                    const embed = new EmbedBuilder()
+                    .setDescription(
+                        resultDescription
+                    )
+                    embed.setFooter({ text: 'Addition of tracks was aborted, due to multiple matches.' });
+        
+                    return interaction.followUp({ embeds: [embed] });
+                }
+
             }
         } else {
             // General search with smart matching
+
+            // In the general search block:
             const tokens = argument.trim().split(/\s+/).filter(t => t.length > 0);
             if (tokens.length === 0) {
                 return interaction.followUp("Please provide valid search terms.");
             }
+            const searchValues = tokens.map(t => `%${t}%`);
+
+            // Fixed relevance calculation
+            const relevanceExpression = tokens.map((_, i) => 
+            `(CASE WHEN name ILIKE $${i+1} THEN 3 ELSE 0 END) + 
+            (CASE WHEN author ILIKE $${i+1} THEN 2 ELSE 0 END) + 
+            (CASE WHEN album ILIKE $${i+1} THEN 1 ELSE 0 END)`
+            ).join(' + ');
+
+            const conditions = tokens.map((_, i) => 
+            `(name ILIKE $${i+1} OR author ILIKE $${i+1} OR album ILIKE $${i+1})`
+            ).join(' AND ');
 
             const searchQuery = `
-                SELECT *, 
-                    (${tokens.map((_, i) => `
-                        (CASE WHEN name ILIKE $${i + 1} THEN 3 ELSE 0 END) +
-                        (CASE WHEN author ILIKE $${i + 1} THEN 2 ELSE 0 END) +
-                        (CASE WHEN album ILIKE $${i + 1} THEN 1 ELSE 0 END)
-                    `).join(' + ')} AS relevance
-                FROM music 
-                WHERE ${tokens.map((_, i) => 
-                    `(name ILIKE $${i + 1} OR author ILIKE $${i + 1} OR album ILIKE $${i + 1})`
-                ).join(' AND ')}
-                ORDER BY relevance DESC, LENGTH(name)
-                LIMIT 50;
+            SELECT *, 
+                (${relevanceExpression}) AS relevance
+            FROM music
+            WHERE ${conditions}
+            ORDER BY relevance DESC
+            LIMIT 300;
             `;
             
-            const searchValues = tokens.map(t => `%${t}%`);
+
             searchResult = await pgClient.query(searchQuery, searchValues);
 
             if (searchResult.rows.length === 0) {
@@ -328,6 +346,41 @@ const handleFromDbCommand = async (player: Player, interaction: CommandInteracti
             }
             resultDescription = `search for "${argument}"`;
         }
+
+        const getCoverPath = (addedTracks: any[]) => {
+        if (!addedTracks || addedTracks.length === 0) {
+            return null; // Handle empty or undefined addedTracks array
+        }
+
+        const track = addedTracks[0];
+
+        if (track?.path_to_disk_cover && fs.existsSync('C:/Server/nodeTSWebNest/www.funckenobi42.space/public' + track.path_to_disk_cover)) {
+            return `https://www.funckenobi42.space${track.path_to_disk_cover}`;
+        } else if (track?.path_to_cover) {
+            return `https://www.funckenobi42.space${track.path_to_cover}`;
+        }
+        else {
+            return null; // Handle cases where neither path is valid
+        }
+        };
+        let currentDisk: any = null
+        const trackDisk = (track: any) => {
+
+            if (currentDisk == track?.path_to_disk_cover) return currentDisk
+            if (track?.path_to_disk_cover && fs.existsSync('C:/Server/nodeTSWebNest/www.funckenobi42.space/public' + track.path_to_disk_cover)) {
+                currentDisk = `https://www.funckenobi42.space${track.path_to_disk_cover}`;
+                return `https://www.funckenobi42.space${track.path_to_disk_cover}`;
+            } else if (track?.path_to_cover) {
+                currentDisk = `https://www.funckenobi42.space${track.path_to_cover}`;
+                return `https://www.funckenobi42.space${track.path_to_cover}`;
+            }
+            else {
+                currentDisk = null;
+                return null; // Handle cases where neither path is valid
+            }
+            };
+
+
 
         // Track addition logic
         const addedTracks = [];
@@ -342,7 +395,7 @@ const handleFromDbCommand = async (player: Player, interaction: CommandInteracti
                 const workingTrack = result.tracks[0] as ExtendedTrack<unknown>;
                 workingTrack.title = track.name;
                 workingTrack.author = track.author;
-                workingTrack.thumbnail = `https://www.funckenobi42.space${track.path_to_cover}`;
+                workingTrack.thumbnail = trackDisk(track);
                 workingTrack.url = `https://www.funckenobi42.space/music/track/${track.id}`;
 
                 await guildQueue.play(workingTrack, { 
@@ -358,18 +411,28 @@ const handleFromDbCommand = async (player: Player, interaction: CommandInteracti
             }
         }
 
+        const coverPath = getCoverPath(addedTracks);
+        console.log(coverPath);
+        let embedDescription = '';
         // Build response
+        if (addedTracks.length > 1) {
+            embedDescription = `${isExactMatch ? 'Added' : 'Found'} **${addedTracks.length} tracks** from ${resultDescription}`
+        } else if (addedTracks.length != 0){
+            embedDescription = `Added [**${addedTracks[0].name}**](https://www.funckenobi42.space/music/track/${addedTracks[0]?.id}) by **${addedTracks[0].author}** from [**${addedTracks[0].album}**](https://www.funckenobi42.space/music/album/${Buffer.from(addedTracks[0]?.album).toString('base64')}).`
+            isExactMatch = true;
+        }
+        else{
+            embedDescription = `${isExactMatch ? 'Added' : 'Found'} **${addedTracks.length} tracks** from ${resultDescription}`
+        }
         const embed = new EmbedBuilder()
             .setDescription(
-                `${isExactMatch ? 'Added' : 'Found'} **${addedTracks.length} tracks** from ${resultDescription}`
+                embedDescription
             )
-            .setThumbnail(addedTracks[0]?.path_to_cover 
-                ? `https://www.funckenobi42.space${addedTracks[0].path_to_cover}` 
-                : null);
+            .setThumbnail(coverPath);
 
         if (!isExactMatch) {
-            embed.setFooter({ text: 'Showing partial matches - use quotes for exact searches' });
-        }
+            embed.setFooter({ text: 'Showing partial matches' });
+        } 
 
         await interaction.followUp({ embeds: [embed] });
 

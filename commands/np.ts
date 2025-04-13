@@ -68,7 +68,6 @@ export const command = {
 
         // Format the current position
         const currentPositionFormatted = formatDuration(currentPosition);
-
         // Create the embed
         const embed = new EmbedBuilder()
             .setDescription(`Currently playing: **${currentSong.title}** by **${currentSong.author}** from [source](${currentSong.url})`)

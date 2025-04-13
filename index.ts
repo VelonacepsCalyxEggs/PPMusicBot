@@ -249,7 +249,6 @@ async function main() {
     
     // Use the extended type in your event handler
     player.events.on('audioTrackAdd', async (queue: GuildQueue, track: ExtendedTrack<unknown>) => {
-        console.log('track added');
         if (queue.tracks.size !== 0) {
             (queue.tracks.at(0) as ExtendedTrack<unknown>).startedPlaying = new Date();
         }
