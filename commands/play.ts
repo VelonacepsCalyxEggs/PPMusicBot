@@ -191,7 +191,8 @@ const handleFileCommand = async (player: Player, interaction: CommandInteraction
 };
 
 const handleFromDbCommand = async (player: Player, interaction: CommandInteraction, guildQueue: GuildQueue) => {
-    console.log('Play db used.');
+    return interaction.followUp('Sorry, /play fromdb command is currently disabled. Please use /play song instead.');
+    /* console.log('Play db used.');
     
     const argument = interaction.options.get('dbquery')?.value;
     if (!argument || !(typeof(argument) === 'string')) {
@@ -442,7 +443,7 @@ const handleFromDbCommand = async (player: Player, interaction: CommandInteracti
         return interaction.followUp("An error occurred while processing your request.");
     } finally {
         await pgClient.end();
-    }
+    } */
 };
 
 export { handleFromDbCommand };

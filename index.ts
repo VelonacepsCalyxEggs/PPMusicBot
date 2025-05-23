@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, VoiceState, Interaction, TextChannel, CommandInteraction, ClientUser } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, VoiceState, Interaction, TextChannel, CommandInteraction, ClientUser, NewsChannel } from 'discord.js';
 import { Player, GuildQueue, Track } from 'discord-player';
 import { DefaultExtractors } from '@discord-player/extractor';
 import { YoutubeiExtractor } from 'discord-player-youtubei';
@@ -85,7 +85,7 @@ async function main() {
             movein: '644950708160036864',
             queuein: '644950708160036864',
             removein: '644950708160036864',
-            scanquotes: '644950708160036864'
+            scanquotes: '644950708160036864',
             // ... add more commands and their respective guild IDs
         };
 
@@ -225,6 +225,15 @@ async function main() {
                 console.error('Error saving voice state:', err);
             }
         }
+        else {
+            if (newState.streaming == true && newState.id == '529747948758630401') {
+                // send a message to the channel
+                const channel = client.channels.cache.get('938105302933467147');
+                if (channel) {
+                    //(channel as TextChannel).send(`<@${newState.id}> сейчас стримит в https://discord.com/channels/${newState.guild.id}/${newState.channelId}, ***ВСЕМ СРОЧНО ЗАЙТИ И СМОТРЕТЬ!!!*** https://tenor.com/view/1984-gif-19260546`);
+                }
+            }
+        }
     });
     
     player.events.on('emptyChannel', (queue: GuildQueue) => {
@@ -254,7 +263,6 @@ async function main() {
         }
     });
     
-    
     player.events.on('playerError', (queue: GuildQueue, error: Error) => {
         const interaction = queue.metadata as Interaction;
         if (interaction && interaction.channel && 'send' in interaction.channel) {
@@ -263,7 +271,6 @@ async function main() {
             console.log(`Player Error: ${error.message}`);
         }
     });
-    
     
     player.events.on('playerStart', (queue: GuildQueue) => {
         // Your logic here
