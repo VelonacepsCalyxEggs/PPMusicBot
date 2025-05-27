@@ -42,6 +42,7 @@ async function main() {
     console.log('Initializing player...');
     // Add the player on the client
     const player = new Player(client, {
+        skipFFmpeg: false,
     });
     console.log('Loading default extractors.');
     await player.extractors.loadMulti(DefaultExtractors);

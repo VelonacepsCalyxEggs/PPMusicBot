@@ -44,6 +44,7 @@ const createEmbed = (description: string, thumbnail: string, footer: string | nu
 };
 
 const handleSongCommand = async (player: Player, interaction: CommandInteraction, guildQueue: GuildQueue): Promise<Message<boolean>> => {
+    console.log('Play song used.');
     let argument = interaction.options.get('music')?.value;
     if (!(typeof(argument) === 'string')) return interaction.followUp('Please provide an argument.');;
     let result;
