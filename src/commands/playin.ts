@@ -6,7 +6,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { Client as PgClient } from 'pg';
-import dbConfig from '../config/dbCfg'; // Make sure the path is correct
+import dbConfig from '../../config/dbCfg'; // Make sure the path is correct
 
 const pgClient = new PgClient(dbConfig);
 pgClient.connect();

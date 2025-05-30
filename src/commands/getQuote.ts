@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction } from 'discord.js';
 import { Pool } from 'pg';
-import dbConfig from '../config/dbCfg';
+import dbConfig from '../../config/dbCfg';
 
 const pool = new Pool(dbConfig);
 
