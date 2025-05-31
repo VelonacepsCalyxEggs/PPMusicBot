@@ -4,6 +4,8 @@ import { Track, useQueue } from 'discord-player';
 import { start } from 'repl';
 import commandInterface from '../types/commandInterface';
 import { ExtendedTrack } from '../types/extendedTrackInterface';
+import { ScoredTrack } from '../types/searchResultInterface';
+import formatDuration from '../utils/formatDurationUtil';
 
 export default class nowPlayingCommand extends commandInterface {
     data = new SlashCommandBuilder()
@@ -30,50 +32,52 @@ export default class nowPlayingCommand extends commandInterface {
 
         // Calculate the elapsed time
         const startedPlaying = currentSong.startedPlaying;
-        if (!startedPlaying || !(startedPlaying instanceof Date)) return interaction.followUp('Could not calculate dates.')
+        if (!startedPlaying || !(startedPlaying instanceof Date)) return interaction.reply('Could not calculate dates.')
         console.log(`[${new Date().toISOString()}] [Started Playing: ${startedPlaying}]`);
         const elapsedTime = new Date().getTime() - startedPlaying.getTime(); // in milliseconds
-
+        let durationMs;
+        let durationParts: string[] = [];
         // Convert the duration string to milliseconds
-        const durationParts = currentSong.duration.split(':').reverse();
-        const durationMs = durationParts.reduce((total, part, index) => {
-            return total + parseInt(part, 10) * Math.pow(60, index) * 1000;
-        }, 0);
+        if (currentSong.metadata && typeof (currentSong.metadata as ScoredTrack).duration !== 'undefined') {
+           durationMs = (currentSong.metadata as ScoredTrack).duration * 1000;
+        }
+        else {
+            durationParts = currentSong.duration.split(':').reverse();
+            durationMs = durationParts.reduce((total, part, index) => {
+                return total + parseInt(part, 10) * Math.pow(60, index) * 1000;
+            }, 0);
+        }
 
         // Calculate the current position
         const currentPosition = Math.min(elapsedTime, durationMs);
 
         // Format the current position
-        const currentPositionFormatted = this.formatDuration(currentPosition);
+        const currentPositionFormatted = formatDuration(currentPosition);
         // Create the embed
         const embed = new EmbedBuilder()
-            .setDescription(`Currently playing: **${currentSong.title}** by **${currentSong.author}** from [source](${currentSong.url})`)
-            .setThumbnail(currentSong.thumbnail)
+            .setDescription(`Currently playing: **${currentSong.title}** by **${currentSong.author}** from [source](${
+                currentSong.metadata && (currentSong.metadata as ScoredTrack).id
+                    ? 'https://www.funckenobi42.space/music/tracks/' + (currentSong.metadata as ScoredTrack).id
+                    : currentSong.url
+            })`)
+            .setThumbnail(
+                currentSong.metadata && 
+                (currentSong.metadata as ScoredTrack).album && 
+                (currentSong.metadata as ScoredTrack).album.pathToCoverArt
+                    ? 'https://www.funckenobi42.space/images/AlbumCoverArt/' + (currentSong.metadata as ScoredTrack).album.pathToCoverArt
+                    : currentSong.thumbnail || 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png'
+            )
             .setFooter({
-                text: `Elapsed time: ${currentPositionFormatted} / ${currentSong.duration}`,
+                text: `Elapsed time: ${currentPositionFormatted} / ${
+                    currentSong.metadata && 
+                    typeof (currentSong.metadata as ScoredTrack).duration !== 'undefined' 
+                        ? formatDuration((currentSong.metadata as ScoredTrack).duration * 1000) 
+                        : currentSong.duration
+                }`,
                 iconURL: interaction.user.displayAvatarURL(),
             });
 
         // Reply with the embed
         return interaction.reply({ ephemeral: true, embeds: [embed] }).catch(console.error);
-    }
-    // Function to format duration to match the song's duration format
-    private formatDuration(durationMs: number): string {
-        const seconds = Math.floor((durationMs / 1000) % 60);
-        const minutes = Math.floor((durationMs / (1000 * 60)) % 60);
-        const hours = Math.floor((durationMs / (1000 * 60 * 60)) % 24);
-
-        const secondsFormatted = seconds < 10 ? '0' + seconds : seconds;
-        const minutesFormatted = minutes < 10 ? '0' + minutes : minutes;
-
-        if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
-            return "∞";
-        }
-
-        let result = `${minutes}:${secondsFormatted}`;
-        if (hours > 0) {
-            result = `${hours}:${minutesFormatted}:${secondsFormatted}`;
-        }
-        return result;
     }
 };

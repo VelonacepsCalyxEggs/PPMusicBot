@@ -2,6 +2,8 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client, ActionRowBuilder, ButtonBuilder, ButtonStyle, Message } from 'discord.js';
 import { useQueue } from 'discord-player';
 import commandInterface from '../types/commandInterface';
+import { ScoredTrack } from '../types/searchResultInterface';
+import formatDuration from '../utils/formatDurationUtil';
 
 export default class queueCommand extends commandInterface {
     data = new SlashCommandBuilder()
@@ -42,24 +44,43 @@ export default class queueCommand extends commandInterface {
 
         for (const track of allTracks) {
             try {
-                const durationParts = track.duration.split(':').reverse();
-                const durationMs = durationParts.reduce((total, part, index) => {
-                    return total + parseInt(part, 10) * Math.pow(60, index) * 1000;
-                }, 0);
+                let durationMs: number;
+                let durationParts: string[] = [];
+                // Convert the duration string to milliseconds
+                if (track.metadata && typeof (track.metadata as ScoredTrack).duration !== 'undefined') {
+                durationMs = (track.metadata as ScoredTrack).duration * 1000;
+                }
+                else {
+                    durationParts = track.duration.split(':').reverse();
+                    durationMs = durationParts.reduce((total, part, index) => {
+                        return total + parseInt(part, 10) * Math.pow(60, index) * 1000;
+                    }, 0);
+                }
                 totalDurationMs += durationMs;
             } catch {
                 continue;
             }
         }
 
-        let totalDurationFormatted = this.formatDuration(totalDurationMs);
+        let totalDurationFormatted = formatDuration(totalDurationMs);
         if (String(totalDurationFormatted).includes('NaN')) {
             totalDurationFormatted = '∞';
         }
         const description = tracks
             .map(
-                (track, i) =>
-                    `${start + ++i} - [${track.title}](${track.url}) ~ [${track.duration}] \n [${track.requestedBy ? track.requestedBy.toString() : 'Unknown'}]`
+                (track, i) => {
+                    // Check if track has metadata we can use
+                    const hasMetadata = track.metadata && (track.metadata as ScoredTrack);
+                    const title = hasMetadata ? (track.metadata as ScoredTrack).title || track.title : track.title;
+                    const url = hasMetadata && (track.metadata as ScoredTrack).id 
+                        ? `https://www.funckenobi42.space/music/tracks/${(track.metadata as ScoredTrack).id}`
+                        : track.url;
+                    const duration = hasMetadata
+                        ? formatDuration((track.metadata as ScoredTrack).duration * 1000)
+                        : track.duration;
+                        
+                    return `${start + ++i} - [${title || 'Unknown Title'}](${url || '#'}) ~ [${duration || '??:??'}] \n [${track.requestedBy ? track.requestedBy.toString() : 'Unknown'}]`;
+                }
             )
             .join('\n');
 
@@ -121,8 +142,20 @@ export default class queueCommand extends commandInterface {
             const tracks = queue.tracks.toArray().slice(start, end);
             const description = tracks
                 .map(
-                    (track, i) =>
-                        `${start + ++i} - [${track.title}](${track.url}) ~ [${track.duration}] \n [${track.requestedBy ? track.requestedBy.toString() : 'Unknown'}]`
+                    (track, i) => {
+                        // Check if track has metadata we can use
+                        const hasMetadata = track.metadata && (track.metadata as ScoredTrack);
+                        const title = hasMetadata ? (track.metadata as ScoredTrack).title || track.title : track.title;
+                        const url = hasMetadata && (track.metadata as ScoredTrack).id 
+                            ? `https://www.funckenobi42.space/music/tracks/${(track.metadata as ScoredTrack).id}`
+                            : track.url;
+                        // FIX: Format duration consistently with the initial page
+                        const duration = hasMetadata
+                            ? formatDuration((track.metadata as ScoredTrack).duration * 1000)
+                            : track.duration;
+                            
+                        return `${start + ++i} - [${title || 'Unknown Title'}](${url || '#'}) ~ [${duration || '??:??'}] \n [${track.requestedBy ? track.requestedBy.toString() : 'Unknown'}]`;
+                    }
                 )
                 .join('\n');
 
@@ -165,16 +198,5 @@ export default class queueCommand extends commandInterface {
         collector.on('end', collected => {
             console.log(`Collected ${collected.size} interactions.`);
         });
-    }
-
-    private formatDuration(ms: number): string {
-        let seconds = Math.floor(ms / 1000);
-        let minutes = Math.floor(seconds / 60);
-        seconds = seconds % 60;
-        let hours = Math.floor(minutes / 60);
-        minutes = minutes % 60;
-        let days = Math.floor(hours / 24);
-        hours = hours % 24;
-        return `${days} days : ${hours} hours : ${minutes} minutes : ${seconds} seconds`;
     }
 };
