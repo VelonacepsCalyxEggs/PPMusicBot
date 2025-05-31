@@ -1,135 +1,321 @@
 import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, VoiceState, Interaction, TextChannel, CommandInteraction, ClientUser, NewsChannel } from 'discord.js';
 import { Player, GuildQueue, Track } from 'discord-player';
+
+// Extend the Client interface to include a 'commands' property
+declare module 'discord.js' {
+    interface Client {
+        commands: Collection<string, commandInterface>;
+    }
+}
+
 import { DefaultExtractors } from '@discord-player/extractor';
 import { YoutubeiExtractor } from 'discord-player-youtubei';
 import { Client as PgClient, Pool } from 'pg';
-import { exec } from 'child_process';
 import axios from 'axios';
 import fs, { readFileSync } from 'fs';
-import path, { resolve } from 'path';
-import { SlashCommandBuilder } from '@discordjs/builders';
-
-export interface Command {
-    data: SlashCommandBuilder;
-    execute: ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => Promise<void>;
-}
+import commandInterface from './types/commandInterface';
+import playCommand from './commands/play';
+import leaveCommand from './commands/leave';
+import loopCommand from './commands/loop';
+import moveCommand from './commands/move';
+import nowPlayingCommand  from './commands/np';
+import pauseCommand  from './commands/pause';
+import scanCommand from './commands/scan';
+import shuffleCommand from './commands/shuffle';
+import skipCommand from './commands/skip';
+import replayCommand from './commands/replay';
+import readdCommand from './commands/re-add';
+import removeCommand from './commands/remove';
+import whereami from './commands/whereami';
 
 // Define the extended Track type with an optional property 
 interface ExtendedTrack<T> extends Track<T> { 
     startedPlaying?: Date; 
 }
-
-// PostgreSQL client setup using the imported config
-console.log('Loading DB config...');
-if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL environment variable is not set.');
+interface StatusMessage {
+    status: string;
 }
-const pool = new Pool({connectionString: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/mydatabase'});
-console.log('Connecting to DB...');
-pool.connect();
-
-async function main() {
-    console.log('Starting main...');
-    const client = new Client({
-        intents: [
-            GatewayIntentBits.Guilds,
-            GatewayIntentBits.GuildMessages,
-            GatewayIntentBits.MessageContent,
-            GatewayIntentBits.GuildVoiceStates
-        ]
-    });
-
-    console.log('Initializing player...');
-    // Add the player on the client
-    const player = new Player(client, {
-        skipFFmpeg: false,
-    });
-    console.log('Loading default extractors.');
-    await player.extractors.loadMulti(DefaultExtractors);
-    console.log('Loading Youtubei extractor.');
-    await player.extractors.register(YoutubeiExtractor, {
-        // authentication: youtubeCfg.YTTOKEN
-    });
-
-    const commandsPath = path.join(__dirname, 'commands');
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-    
-    const commands: Map<string, any> = new Map();
-    
-    for (const file of commandFiles) {
-        const filePath = path.join(commandsPath, file);
-        try {
-            const module = require(filePath);
-            if (module.command) {
-                commands.set(module.command.data.name, module.command);
-                console.log(`Successfully loaded command: ${module.command.data.name}`);
-            } else {
-                console.warn(`File ${file} has no exported command`);
-            }
-        } catch (error) {
-            console.error(`Error loading command ${file}:`, error);
-        }
-    }
-    
-    // When registering commands:
-    const commandData = Array.from(commands.values()).map(c => c.data.toJSON());
-    
-    
-    console.log('Waiting for client...');
-    client.on('ready', async () => {
-        console.log('Client is ready!');
-        // A list of commands that are restricted to specific guilds
-        const restrictedCommands: { [key: string]: string } = {
+class BotApplication {
+    public client: Client;
+    private rest: REST;
+    public player: Player;
+    public pool: Pool;
+    public commands: Collection<string, commandInterface>;
+    private restrictedCommands: { [key: string]: string } = {
             scan: '644950708160036864',
-            updquotes: '644950708160036864',
-            playin: '644950708160036864',
-            movein: '644950708160036864',
-            queuein: '644950708160036864',
-            removein: '644950708160036864',
-            scanquotes: '644950708160036864',
-            // ... add more commands and their respective guild IDs
-        };
+    }
+    public currentStatus: string = '';
+    
+    constructor() {
 
+    }
+
+    private async initializeDatabase() {
+        console.log('Loading DB config...');
+        if (!process.env.DATABASE_URL) {
+            throw new Error('DATABASE_URL environment variable is not set.');
+        }
+        this.pool = new Pool({connectionString: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/mydatabase'});
+        console.log('Connecting to DB...');
+        this.pool.connect();
+    }
+    private async initializeClient(): Promise<void> {
+        console.log('Initializing Discord client...');
+        this.client = new Client({
+            intents: [
+                GatewayIntentBits.Guilds,
+                GatewayIntentBits.GuildVoiceStates,
+                GatewayIntentBits.GuildMessages,
+                GatewayIntentBits.MessageContent,
+                GatewayIntentBits.GuildMessageReactions
+            ],
+            presence: {
+                activities: [{
+                    name: 'Loading...',
+                    type: ActivityType.Watching
+                }],
+                status: 'dnd'
+            }
+        });
+        
+        // Return a promise that resolves when the client is ready
+        return new Promise<void>((resolve) => {
+            this.client.once('ready', () => {
+                console.log('Client is ready!');
+                resolve();
+            });
+        });
+    }
+
+    private intializeClientEvents() {
+
+            console.log('Initializing client events...');
+            this.client.on('interactionCreate', async (interaction: Interaction) => {
+            if (!interaction.isCommand()) return;
+        
+            const command = this.commands.get(interaction.commandName);
+            if (!command) return;
+
+            try {
+                if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
+                console.log(`[${new Date().toISOString()}] Command: ${interaction.commandName} | User: ${interaction.user.tag} | Guild: ${interaction.guild.name !== undefined}`);
+                
+                await command.execute({ interaction });
+            } catch (error) {
+                console.error(error);
+                const status = await this.checkDiscordStatus();
+                console.log('Discord API Status:', status); // Logs the status for your reference
+                // Fetch a random quote from the database
+                const res = await this.pool.query('SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1');
+                const randomQuote = res.rows[0].quote;
+                const quoteLines = randomQuote.split('\n');
+                const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
+                const randomLine = quoteLines[randomLineIndex];
+
+                // Reply with the random line and the error message
+                if (interaction.deferred) {
+                    await interaction.editReply({
+                        content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\n 'Discord API Status: ${status}`
+                    });
+                } else {
+                    await (interaction.channel as TextChannel).send({
+                        content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\n 'Discord API Status: ${status}`
+                    });
+                }
+            }
+        });
+
+        this.client.on('voiceStateUpdate', async (oldState: VoiceState, newState: VoiceState) => {
+            if (oldState.channelId !== newState.channelId) {
+                const userId = newState.id;
+                const oldChannel = oldState.channelId;
+                const newChannel = newState.channelId;
+                const serverName = newState.guild.id;
+                const timestamp = new Date();
+        
+                const query = `
+                    INSERT INTO discord_data_join (user_id, old_channel, new_channel, timestamp, server_id)
+                    VALUES ($1, $2, $3, $4, $5)
+                `;
+                const values = [userId, oldChannel, newChannel, timestamp, serverName];
+        
+                try {
+                    await this.pool.query(query, values);
+                    console.log(`User ${userId} moved from ${oldChannel} to ${newChannel} in server ${serverName} at ${timestamp}`);
+                } catch (err) {
+                    console.error('Error saving voice state:', err);
+                }
+            }
+        });
+    }
+
+    private async initializePlayerEvents() {
+            console.log('Initializing Discord Player events...');
+            this.player.events.on('emptyChannel', (queue: GuildQueue) => {
+                const interaction = queue.metadata as Interaction;
+                try {
+                    if ( queue.connection && queue.connection.state.status === 'destroyed') {
+                        return; 
+                    }
+                    (interaction.channel as TextChannel).send("Everyone left the channel.");
+                } catch (error) {
+                    console.error('No queue was deleted:', error);
+                }
+            });
+            
+            this.player.events.on('playerFinish', (queue: GuildQueue) => {
+                if (queue.tracks.size !== 0) {
+                    (queue.tracks.at(0) as ExtendedTrack<unknown>).startedPlaying = new Date();
+                } else {
+                    (queue.currentTrack as ExtendedTrack<unknown>).startedPlaying = new Date();
+                }
+            });
+            
+            // Use the extended type in your event handler
+            this.player.events.on('audioTrackAdd', async (queue: GuildQueue, track: ExtendedTrack<unknown>) => {
+                if (queue.tracks.size !== 0) {
+                    (queue.tracks.at(0) as ExtendedTrack<unknown>).startedPlaying = new Date();
+                }
+            });
+            
+            this.player.events.on('playerError', (queue: GuildQueue, error: Error) => {
+                const interaction = queue.metadata as Interaction;
+                if (interaction && interaction.channel && 'send' in interaction.channel) {
+                    console.error(`Player Error: ${error.message}`);
+                    (interaction.channel as TextChannel).send(`The player encountered an error while trying to play a track.`);
+                } else {
+                    console.error(`Player Error: ${error.message}`);
+                }
+            });
+            
+            this.player.events.on('playerStart', (queue: GuildQueue) => {
+                
+            });
+            
+            this.player.events.on('error', (queue: GuildQueue, error: Error) => {
+                const interaction = queue.metadata as Interaction;
+                if (interaction && interaction.channel) {
+                    (interaction.channel as TextChannel).send(`The queue encountered an error while trying to play the track: \n\`\`\`js\n${error.message}\`\`\``);
+                } else {
+                    console.log(`Queue Error: ${error.message}`);
+                    console.log(queue.currentTrack);
+                }
+            });
+            
+            this.player.events.on('emptyQueue', (queue: GuildQueue) => {
+                if ( queue.connection && queue.connection.state.status !== 'destroyed') {
+                    const interaction = queue.metadata as Interaction;
+                    if (!interaction || !interaction.channel) {
+                        console.log("No interaction or channel found.");
+                        return;
+                    }
+                    try {
+                        (interaction.channel as TextChannel).send("The queue is now empty.");
+                    } catch (error) {
+                        console.error('Error when handling emptyQueue:', error);
+                    }
+                }
+            });
+            
+        this.player.events.on('connectionDestroyed', (queue: GuildQueue) => {
+                const interaction = queue.metadata as Interaction;
+                if (!interaction || !interaction.channel) {
+                    console.log("No interaction or channel found.");
+                    return;
+                }
+                try {
+                    if ( queue.connection && queue.connection.state.status !== 'destroyed') {
+                        (interaction.channel as TextChannel).send("I was manually disconnected.");
+                    } else {
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error when handling connectionDestroyed:', error);
+                }
+            });
+            
+        this.player.events.on('connection', (queue: GuildQueue) => {
+            
+        });
+    }
+
+    private async initializeRest() {
+        console.log('Initializing REST client...');
+        this.rest = new REST({ version: '9' }).setToken(process.env.TOKEN || '');
+    }
+
+    private async initializePlayer() {
+        console.log('Initializing Discord Player...');
+        this.player = new Player(this.client, {
+            skipFFmpeg: false,
+        });
+        this.player.extractors.loadMulti(DefaultExtractors);
+        this.player.extractors.register(YoutubeiExtractor, {
+            // authentication: youtubeCfg.YTTOKEN
+        });
+        console.log(this.player.scanDeps());
+        this.player.on('debug', console.log).events.on('debug', (_, m) => console.log(m));
+    }
+    private async initializeCommands() {
+        this.commands = new Collection<string, commandInterface>();
+        console.log('Loading commands...');
+        this.commands.set('play', new playCommand());
+        this.commands.set('leave', new leaveCommand());
+        this.commands.set('loop', new loopCommand());
+        this.commands.set('move', new moveCommand());
+        this.commands.set('np', new nowPlayingCommand());
+        this.commands.set('pause', new pauseCommand());
+        this.commands.set('scan', new scanCommand());
+        this.commands.set('shuffle', new shuffleCommand());
+        this.commands.set('skip', new skipCommand());
+        this.commands.set('replay', new replayCommand());
+        this.commands.set('readd', new readdCommand());
+        this.commands.set('remove', new removeCommand());
+        this.commands.set('whereami', new whereami());
         // Get all ids of the servers
-        const guild_ids = client.guilds.cache.map(guild => guild.id);
-        console.log('Registering bot...');
-        const rest = new REST({ version: '9' }).setToken(TOKEN);
+        const guild_ids = this.client.guilds.cache.map(guild => guild.id);
 
-        for (const guildId of guild_ids) {
+                for (const guildId of guild_ids) {
             // Convert the commands map to an array and then filter based on the guild ID
-            const guildCommands = Array.from(commands.values()).filter((command: Command) => {
+            const guildCommands = Array.from(this.commands.values()).filter((command: commandInterface) => {
                 // If the command is restricted, check if the guild ID matches
-                if (restrictedCommands[command.data.name]) {
-                    return restrictedCommands[command.data.name] === guildId;
+                if (this.restrictedCommands[command.data.name]) {
+                    return this.restrictedCommands[command.data.name] === guildId;
                 }
                 // If the command is not restricted, include it
                 return true;
             });
         
             // Register the filtered list of commands for the guild
-            await rest.put(Routes.applicationGuildCommands(CLIENT_ID, guildId), {
+            await this.rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID!, guildId), {
                 body: guildCommands.map(command => command.data.toJSON())
             })
             .then(() => console.log('Successfully updated commands for guild ' + guildId))
             .catch(console.error);
         }
-        
+    }
 
-        updateBotStatusMessage(true);
-        // Call the function every 1 minute
-        setInterval( function() { updateBotStatusMessage(false); }, 1 * 60 * 1000 );
-        // Call the function every 30 minute
-        setInterval( function() { updateBotStatusMessage(true); }, 30 * 60 * 1000 );
-        if (client.channels.cache.get('1129406347448950845')) {
-            // (client.channels.cache.get('1129406347448950845') as TextChannel).send('The bot is online.')
+    private async updateBotStatusMessage() {
+        if (!process.env.PATH_TO_STATUS_JSON) {
+            console.error('PATH_TO_STATUS environment variable is not set.');
+            return;
         }
-        console.log(`[${new Date()}] Bot is online.`);
-        console.log((client as any).player.scanDeps());
-        player.on('debug', console.log).events.on('debug', (_, m) => console.log(m));
-    });
-
-    // Function to check Discord status
-    async function checkDiscordStatus(): Promise<string> {
+        const data: string = readFileSync(process.env.PATH_TO_STATUS_JSON!, { encoding: 'utf-8' });
+        const parsedData: StatusMessage = JSON.parse(data);
+        if (this.currentStatus == parsedData.status) return;
+        console.log('Updating bot status message...');
+        this.currentStatus = parsedData.status;
+        (this.client.user as ClientUser).setPresence({
+            activities: [{
+                name: this.currentStatus,
+                type: ActivityType.Custom,
+                url: 'http://www.funckenobi42.space'
+            }],
+            status: 'dnd'
+        });
+    }
+    // Function to check Discord statusfunction 
+    private async checkDiscordStatus(): Promise<string> {
         try {
             const response = await axios.get('https://discordstatus.com/api/v2/status.json');
             const status = response.data.status.description;
@@ -140,195 +326,27 @@ async function main() {
         }
     }
 
-    // Function to update the status message.
-    const pathToStatus: string = resolve('./resources/status.json');
-    interface StatusMessage {
-        status: string;
+    public async run() {
+        await this.initializeDatabase();
+        await this.initializeClient();
+        await this.initializeRest();
+        await this.initializePlayer();
+        await this.initializeCommands();
+        this.intializeClientEvents();
+        await this.initializePlayerEvents();
+        await this.updateBotStatusMessage();
+        
+        // Login to Discord
+        console.log('Logging in to Discord...');
+        await this.client.login(process.env.TOKEN);
+        console.log(`[${new Date()}] Bot is online.`);
     }
-    //const statusList: string[] = [
-    //    ':satellite: :satellite: :satellite:',
-    //    'sqrt(1764)',
-    //    'Wow! I can change status messages now!',
-    //    'Something, something uptime 99%...',
-    //    'func_kenobi is neither dead nor alive, until I look inzide the box.',
-    //    '/fortytwo/secret'
-    //];
-    // statusList[Math.floor(Math.random() * statusList.length)]
-    let currentStatus: string = '';
-    async function updateBotStatusMessage(forceUpdate: boolean) {
-        const data: string = readFileSync(pathToStatus, { encoding: 'utf-8' });
-        const parsedData: StatusMessage = JSON.parse(data);
-        if (currentStatus == parsedData.status && !forceUpdate) return;
-        console.log('Updating bot status message...');
-        currentStatus = parsedData.status;
-        (client.user as ClientUser).setPresence({
-            activities: [{
-                name: currentStatus,
-                type: ActivityType.Custom,
-                url: 'http://www.funckenobi42.space'
-            }],
-            status: 'dnd'
-        });
-    }
-    client.on('interactionCreate', async (interaction: Interaction) => {
-        if (!interaction.isCommand()) return;
-    
-        const command = commands.get(interaction.commandName);
-        if (!command) return;
-
-        try {
-            if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
-            console.log(`[${new Date().toISOString()}] Command: ${interaction.commandName} | User: ${interaction.user.tag} | Guild: ${interaction.guild.name !== undefined}`);
-            
-            await command.execute({ client, interaction });
-        } catch (error) {
-            console.error(error);
-            const status = await checkDiscordStatus();
-            console.log('Discord API Status:', status); // Logs the status for your reference
-            // Fetch a random quote from the database
-            const res = await pool.query('SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1');
-            const randomQuote = res.rows[0].quote;
-            const quoteLines = randomQuote.split('\n');
-            const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
-            const randomLine = quoteLines[randomLineIndex];
-
-            // Reply with the random line and the error message
-            if (interaction.deferred) {
-                await interaction.editReply({
-                    content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\`\n 'Discord API Status: ${status}`
-                });
-            } else {
-                await (interaction.channel as TextChannel).send({
-                    content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\nError details: \`\`\`js\n${error}\`\`\`\n 'Discord API Status: ${status}`
-                });
-            }
-        }
-    });
-
-    client.on('voiceStateUpdate', async (oldState: VoiceState, newState: VoiceState) => {
-        if (oldState.channelId !== newState.channelId) {
-            const userId = newState.id;
-            const oldChannel = oldState.channelId;
-            const newChannel = newState.channelId;
-            const serverName = newState.guild.id;
-            const timestamp = new Date();
-    
-            const query = `
-                INSERT INTO discord_data_join (user_id, old_channel, new_channel, timestamp, server_id)
-                VALUES ($1, $2, $3, $4, $5)
-            `;
-            const values = [userId, oldChannel, newChannel, timestamp, serverName];
-    
-            try {
-                await pool.query(query, values);
-                console.log(`User ${userId} moved from ${oldChannel} to ${newChannel} in server ${serverName} at ${timestamp}`);
-            } catch (err) {
-                console.error('Error saving voice state:', err);
-            }
-        }
-        else {
-            if (newState.streaming == true && newState.id == '529747948758630401') {
-                // send a message to the channel
-                const channel = client.channels.cache.get('938105302933467147');
-                if (channel) {
-                    //(channel as TextChannel).send(`<@${newState.id}> сейчас стримит в https://discord.com/channels/${newState.guild.id}/${newState.channelId}, ***ВСЕМ СРОЧНО ЗАЙТИ И СМОТРЕТЬ!!!*** https://tenor.com/view/1984-gif-19260546`);
-                }
-            }
-        }
-    });
-    
-    player.events.on('emptyChannel', (queue: GuildQueue) => {
-        const interaction = queue.metadata as Interaction;
-        try {
-            if ( queue.connection && queue.connection.state.status === 'destroyed') {
-                return; 
-            }
-            (interaction.channel as TextChannel).send("Everyone left the channel.");
-        } catch (error) {
-            console.log('No queue was deleted:', error);
-        }
-    });
-    
-    player.events.on('playerFinish', (queue: GuildQueue) => {
-        if (queue.tracks.size !== 0) {
-            (queue.tracks.at(0) as ExtendedTrack<unknown>).startedPlaying = new Date();
-        } else {
-            (queue.currentTrack as ExtendedTrack<unknown>).startedPlaying = new Date();
-        }
-    });
-    
-    // Use the extended type in your event handler
-    player.events.on('audioTrackAdd', async (queue: GuildQueue, track: ExtendedTrack<unknown>) => {
-        if (queue.tracks.size !== 0) {
-            (queue.tracks.at(0) as ExtendedTrack<unknown>).startedPlaying = new Date();
-        }
-    });
-    
-    player.events.on('playerError', (queue: GuildQueue, error: Error) => {
-        const interaction = queue.metadata as Interaction;
-        if (interaction && interaction.channel && 'send' in interaction.channel) {
-            (interaction.channel as TextChannel).send(`The player encountered an error while trying to play the track: \n\`\`\`js\n${error.message}\`\`\``);
-        } else {
-            console.log(`Player Error: ${error.message}`);
-        }
-    });
-    
-    player.events.on('playerStart', (queue: GuildQueue) => {
-        // Your logic here
-    });
-    
-    player.events.on('error', (queue: GuildQueue, error: Error) => {
-        const interaction = queue.metadata as Interaction;
-        if (interaction && interaction.channel) {
-            (interaction.channel as TextChannel).send(`The queue encountered an error while trying to play the track: \n\`\`\`js\n${error.message}\`\`\``);
-        } else {
-            console.log(`Queue Error: ${error.message}`);
-            console.log(queue.currentTrack);
-        }
-    });
-    
-    player.events.on('emptyQueue', (queue: GuildQueue) => {
-        if ( queue.connection && queue.connection.state.status !== 'destroyed') {
-            const interaction = queue.metadata as Interaction;
-            if (!interaction || !interaction.channel) {
-                console.log("No interaction or channel found.");
-                return;
-            }
-            try {
-                (interaction.channel as TextChannel).send("The queue is now empty.");
-            } catch (error) {
-                console.error('Error when handling emptyQueue:', error);
-            }
-        }
-    });
-    
-   player.events.on('connectionDestroyed', (queue: GuildQueue) => {
-        const interaction = queue.metadata as Interaction;
-        if (!interaction || !interaction.channel) {
-            console.log("No interaction or channel found.");
-            return;
-        }
-        try {
-            if ( queue.connection && queue.connection.state.status !== 'destroyed') {
-                (interaction.channel as TextChannel).send("I was manually disconnected.");
-            } else {
-                return;
-            }
-        } catch (error) {
-            console.error('Error when handling connectionDestroyed:', error);
-        }
-    });
-    
-    player.events.on('connection', (queue: GuildQueue) => {
-        // Your logic here
-    });
-
-    client.login(TOKEN);
 }
 
 async function startBot() {
     try {
-        await main();
+        const bot = new BotApplication();
+        await bot.run();
     } catch (error) {
         const typedError = error as Error;
         if (shouldHandleError(typedError)) {
