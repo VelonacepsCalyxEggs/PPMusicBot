@@ -5,9 +5,11 @@ import https from 'https';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
-import { Client as PgClient } from 'pg';
 import commandInterface from '../types/commandInterface';
 import { createEmbedUtil } from '../utils/createEmbedUtil';
+import axios from 'axios';
+import { MusicDto, ScoredAlbum, ScoredTrack, SearchResultsDto } from 'src/types/searchResultInterface';
+import formatDuration from '../utils/formatDurationUtil';
 
 // Isn't this fila a charm eh?
 // I love me when I did shitcode like this.
@@ -24,11 +26,8 @@ interface DbTrack {
 }
 
 export default class playCommand extends commandInterface {
-    private pgClient: PgClient;
     constructor() {
         super();
-        // Initialize the PostgreSQL client
-        this.pgClient = new PgClient({ connectionString: process.env.DATABASE_URL });
     }
 
     data = new SlashCommandBuilder()
@@ -97,7 +96,6 @@ export default class playCommand extends commandInterface {
                 await this.handleFileCommand(player, interaction, guildQueue);
                 break;
             case 'fromdb':
-                await this.pgClient.connect();
                 await this.handleFromDbCommand(player, interaction, guildQueue);
                 break;
         }
@@ -237,259 +235,204 @@ export default class playCommand extends commandInterface {
     };
 
     private  handleFromDbCommand = async (player: Player, interaction: CommandInteraction, guildQueue: GuildQueue) => {
-        return interaction.followUp('Sorry, /play fromdb command is currently disabled. Please use /play song instead.');
-        /* console.log('Play db used.');
-        
-        const argument = interaction.options.get('dbquery')?.value;
-        if (!argument || !(typeof(argument) === 'string')) {
-            return interaction.followUp("No search argument provided.");
+        if (!process.env.API_URL) {
+            return interaction.followUp('API URL is not set. Please contact the bot owner.');
         }
-
-        const pgClient = new PgClient(dbConfig);
-        await pgClient.connect();
-
+        
         try {
-            // Parse special search filters
-            const albumMatch = argument.match(/album:"([^"]+)"/i);
-            const artistMatch = argument.match(/artist:"([^"]+)"/i);
-            const authorMatch = argument.match(/author:"([^"]+)"/i);
+            const response = await axios.request<SearchResultsDto>({
+                method: 'POST',
+                url: `${process.env.API_URL}/music/search`,
+                data: { query: interaction.options.get('dbquery')?.value }
+            });
 
-            let searchResult: any;
-            let resultDescription: string;
-            let isExactMatch = false;
+            if (!response.data.tracks || response.data.tracks.length === 0) {
+                return interaction.editReply({
+                    embeds: [createEmbedUtil(
+                        'No results found.',
+                        `https://www.funckenobi42.space/images/`, // Default thumbnail
+                        'Please try a different query.'
+                    )]
+                });
+            }
+            if (response.data.albums.length > 0 && response.data.tracks[0].score > response.data.albums[0].score) {
 
-            const getSuggestions = async (column: string, term: string) => {
-                try {
-                    const result = await pgClient.query(
-                        `SELECT DISTINCT ${column} FROM music 
-                        WHERE ${column} ILIKE $1 
-                        ORDER BY ${column} LIMIT 5`,
-                        [`%${term}%`]
-                    );
-                    return result.rows.map(r => r[column]);
-                } catch (error) {
-                    return [];
-                }
-            };
-
-            if (albumMatch) {
-                const albumName = albumMatch[1];
-                // First try exact match
-                let exactResult = await pgClient.query(
-                    `SELECT * FROM music 
-                    WHERE album ILIKE $1 
-                    ORDER BY "order", name`,
-                    [albumName]
-                );
+                console.log(`Found track: ${response.data.tracks[0].MusicFile[0].filePath}`);
                 
-                if (exactResult.rows.length > 0) {
-                    isExactMatch = true;
-                    searchResult = exactResult;
-                    resultDescription = `album "${albumName}"`;
-                } else {
-                    // Try partial match
-                    searchResult = await pgClient.query(
-                        `SELECT * FROM music 
-                        WHERE album ILIKE $1 
-                        ORDER BY "order", name 
-                        LIMIT 300`,
-                        [`%${albumName}%`]
-                    );
-                    
-                    const suggestions = await getSuggestions('album', albumName);
-                    resultDescription = `albums containing "${albumName}"`;
-                    if (suggestions.length > 0) {
-                        resultDescription += `\nDid you mean:\n${suggestions.map(s => `• [${s}](https://www.funckenobi42.space/music/album/${Buffer.from(encodeURIComponent(s)).toString('base64')})`).join('\n')}`;
-                    }
-                    if (suggestions.length > 1) {
-                        const embed = new EmbedBuilder()
-                        .setDescription(
-                            resultDescription
-                        )
-                        embed.setFooter({ text: 'Addition of tracks was aborted, due to multiple matches.' });
-            
-                        return interaction.followUp({ embeds: [embed] });
-                    }
-                }
-            } else if (artistMatch || authorMatch) {
-                const artistName = (artistMatch || authorMatch)?.[1] || '';
-                // Try exact match first
-                let exactResult = await pgClient.query(
-                    `SELECT * FROM music 
-                    WHERE author ILIKE $1 
-                    ORDER BY album, "order"`,
-                    [artistName]
-                );
-
-                if (exactResult.rows.length > 0) {
-                    isExactMatch = true;
-                    searchResult = exactResult;
-                    resultDescription = `artist "${artistName}"`;
-                } else {
-                    // Fallback to partial match
-                    searchResult = await pgClient.query(
-                        `SELECT * FROM music 
-                        WHERE author ILIKE $1 
-                        ORDER BY album, "order" 
-                        LIMIT 300`,
-                        [`%${artistName}%`]
-                    );
-                    const suggestions = await getSuggestions('author', artistName);
-                    resultDescription = `artists containing "${artistName}"`;
-                    if (suggestions.length > 0) {
-                        resultDescription += `\nDid you mean:\n${suggestions.map(s => `• ${s}`).join('\n')}`;
-                    }
-                    if (suggestions.length > 1) {
-                        const embed = new EmbedBuilder()
-                        .setDescription(
-                            resultDescription
-                        )
-                        embed.setFooter({ text: 'Addition of tracks was aborted, due to multiple matches.' });
-            
-                        return interaction.followUp({ embeds: [embed] });
-                    }
-
-                }
-            } else {
-                // General search with smart matching
-
-                // In the general search block:
-                const tokens = argument.trim().split(/\s+/).filter(t => t.length > 0);
-                if (tokens.length === 0) {
-                    return interaction.followUp("Please provide valid search terms.");
-                }
-                const searchValues = tokens.map(t => `%${t}%`);
-
-                // Fixed relevance calculation
-                const relevanceExpression = tokens.map((_, i) => 
-                `(CASE WHEN name ILIKE $${i+1} THEN 3 ELSE 0 END) + 
-                (CASE WHEN author ILIKE $${i+1} THEN 2 ELSE 0 END) + 
-                (CASE WHEN album ILIKE $${i+1} THEN 1 ELSE 0 END)`
-                ).join(' + ');
-
-                const conditions = tokens.map((_, i) => 
-                `(name ILIKE $${i+1} OR author ILIKE $${i+1} OR album ILIKE $${i+1})`
-                ).join(' AND ');
-
-                const searchQuery = `
-                SELECT *, 
-                    (${relevanceExpression}) AS relevance
-                FROM music
-                WHERE ${conditions}
-                ORDER BY relevance DESC
-                LIMIT 300;
-                `;
+                // Use the file path directly, but convert it to a proper file:// URI
+                const filePath = response.data.tracks[0].MusicFile[0].filePath;
                 
-
-                searchResult = await pgClient.query(searchQuery, searchValues);
-
-                if (searchResult.rows.length === 0) {
-                    const suggestions = await getSuggestions('name', tokens.join(' '));
-                    let reply = `No results found for "${argument}"`;
-                    if (suggestions.length > 0) {
-                        reply += `\nDid you mean:\n${suggestions.map(s => `• ${s}`).join('\n')}`;
-                    }
-                    return interaction.followUp(reply);
-                }
-                resultDescription = `search for "${argument}"`;
-            }
-
-            const getCoverPath = (addedTracks: any[]) => {
-            if (!addedTracks || addedTracks.length === 0) {
-                return null; // Handle empty or undefined addedTracks array
-            }
-
-            const track = addedTracks[0];
-
-            if (track?.path_to_disk_cover && fs.existsSync('C:/Server/nodeTSWebNest/www.funckenobi42.space/public' + track.path_to_disk_cover)) {
-                return `https://www.funckenobi42.space${track.path_to_disk_cover}`;
-            } else if (track?.path_to_cover) {
-                return `https://www.funckenobi42.space${track.path_to_cover}`;
-            }
-            else {
-                return null; // Handle cases where neither path is valid
-            }
-            };
-            let currentDisk: any = null
-            const trackDisk = (track: any) => {
-
-                if (currentDisk == track?.path_to_disk_cover) return currentDisk
-                if (track?.path_to_disk_cover && fs.existsSync('C:/Server/nodeTSWebNest/www.funckenobi42.space/public' + track.path_to_disk_cover)) {
-                    currentDisk = `https://www.funckenobi42.space${track.path_to_disk_cover}`;
-                    return `https://www.funckenobi42.space${track.path_to_disk_cover}`;
-                } else if (track?.path_to_cover) {
-                    currentDisk = `https://www.funckenobi42.space${track.path_to_cover}`;
-                    return `https://www.funckenobi42.space${track.path_to_cover}`;
-                }
-                else {
-                    currentDisk = null;
-                    return null; // Handle cases where neither path is valid
-                }
-                };
-
-
-
-            // Track addition logic
-            const addedTracks = [];
-            for (const track of searchResult.rows) {
-                const pathToSong = track.local;
-                const result = await player.search(pathToSong, {
+                console.log(`Using file path: ${filePath}`);
+                
+                const result = await player.search(filePath, {
                     requestedBy: interaction.user,
                     searchEngine: QueryType.FILE,
                 });
 
-                if (result.tracks[0]) {
-                    const workingTrack = result.tracks[0] as ExtendedTrack<unknown>;
-                    workingTrack.title = track.name;
-                    workingTrack.author = track.author;
-                    workingTrack.thumbnail = trackDisk(track);
-                    workingTrack.url = `https://www.funckenobi42.space/music/track/${track.id}`;
+                if (!result || !result.tracks || result.tracks.length === 0) {
+                    // Show suggestions if there are other tracks
+                    if (response.data.tracks[0].score < 20 && response.data.tracks.length > 1) {
+                        console.log('Unconfident match found, showing suggestions');
+                        const suggestions = response.data.tracks
+                            .slice(0, 5)
+                            .map(track => track.title)
+                            .join('\n- ');
+                            
+                        return interaction.editReply({
+                            embeds: [createEmbedUtil(
+                                `No results found.\n\nMaybe you meant:\n- ${suggestions}`, 
+                                `https://www.funckenobi42.space/images/`, // Default thumbnail
+                                'Please try a different query.'
+                            )]
+                        });
+                    }
+                    
+                    return interaction.editReply({
+                        embeds: [createEmbedUtil(
+                            'No results found.',
+                            `https://www.funckenobi42.space/images/`, // Default thumbnail
+                            'Please try a different query.'
+                        )]
+                    });
+                }
+                
+                // If we get here, we have a valid track to play
+                const song = result.tracks[0];
+                song.setMetadata(response.data.tracks[0]); // Set metadata from the database track
+                await guildQueue.play(song, {
+                    nodeOptions: {
+                        metadata: interaction,
+                        noEmitInsert: true,
+                        leaveOnEnd: false,
+                        leaveOnEmpty: false,
+                        leaveOnStop: false,
+                    },
+                });
+                return interaction.editReply({
+                    embeds: [createEmbedUtil(
+                        `**${(song.metadata as ScoredTrack).title}** has been added to the queue`, 
+                        `https://www.funckenobi42.space/images/AlbumCoverArt/${response.data.tracks[0].album.pathToCoverArt}`, // Use the cover from the first track if available
+                        `Duration: ${(formatDuration((song.metadata as ScoredTrack).duration * 1000))} Position: ${guildQueue.tracks.size + 1}`
+                    )]
+                });
+            } else if (response.data.albums.length > 0) {
+                console.log(`Found album: ${response.data.albums[0].name}`);
+                const albumResponse = await axios.request<any>({
+                    method: 'GET',
+                    url: `${process.env.API_URL}/music`,
+                    params: { albumId: response.data.albums[0].id, sortBy:"trackNumber", limit: 512, sortOrder: "asc" }
+                });
+                //console.log(`Album response: ${JSON.stringify(albumResponse.data)}`);
+                const foundAlbum = albumResponse.data.data as MusicDto[];
+                if (!foundAlbum || foundAlbum.length === 0) {
+                    console.log('No tracks found in the album');
+                    return interaction.editReply({
+                        embeds: [createEmbedUtil(
+                            'No tracks found in the album.',
+                            `https://www.funckenobi42.space/images/`, // Default thumbnail
+                            'Please try a different query.'
+                        )]
+                    });
+                }
 
-                    await guildQueue.play(workingTrack, { 
-                        nodeOptions: { 
-                            metadata: interaction, 
+
+                // Sort tracks by disc number before playing
+                const sortedAlbumTracks = (() => {
+                    // Skip sorting if there's no data
+                    if (!foundAlbum || foundAlbum.length === 0) return foundAlbum;
+                    
+                    // Group tracks by disc number
+                    const discGroups = new Map<string | number | undefined, MusicDto[]>();
+                    
+                    // Create groups based on disc number
+                    for (const track of foundAlbum) {
+                        const discNumber = track.MusicMetadata?.discNumber;
+                        if (!discGroups.has(discNumber)) {
+                            discGroups.set(discNumber, []);
+                        }
+                        discGroups.get(discNumber)!.push(track);
+                    }
+                    
+                    // Sort disc groups: numbers first (in numerical order), then strings (alphabetically)
+                    const sortedGroups = Array.from(discGroups.entries()).sort((a, b) => {
+                        const [discA, _] = a;
+                        const [discB, __] = b;
+                        
+                        // Handle undefined disc numbers
+                        if (discA === undefined) return -1;
+                        if (discB === undefined) return 1;
+                        
+                        // Check if both values can be treated as numbers
+                        const numA = typeof discA === 'number' ? discA : Number(discA);
+                        const numB = typeof discB === 'number' ? discB : Number(discB);
+                        const aIsNumber = !isNaN(numA);
+                        const bIsNumber = !isNaN(numB);
+                        
+                        // Numbers before strings
+                        if (aIsNumber && !bIsNumber) return -1;
+                        if (!aIsNumber && bIsNumber) return 1;
+                        
+                        // Both numbers - sort numerically
+                        if (aIsNumber && bIsNumber) return numA - numB;
+                        
+                        // Both strings - sort alphabetically
+                        return String(discA).localeCompare(String(discB));
+                    });
+                    
+                    // Flatten back into a single array
+                    return sortedGroups.flatMap(([_, tracks]) => tracks);
+                })();
+
+                // Use sortedAlbumTracks instead of foundAlbum
+                for (const track of sortedAlbumTracks) {
+                    const result = await player.search(track.MusicFile[0].filePath, {
+                        requestedBy: interaction.user,
+                        searchEngine: QueryType.FILE,
+                    });
+                    
+                    if (!result || !result.tracks || result.tracks.length === 0) {
+                        console.log(`No results found for track: ${track.title}`);
+                        return interaction.editReply({
+                            embeds: [createEmbedUtil(
+                                'No results found for the album.',
+                                `https://www.funckenobi42.space/images/`, // Default thumbnail
+                                'Please try a different query.'
+                            )]
+                        });
+                    }
+                    
+                    // If we get here, we have a valid track to play
+                    const song = result.tracks[0];
+                    song.setMetadata(track);
+                    await guildQueue.play(song, {
+                        nodeOptions: {
+                            metadata: interaction,
                             noEmitInsert: true,
                             leaveOnEnd: false,
                             leaveOnEmpty: false,
-                            leaveOnStop: false
-                        } 
+                            leaveOnStop: false,
+                        },
                     });
-                    addedTracks.push(track);
                 }
+                
+                return interaction.editReply({
+                    embeds: [createEmbedUtil(
+                        `**${(response.data.albums[0] as ScoredAlbum).name}** has been added to the queue`, 
+                        `https://www.funckenobi42.space/images/AlbumCoverArt/${(response.data.albums[0] as ScoredAlbum).pathToCoverArt}`, // Use the cover from the album
+                        `Tracks: ${foundAlbum.length} Starting from position: ${guildQueue.tracks.size + 1}`
+                    )]
+                });
             }
-
-            const coverPath = getCoverPath(addedTracks);
-            console.log(coverPath);
-            let embedDescription = '';
-            // Build response
-            if (addedTracks.length > 1) {
-                embedDescription = `${isExactMatch ? 'Added' : 'Found'} **${addedTracks.length} tracks** from ${resultDescription}`
-            } else if (addedTracks.length != 0){
-                console.log(addedTracks[0]?.album)
-                embedDescription = `Added [**${addedTracks[0].name}**](https://www.funckenobi42.space/music/track/${addedTracks[0]?.id}) by **${addedTracks[0].author}** from [**${addedTracks[0].album}**](https://www.funckenobi42.space/music/album/${Buffer.from(encodeURIComponent(addedTracks[0]?.album)).toString('base64')}).`
-                isExactMatch = true;
-            }
-            else{
-                embedDescription = `${isExactMatch ? 'Added' : 'Found'} **${addedTracks.length} tracks** from ${resultDescription}`
-            }
-            const embed = new EmbedBuilder()
-                .setDescription(
-                    embedDescription
-                )
-                .setThumbnail(coverPath);
-
-            if (!isExactMatch) {
-                embed.setFooter({ text: 'Showing partial matches' });
-            } 
-
-            await interaction.followUp({ embeds: [embed] });
-
         } catch (error) {
-            console.error('Database search error:', error);
-            return interaction.followUp("An error occurred while processing your request.");
-        } finally {
-            await pgClient.end();
-        } */
+            console.error('Error in handleFromDbCommand:', error);
+            return interaction.editReply({
+                embeds: [createEmbedUtil(
+                    "An error occurred while playing from database", 
+                    'https://www.funckenobi42.space/images/',
+                    `Error: ${error.message}`
+                )]
+            });
+        }
     };
 
     private async downloadFile (file: string, url: string): Promise<string> {
