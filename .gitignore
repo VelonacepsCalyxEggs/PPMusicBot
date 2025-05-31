@@ -8,3 +8,4 @@ cache
 quotes.json
 status.json
 *.js
+dist
