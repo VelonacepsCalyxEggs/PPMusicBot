@@ -1,13 +1,5 @@
 import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, VoiceState, Interaction, TextChannel, CommandInteraction, ClientUser, NewsChannel } from 'discord.js';
 import { Player, GuildQueue, Track } from 'discord-player';
-
-// Extend the Client interface to include a 'commands' property
-declare module 'discord.js' {
-    interface Client {
-        commands: Collection<string, commandInterface>;
-    }
-}
-
 import { DefaultExtractors } from '@discord-player/extractor';
 import { YoutubeiExtractor } from 'discord-player-youtubei';
 import { Client as PgClient, Pool } from 'pg';
@@ -27,6 +19,16 @@ import replayCommand from './commands/replay';
 import readdCommand from './commands/re-add';
 import removeCommand from './commands/remove';
 import whereami from './commands/whereami';
+import queueCommand from './commands/queue';
+import dotenv from 'dotenv';
+import cron from 'node-cron';
+
+// Extend the Client interface to include a 'commands' property
+declare module 'discord.js' {
+    interface Client {
+        commands: Collection<string, commandInterface>;
+    }
+}
 
 // Define the extended Track type with an optional property 
 interface ExtendedTrack<T> extends Track<T> { 
@@ -47,7 +49,7 @@ class BotApplication {
     public currentStatus: string = '';
     
     constructor() {
-
+        dotenv.config();
     }
 
     private async initializeDatabase() {
@@ -59,31 +61,15 @@ class BotApplication {
         console.log('Connecting to DB...');
         this.pool.connect();
     }
-    private async initializeClient(): Promise<void> {
+    private initializeClient() {
         console.log('Initializing Discord client...');
         this.client = new Client({
             intents: [
-                GatewayIntentBits.Guilds,
-                GatewayIntentBits.GuildVoiceStates,
-                GatewayIntentBits.GuildMessages,
-                GatewayIntentBits.MessageContent,
-                GatewayIntentBits.GuildMessageReactions
+            GatewayIntentBits.Guilds,
+            GatewayIntentBits.GuildMessages,
+            GatewayIntentBits.MessageContent,
+            GatewayIntentBits.GuildVoiceStates
             ],
-            presence: {
-                activities: [{
-                    name: 'Loading...',
-                    type: ActivityType.Watching
-                }],
-                status: 'dnd'
-            }
-        });
-        
-        // Return a promise that resolves when the client is ready
-        return new Promise<void>((resolve) => {
-            this.client.once('ready', () => {
-                console.log('Client is ready!');
-                resolve();
-            });
         });
     }
 
@@ -100,14 +86,14 @@ class BotApplication {
                 if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
                 console.log(`[${new Date().toISOString()}] Command: ${interaction.commandName} | User: ${interaction.user.tag} | Guild: ${interaction.guild.name !== undefined}`);
                 
-                await command.execute({ interaction });
+                await command.execute({ client: this.client, player: this.player, interaction });
             } catch (error) {
                 console.error(error);
                 const status = await this.checkDiscordStatus();
                 console.log('Discord API Status:', status); // Logs the status for your reference
                 // Fetch a random quote from the database
-                const res = await this.pool.query('SELECT quote FROM quotes ORDER BY RANDOM() LIMIT 1');
-                const randomQuote = res.rows[0].quote;
+                const res = await this.pool.query('SELECT quote_text FROM quotes ORDER BY RANDOM() LIMIT 1');
+                const randomQuote = res.rows[0].quote_text;
                 const quoteLines = randomQuote.split('\n');
                 const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
                 const randomLine = quoteLines[randomLineIndex];
@@ -115,11 +101,11 @@ class BotApplication {
                 // Reply with the random line and the error message
                 if (interaction.deferred) {
                     await interaction.editReply({
-                        content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\n 'Discord API Status: ${status}`
+                        content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\n Discord API Status: ${status}`
                     });
                 } else {
                     await (interaction.channel as TextChannel).send({
-                        content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\n 'Discord API Status: ${status}`
+                        content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n${randomLine}\n\n Discord API Status: ${status}`
                     });
                 }
             }
@@ -149,7 +135,7 @@ class BotApplication {
         });
     }
 
-    private async initializePlayerEvents() {
+    private initializePlayerEvents() {
             console.log('Initializing Discord Player events...');
             this.player.events.on('emptyChannel', (queue: GuildQueue) => {
                 const interaction = queue.metadata as Interaction;
@@ -239,12 +225,15 @@ class BotApplication {
         });
     }
 
-    private async initializeRest() {
+    private initializeRest() {
         console.log('Initializing REST client...');
+        if (!process.env.TOKEN) {
+            throw new Error('TOKEN environment variable is not set.');
+        }
         this.rest = new REST({ version: '9' }).setToken(process.env.TOKEN || '');
     }
 
-    private async initializePlayer() {
+    private initializePlayer() {
         console.log('Initializing Discord Player...');
         this.player = new Player(this.client, {
             skipFFmpeg: false,
@@ -254,12 +243,13 @@ class BotApplication {
             // authentication: youtubeCfg.YTTOKEN
         });
         console.log(this.player.scanDeps());
-        this.player.on('debug', console.log).events.on('debug', (_, m) => console.log(m));
+        //this.player.on('debug', console.log).events.on('debug', (_, m) => console.log(m));
     }
     private async initializeCommands() {
         this.commands = new Collection<string, commandInterface>();
         console.log('Loading commands...');
         this.commands.set('play', new playCommand());
+        this.commands.set('queue', new queueCommand());
         this.commands.set('leave', new leaveCommand());
         this.commands.set('loop', new loopCommand());
         this.commands.set('move', new moveCommand());
@@ -269,13 +259,13 @@ class BotApplication {
         this.commands.set('shuffle', new shuffleCommand());
         this.commands.set('skip', new skipCommand());
         this.commands.set('replay', new replayCommand());
-        this.commands.set('readd', new readdCommand());
+        this.commands.set('re-add', new readdCommand());
         this.commands.set('remove', new removeCommand());
         this.commands.set('whereami', new whereami());
         // Get all ids of the servers
         const guild_ids = this.client.guilds.cache.map(guild => guild.id);
 
-                for (const guildId of guild_ids) {
+        for (const guildId of guild_ids) {
             // Convert the commands map to an array and then filter based on the guild ID
             const guildCommands = Array.from(this.commands.values()).filter((command: commandInterface) => {
                 // If the command is restricted, check if the guild ID matches
@@ -295,14 +285,14 @@ class BotApplication {
         }
     }
 
-    private async updateBotStatusMessage() {
+    private updateBotStatusMessage(forced=false) {
         if (!process.env.PATH_TO_STATUS_JSON) {
             console.error('PATH_TO_STATUS environment variable is not set.');
             return;
         }
         const data: string = readFileSync(process.env.PATH_TO_STATUS_JSON!, { encoding: 'utf-8' });
         const parsedData: StatusMessage = JSON.parse(data);
-        if (this.currentStatus == parsedData.status) return;
+        if (this.currentStatus == parsedData.status && forced == false) return;
         console.log('Updating bot status message...');
         this.currentStatus = parsedData.status;
         (this.client.user as ClientUser).setPresence({
@@ -328,37 +318,44 @@ class BotApplication {
 
     public async run() {
         await this.initializeDatabase();
-        await this.initializeClient();
-        await this.initializeRest();
-        await this.initializePlayer();
-        await this.initializeCommands();
-        this.intializeClientEvents();
-        await this.initializePlayerEvents();
-        await this.updateBotStatusMessage();
+        this.initializeClient();
         
-        // Login to Discord
+        // Register the 'ready' event handler first
+        this.client.on('ready', async () => {
+            console.log('Client is ready!');
+            this.initializeRest();
+            this.initializePlayer();
+            await this.initializeCommands();
+            this.intializeClientEvents();
+            this.initializePlayerEvents();
+            this.updateBotStatusMessage();
+            cron.schedule('*/2 * * * *', () => {
+                console.log('[Cron] Running status update check...');
+                this.updateBotStatusMessage();
+            });
+            cron.schedule('*/30 * * * *', () => {
+                console.log('[Cron] Running forced status update...');
+                this.updateBotStatusMessage(true);
+            });
+            console.log(`[${new Date()}] Bot is online.`);
+        });
+        
+        // Then login to Discord - this must be OUTSIDE the 'ready' handler
         console.log('Logging in to Discord...');
+        if (!process.env.TOKEN) {
+            throw new Error('TOKEN environment variable is not set.');
+        }
         await this.client.login(process.env.TOKEN);
-        console.log(`[${new Date()}] Bot is online.`);
     }
 }
 
 async function startBot() {
-    try {
         const bot = new BotApplication();
         await bot.run();
-    } catch (error) {
-        const typedError = error as Error;
-        if (shouldHandleError(typedError)) {
-            handleCrash(typedError);
-        } else {
-            throw typedError;
-        }
-    }
 }
 
 
-function shouldHandleError(error: Error): boolean {
+/* function shouldHandleError(error: Error): boolean {
     // Only handle 'terminated' errors
     return error.message === 'terminated';
 }
@@ -373,9 +370,9 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
     if (shouldHandleError(reason)) {
         handleCrash(reason);
     }
-});
+}); */
 
-function handleCrash(error: Error) {
+/* function handleCrash(error: Error) {
     const timestamp = new Date().toISOString();
     const logMessage = `[${timestamp}] ${error.message}\n${error.stack}\n`;
 
@@ -387,6 +384,6 @@ function handleCrash(error: Error) {
         process.exit(1);  // Exit to trigger the restart
     });
 }
-
+ */
 // Start the bot
-startBot();
+void startBot();
