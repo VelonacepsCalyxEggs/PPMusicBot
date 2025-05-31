@@ -234,7 +234,7 @@ export default class playCommand extends commandInterface {
         await interaction.editReply({ embeds: [embed] });
     };
 
-    private  handleFromDbCommand = async (player: Player, interaction: CommandInteraction, guildQueue: GuildQueue) => {
+    private handleFromDbCommand = async (player: Player, interaction: CommandInteraction, guildQueue: GuildQueue) => {
         if (!process.env.API_URL) {
             return interaction.followUp('API URL is not set. Please contact the bot owner.');
         }
@@ -245,18 +245,62 @@ export default class playCommand extends commandInterface {
                 url: `${process.env.API_URL}/music/search`,
                 data: { query: interaction.options.get('dbquery')?.value }
             });
-
-            if (!response.data.tracks || response.data.tracks.length === 0) {
+            console.log(`Search response: tracks=${response.data.tracks.length}, albums=${response.data.albums.length}`);
+            
+            // First, verify we have any results at all
+            if (response.data.tracks.length === 0 && response.data.albums.length === 0) {
                 return interaction.editReply({
                     embeds: [createEmbedUtil(
                         'No results found.',
-                        `https://www.funckenobi42.space/images/`, // Default thumbnail
+                        'https://www.funckenobi42.space/images/', 
                         'Please try a different query.'
                     )]
                 });
             }
-            if (response.data.albums.length > 0 && response.data.tracks[0].score > response.data.albums[0].score) {
 
+            // Get the highest score from both tracks and albums
+            const highestTrackScore = response.data.tracks.length > 0 ? response.data.tracks[0].score : 0;
+            const highestAlbumScore = response.data.albums.length > 0 ? response.data.albums[0].score : 0;
+            
+            // If the highest score is below confidence threshold, show combined suggestions
+            if (Math.max(highestTrackScore, highestAlbumScore) <= 25) {
+                console.log('Low confidence matches found, showing suggestions');
+                
+                // Create combined suggestions list from tracks and albums
+                const combinedSuggestions: Array<{type: 'track' | 'album', name: string, score: number}> = [
+                    ...response.data.tracks.slice(0, 10).map(track => ({
+                        type: 'track' as const,
+                        name: track.title,
+                        score: track.score
+                    })),
+                    ...response.data.albums.slice(0, 10).map(album => ({
+                        type: 'album' as const,
+                        name: album.name,
+                        score: album.score
+                    }))
+                ];
+                
+                // Sort by score descending
+                combinedSuggestions.sort((a, b) => b.score - a.score);
+                
+                // Format the suggestions
+                const suggestions = combinedSuggestions
+                    .slice(0, 5)
+                    .map(item => `${item.name} (${item.type}, score: ${item.score})`)
+                    .join('\n- ');
+                    
+                return interaction.editReply({
+                    embeds: [createEmbedUtil(
+                        `Low confidence matches found.\n\nDid you mean:\n- ${suggestions}`, 
+                        `https://www.funckenobi42.space/images/`, 
+                        'Please try a more specific query.'
+                    )]
+                });
+            }
+
+            // Otherwise, proceed with the normal flow - play track or album based on which has higher score
+            if (response.data.albums.length === 0 || highestTrackScore > highestAlbumScore) {
+                // Play track logic - unchanged from your existing code
                 console.log(`Found track: ${response.data.tracks[0].MusicFile[0].filePath}`);
                 
                 // Use the file path directly, but convert it to a proper file:// URI
@@ -271,7 +315,7 @@ export default class playCommand extends commandInterface {
 
                 if (!result || !result.tracks || result.tracks.length === 0) {
                     // Show suggestions if there are other tracks
-                    if (response.data.tracks[0].score < 20 && response.data.tracks.length > 1) {
+                    if (response.data.tracks[0].score <= 25 && response.data.tracks.length > 1) {
                         console.log('Unconfident match found, showing suggestions');
                         const suggestions = response.data.tracks
                             .slice(0, 5)
@@ -316,7 +360,22 @@ export default class playCommand extends commandInterface {
                     )]
                 });
             } else if (response.data.albums.length > 0) {
-                console.log(`Found album: ${response.data.albums[0].name}`);
+                console.log(`Found album: ${response.data.albums[0].name} with score ${response.data.albums[0].score}`);
+                    if (response.data.albums[0].score <= 25 && response.data.albums.length > 1) {
+                        console.log('Unconfident match found, showing suggestions');
+                        const suggestions = response.data.albums
+                            .slice(0, 5)
+                            .map(track => track.name)
+                            .join('\n- ');
+                            
+                        return interaction.editReply({
+                            embeds: [createEmbedUtil(
+                                `No results found.\n\nMaybe you meant:\n- ${suggestions}`, 
+                                `https://www.funckenobi42.space/images/`, // Default thumbnail
+                                'Please try a different query.'
+                            )]
+                        });
+                    }
                 const albumResponse = await axios.request<any>({
                     method: 'GET',
                     url: `${process.env.API_URL}/music`,
