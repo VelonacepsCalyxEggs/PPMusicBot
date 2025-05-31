@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { Client, CommandInteraction, EmbedBuilder } from 'discord.js';
-import commandInterface from 'src/types/commandInterface';
+import commandInterface from '../types/commandInterface';
 
 export default class whereAmICommand extends commandInterface {
     data = new SlashCommandBuilder()

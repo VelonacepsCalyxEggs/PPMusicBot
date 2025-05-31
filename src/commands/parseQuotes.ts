@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, TextChannel } from 'discord.js';
 import { Pool } from 'pg';
-import commandInterface from 'src/types/commandInterface';
+import commandInterface from '../types/commandInterface';
 
 // I FUCKING HATE REGEX
 // NOTHING EVER HAPPENS

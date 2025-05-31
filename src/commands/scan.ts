@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { Client, CommandInteraction, EmbedBuilder, TextChannel } from 'discord.js';
 import * as fs from 'fs';
 import * as path from 'path';
-import commandInterface from 'src/types/commandInterface';
+import commandInterface from '../types/commandInterface';
 
 export default class scanCommand extends commandInterface {
     data = new SlashCommandBuilder()

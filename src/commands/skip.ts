@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
-import commandInterface from 'src/types/commandInterface';
+import commandInterface from '../types/commandInterface';
 
 export default class skipCommand extends commandInterface {
     data = new SlashCommandBuilder()

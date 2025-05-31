@@ -6,8 +6,8 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { Client as PgClient } from 'pg';
-import commandInterface from 'src/types/commandInterface';
-import { createEmbedUtil } from 'src/utils/createEmbedUtil';
+import commandInterface from '../types/commandInterface';
+import { createEmbedUtil } from '../utils/createEmbedUtil';
 
 // Isn't this fila a charm eh?
 // I love me when I did shitcode like this.

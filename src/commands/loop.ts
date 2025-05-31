@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { useQueue, QueueRepeatMode } from 'discord-player';
 import { CommandInteraction, EmbedBuilder } from 'discord.js';
-import commandInterface from 'src/types/commandInterface';
+import commandInterface from '../types/commandInterface';
 
 export default class loopCommand extends commandInterface {
     data = new SlashCommandBuilder()

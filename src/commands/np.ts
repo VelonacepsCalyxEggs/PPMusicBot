@@ -2,8 +2,8 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { Track, useQueue } from 'discord-player';
 import { start } from 'repl';
-import commandInterface from 'src/types/commandInterface';
-import { ExtendedTrack } from 'src/types/extendedTrackInterface';
+import commandInterface from '../types/commandInterface';
+import { ExtendedTrack } from '../types/extendedTrackInterface';
 
 export default class nowPlayingCommand extends commandInterface {
     data = new SlashCommandBuilder()
