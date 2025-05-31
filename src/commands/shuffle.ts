@@ -1,9 +1,10 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { CommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
+import commandInterface from 'src/types/commandInterface';
 
-export const command = {
-    data: new SlashCommandBuilder()
+export default class shuffleCommand extends commandInterface {
+    data = new SlashCommandBuilder()
         .setName('shuffle')
         .setDescription('Shuffles the playlist')
         .addStringOption(option =>
@@ -14,8 +15,8 @@ export const command = {
                     { name: 'Fisher-Yates', value: 'fy' },
                     { name: 'Durstenfeld', value: 'df' },
                     { name: 'Sattolo', value: 'st' },
-                )),
-    execute: async ({ interaction }: { interaction: CommandInteraction }) => {
+                ))
+    execute = async ({ interaction }: { interaction: CommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
         const queue = useQueue(interaction.guild);
         if (!queue) {

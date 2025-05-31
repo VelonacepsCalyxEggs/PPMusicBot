@@ -1,10 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, TextChannel } from 'discord.js';
 import { Pool } from 'pg';
-import dbConfig from '../../config/dbCfg';
-
-const pool = new Pool(dbConfig);
-const DEBUG_MODE = false;
+import commandInterface from 'src/types/commandInterface';
 
 // I FUCKING HATE REGEX
 // NOTHING EVER HAPPENS
@@ -12,8 +9,16 @@ const DEBUG_MODE = false;
 // MORE REGEX
 // FUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUCK
 
-export const command = {
-    data: new SlashCommandBuilder()
+export default class parseQuotesCommand extends commandInterface {
+    private pool: Pool;
+    private QUOTE_DEBUG_MODE = process.env.DEBUG_MODE === 'true'; // Use environment variable for debug mode
+
+    constructor() {
+        super();
+        this.pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    }
+
+    data = new SlashCommandBuilder()
         .setName('scanquotes')
         .setDescription('Scans quotes in a channel and stores them in the database')
         .addStringOption(option =>
@@ -25,11 +30,11 @@ export const command = {
             option.setName('debug')
                 .setDescription('Enable debug mode')
                 .setRequired(false)
-        ),
+        )
 
-    execute: async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
         await interaction.deferReply({ ephemeral: true });
-        const debug = Boolean(interaction.options.get('debug')?.value) || DEBUG_MODE;
+        const debug = Boolean(interaction.options.get('debug')?.value) || this.QUOTE_DEBUG_MODE;
         console.log(debug)
         try {
             const channelId = interaction.options.get('channelid', true)?.value;
@@ -163,7 +168,7 @@ async function saveQuote(
     },
     debug = false
 ) {
-    const client = await pool.connect();
+    const client = await this.pool.connect();
     try {
         await client.query('BEGIN');
 

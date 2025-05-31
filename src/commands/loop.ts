@@ -1,9 +1,10 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { useQueue, QueueRepeatMode } from 'discord-player';
 import { CommandInteraction, EmbedBuilder } from 'discord.js';
+import commandInterface from 'src/types/commandInterface';
 
-export const command = {
-    data: new SlashCommandBuilder()
+export default class loopCommand extends commandInterface {
+    data = new SlashCommandBuilder()
         .setName('loop')
         .setDescription('Loops with the given mode.')
         .addStringOption(option =>
@@ -14,8 +15,8 @@ export const command = {
                     { name: 'Queue', value: '1' },
                     { name: 'Track', value: '2' },
                     { name: 'Off', value: '3' }
-                )),
-    execute: async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
+                ))
+    execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
         const queue = useQueue(interaction.guild);
@@ -55,5 +56,5 @@ export const command = {
 
         // Reply with the embed
         return interaction.reply({ ephemeral: false, embeds: [embed] }).catch(console.error);
-    },
+    }
 };

@@ -1,28 +1,18 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client, ActionRowBuilder, ButtonBuilder, ButtonStyle, Message } from 'discord.js';
 import { useQueue } from 'discord-player';
+import commandInterface from 'src/types/commandInterface';
 
-function formatDuration(ms: number): string {
-    let seconds = Math.floor(ms / 1000);
-    let minutes = Math.floor(seconds / 60);
-    seconds = seconds % 60;
-    let hours = Math.floor(minutes / 60);
-    minutes = minutes % 60;
-    let days = Math.floor(hours / 24);
-    hours = hours % 24;
-    return `${days} days : ${hours} hours : ${minutes} minutes : ${seconds} seconds`;
-}
-
-export const command = {
-    data: new SlashCommandBuilder()
+export default class queueCommand extends commandInterface {
+    data = new SlashCommandBuilder()
         .setName('queue')
         .setDescription('show the queue')
         .addNumberOption(option =>
             option.setName('page')
                 .setDescription('page number')
                 .setRequired(false)
-        ),
-    execute: async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
+        )
+    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId) {
             return interaction.followUp('You need to be in a guild.');
         }
@@ -62,7 +52,7 @@ export const command = {
             }
         }
 
-        let totalDurationFormatted = formatDuration(totalDurationMs);
+        let totalDurationFormatted = this.formatDuration(totalDurationMs);
         if (String(totalDurationFormatted).includes('NaN')) {
             totalDurationFormatted = '∞';
         }
@@ -175,5 +165,16 @@ export const command = {
         collector.on('end', collected => {
             console.log(`Collected ${collected.size} interactions.`);
         });
-    },
+    }
+
+    private formatDuration(ms: number): string {
+        let seconds = Math.floor(ms / 1000);
+        let minutes = Math.floor(seconds / 60);
+        seconds = seconds % 60;
+        let hours = Math.floor(minutes / 60);
+        minutes = minutes % 60;
+        let days = Math.floor(hours / 24);
+        hours = hours % 24;
+        return `${days} days : ${hours} hours : ${minutes} minutes : ${seconds} seconds`;
+    }
 };

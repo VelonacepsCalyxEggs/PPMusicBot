@@ -2,8 +2,8 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { QueryType, useQueue } from 'discord-player';
 
-export const command = {
-    data: new SlashCommandBuilder()
+export default class moveCommand {
+    data = new SlashCommandBuilder()
         .setName('move')
         .setDescription('moves the track from one index to another index.')
         .addNumberOption(option =>
@@ -15,8 +15,8 @@ export const command = {
             option.setName('position')
                 .setDescription('index')
                 .setRequired(true)
-        ),
-    execute: async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
+        )
+    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
         const queue = useQueue(interaction.guild);
         if (!queue) {

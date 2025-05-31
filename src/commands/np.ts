@@ -2,38 +2,15 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { Track, useQueue } from 'discord-player';
 import { start } from 'repl';
+import commandInterface from 'src/types/commandInterface';
+import { ExtendedTrack } from 'src/types/extendedTrackInterface';
 
-// Define the extended Track type with an optional property 
-interface ExtendedTrack<T> extends Track<T> { 
-    startedPlaying?: Date; 
-}
-
-// Function to format duration to match the song's duration format
-function formatDuration(durationMs: number): string {
-    const seconds = Math.floor((durationMs / 1000) % 60);
-    const minutes = Math.floor((durationMs / (1000 * 60)) % 60);
-    const hours = Math.floor((durationMs / (1000 * 60 * 60)) % 24);
-
-    const secondsFormatted = seconds < 10 ? '0' + seconds : seconds;
-    const minutesFormatted = minutes < 10 ? '0' + minutes : minutes;
-
-    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
-        return "∞";
-    }
-
-    let result = `${minutes}:${secondsFormatted}`;
-    if (hours > 0) {
-        result = `${hours}:${minutesFormatted}:${secondsFormatted}`;
-    }
-    return result;
-}
-
-export const command = {
-    data: new SlashCommandBuilder()
+export default class nowPlayingCommand extends commandInterface {
+    data = new SlashCommandBuilder()
         .setName('np')
-        .setDescription('Gets the currently playing song.'),
+        .setDescription('Gets the currently playing song.')
 
-    execute: async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
         const queue = useQueue(interaction.guild);
@@ -67,7 +44,7 @@ export const command = {
         const currentPosition = Math.min(elapsedTime, durationMs);
 
         // Format the current position
-        const currentPositionFormatted = formatDuration(currentPosition);
+        const currentPositionFormatted = this.formatDuration(currentPosition);
         // Create the embed
         const embed = new EmbedBuilder()
             .setDescription(`Currently playing: **${currentSong.title}** by **${currentSong.author}** from [source](${currentSong.url})`)
@@ -79,5 +56,24 @@ export const command = {
 
         // Reply with the embed
         return interaction.reply({ ephemeral: true, embeds: [embed] }).catch(console.error);
-    },
+    }
+    // Function to format duration to match the song's duration format
+    private formatDuration(durationMs: number): string {
+        const seconds = Math.floor((durationMs / 1000) % 60);
+        const minutes = Math.floor((durationMs / (1000 * 60)) % 60);
+        const hours = Math.floor((durationMs / (1000 * 60 * 60)) % 24);
+
+        const secondsFormatted = seconds < 10 ? '0' + seconds : seconds;
+        const minutesFormatted = minutes < 10 ? '0' + minutes : minutes;
+
+        if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
+            return "∞";
+        }
+
+        let result = `${minutes}:${secondsFormatted}`;
+        if (hours > 0) {
+            result = `${hours}:${minutesFormatted}:${secondsFormatted}`;
+        }
+        return result;
+    }
 };

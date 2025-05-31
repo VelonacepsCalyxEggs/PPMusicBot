@@ -2,9 +2,10 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { Client, CommandInteraction, EmbedBuilder, TextChannel } from 'discord.js';
 import * as fs from 'fs';
 import * as path from 'path';
+import commandInterface from 'src/types/commandInterface';
 
-export const command = {
-    data: new SlashCommandBuilder()
+export default class scanCommand extends commandInterface {
+    data = new SlashCommandBuilder()
         .setName('scan')
         .setDescription('Extracts messages from a channel and saves them to a file for debugging.')
         .addStringOption(option => 
@@ -14,9 +15,8 @@ export const command = {
         .addIntegerOption(option => 
             option.setName('limit')
                 .setDescription('The number of messages to scan')
-                .setRequired(true)),
-                
-    execute: async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
+                .setRequired(true))
+    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
         await interaction.deferReply({ ephemeral: true });
         
         // Get command options
@@ -85,5 +85,5 @@ export const command = {
                 content: `An error occurred: ${error instanceof Error ? error.message : String(error)}` 
             });
         }
-    },
+    }
 };

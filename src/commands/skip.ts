@@ -1,13 +1,13 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
+import commandInterface from 'src/types/commandInterface';
 
-export const command = {
-    data: new SlashCommandBuilder()
+export default class skipCommand extends commandInterface {
+    data = new SlashCommandBuilder()
         .setName('skip')
-        .setDescription('Skips the current song'),
-
-    execute: async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
+        .setDescription('Skips the current song')
+    execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
         const queue = useQueue(interaction.guild);
@@ -16,11 +16,9 @@ export const command = {
         if (!queue) {
             await interaction.reply('There is no queue!');
             return;
-        }
-        
+        } 
         const currentSong = queue.currentTrack;
         if (!currentSong) return interaction.followUp('No song is currently playing.');
-
         // Skip the current song
         queue.node.skip();
         

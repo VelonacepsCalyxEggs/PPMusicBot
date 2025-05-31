@@ -1,9 +1,10 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction } from 'discord.js';
 import { useQueue, GuildQueue } from 'discord-player';
+import commandInterface from 'src/types/commandInterface';
 
-export const command = {
-    data: new SlashCommandBuilder()
+export default class removeCommand extends commandInterface {
+    data = new SlashCommandBuilder()
         .setName('remove')
         .setDescription('removes the track with an index.')
         .addNumberOption(option =>
@@ -15,8 +16,8 @@ export const command = {
             option.setName('position2')
                 .setDescription('index 2')
                 .setRequired(false)
-        ),
-    execute: async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
+        )
+    execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
         const queue = useQueue(interaction.guild);
         if (!queue) {

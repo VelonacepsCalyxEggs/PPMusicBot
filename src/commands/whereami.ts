@@ -1,11 +1,12 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { Client, CommandInteraction, EmbedBuilder } from 'discord.js';
+import commandInterface from 'src/types/commandInterface';
 
-export const command = {
-    data: new SlashCommandBuilder()
+export default class whereAmICommand extends commandInterface {
+    data = new SlashCommandBuilder()
         .setName('whereami')
-        .setDescription('Returns all servers the bot is currently in.'),
-    execute: async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
+        .setDescription('Returns all servers the bot is currently in.')
+    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
         await interaction.deferReply({ ephemeral: true });
 
         const guildIds = client.guilds.cache.map(guild => guild.id);
@@ -29,5 +30,5 @@ export const command = {
             });
 
         await interaction.editReply({ embeds: [embed] });
-    },
+    }
 };

@@ -1,23 +1,21 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction } from 'discord.js';
 import { Pool } from 'pg';
-import dbConfig from '../../config/dbCfg';
+import commandInterface from 'src/types/commandInterface';
 
-const pool = new Pool(dbConfig);
-
-export const command = {
-    data: new SlashCommandBuilder()
+export default class getQuouteCommand extends commandInterface {
+    private pool: Pool;
+    data = new SlashCommandBuilder()
         .setName('getquote')
         .setDescription('Retrieve a quote by ID or get a random one')
         .addStringOption(option =>
             option.setName('id')
                 .setDescription('Quote ID (leave empty for random)')
                 .setRequired(false)
-        ),
-
-    execute: async ({ interaction }: { interaction: CommandInteraction }) => {
+        )
+    execute = async ({ interaction }: { interaction: CommandInteraction }) => {
         await interaction.deferReply({ ephemeral: false });
-
+        const pool = new Pool({connectionString: process.env.DATABASE_URL});
         try {
             const quoteId = interaction.options.get('id')?.value?.toString();
             const client = await pool.connect();
@@ -82,4 +80,4 @@ export const command = {
             await interaction.editReply('Failed to retrieve quote');
         }
     }
-};
+    }
