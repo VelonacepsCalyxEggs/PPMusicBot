@@ -18,6 +18,10 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
-    "typeRoots": ["./types", "./node_modules/@types"]
+    "typeRoots": ["./types", "./node_modules/@types"],
+    "paths": {
+      "*": ["node_modules/*"],
+      "src/*": ["src/*"]
+    }
   }
 }
