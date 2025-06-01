@@ -243,7 +243,7 @@ class BotApplication {
             // authentication: youtubeCfg.YTTOKEN
         });
         console.log(this.player.scanDeps());
-        //this.player.on('debug', console.log).events.on('debug', (_, m) => console.log(m));
+        this.player.on('debug', console.log).events.on('debug', (_, m) => console.log(m));
     }
     private async initializeCommands() {
         this.commands = new Collection<string, commandInterface>();
@@ -386,4 +386,4 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
 }
  */
 // Start the bot
-void startBot();
+startBot();
