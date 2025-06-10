@@ -236,11 +236,17 @@ class BotApplication {
     private initializePlayer() {
         console.log('Initializing Discord Player...');
         this.player = new Player(this.client, {
+            
             skipFFmpeg: false,
-        });
+        }
+    );
         this.player.extractors.loadMulti(DefaultExtractors);
         this.player.extractors.register(YoutubeiExtractor, {
-            // authentication: youtubeCfg.YTTOKEN
+               streamOptions: {
+            useClient: "WEB_EMBEDDED",
+        },
+        generateWithPoToken: true,
+        authentication: process.env.YT_ACCESS_TOKEN,
         });
         console.log(this.player.scanDeps());
         this.player.on('debug', console.log).events.on('debug', (_, m) => console.log(m));

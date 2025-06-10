@@ -55,7 +55,7 @@ export default class nowPlayingCommand extends commandInterface {
         const currentPositionFormatted = formatDuration(currentPosition);
         // Create the embed
         const embed = new EmbedBuilder()
-            .setDescription(`Currently playing: **${currentSong.title}** by **${currentSong.author}** from [source](${
+            .setDescription(`Currently playing: **${(currentSong.metadata as ScoredTrack).title ?? currentSong.title}** by **${(currentSong.metadata as ScoredTrack).artist.name ?? currentSong.author}** from [source](${
                 currentSong.metadata && (currentSong.metadata as ScoredTrack).id
                     ? 'https://www.funckenobi42.space/music/tracks/' + (currentSong.metadata as ScoredTrack).id
                     : currentSong.url
