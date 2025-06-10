@@ -245,8 +245,8 @@ class BotApplication {
                streamOptions: {
             useClient: "WEB_EMBEDDED",
         },
-        generateWithPoToken: true,
-        authentication: process.env.YT_ACCESS_TOKEN,
+        //generateWithPoToken: true,
+        //authentication: process.env.YT_ACCESS_TOKEN,
         });
         console.log(this.player.scanDeps());
         this.player.on('debug', console.log).events.on('debug', (_, m) => console.log(m));

@@ -151,46 +151,46 @@ export default class playCommand extends commandInterface {
                     
                 case 'youtube_video':
                     console.log('YouTube URL detected');
-                    return interaction.followUp('Oops... sorry, the DRM doomsday clock hit midnight and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
-                    // const cleanYoutubeUrl = this.cleanYoutubeUrl(argument);
-                    // result = await this.searchTrack(player, cleanYoutubeUrl, interaction.user);
+                    //return interaction.followUp('Oops... sorry, the DRM doomsday clock hit midnight and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
+                    const cleanYoutubeUrl = this.cleanYoutubeUrl(argument);
+                    result = await this.searchTrack(player, cleanYoutubeUrl, interaction.user);
                     
-                    // if (!result.tracks.length) {
-                    //     return interaction.followUp("No results or couldn't extract the track from YouTube.");
-                    // }
-                    // song = result.tracks[0];
-                    // embed = this.createTrackEmbed(song, guildQueue.tracks.size);
+                    if (!result.tracks.length) {
+                        return interaction.followUp("No results or couldn't extract the track from YouTube.");
+                    }
+                    song = result.tracks[0];
+                    embed = this.createTrackEmbed(song, guildQueue.tracks.size);
                     break;
                     
                 case 'youtube_playlist':
                     console.log('YouTube playlist detected');
-                    return interaction.followUp('Oops... sorry, the DRM shit hit the fan and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
-                    // result = await player.search(argument, {
-                    //     requestedBy: interaction.user,
-                    //     searchEngine: QueryType.YOUTUBE_PLAYLIST
-                    // });
+                    //return interaction.followUp('Oops... sorry, the DRM shit hit the fan and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
+                    result = await player.search(argument, {
+                        requestedBy: interaction.user,
+                        searchEngine: QueryType.YOUTUBE_PLAYLIST
+                    });
                     
-                    // if (!result.playlist) return interaction.followUp('No results found for the playlist.');
+                    if (!result.playlist) return interaction.followUp('No results found for the playlist.');
                     
-                    // await this.playTrack(result.tracks[0], guildQueue, interaction);
-                    // embed = createEmbedUtil(
-                    //     `**${result.tracks.length} songs from ${result.playlist.title}** have been added to the queue`, 
-                    //     result.playlist.thumbnail, 
-                    //     null
-                    // );
+                    await this.playTrack(result.tracks[0], guildQueue, interaction);
+                    embed = createEmbedUtil(
+                        `**${result.tracks.length} songs from ${result.playlist.title}** have been added to the queue`, 
+                        result.playlist.thumbnail, 
+                        null
+                    );
                     break;
                     
                 case 'search_term':
                 default:
                     console.log('YouTube Search detected');
-                    return interaction.followUp('Oops... sorry, the fentanyl bag hit the turboprop and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
-/*                     result = await this.searchYoutube(player, argument, interaction.user);
+                    //return interaction.followUp('Oops... sorry, the fentanyl bag hit the turboprop and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
+                    result = await this.searchYoutube(player, argument, interaction.user);
                     
                     if (!result.tracks.length) {
                         return interaction.followUp("No results found for your search.");
                     }
                     song = result.tracks[0];
-                    embed = this.createTrackEmbed(song, guildQueue.tracks.size); */
+                    embed = this.createTrackEmbed(song, guildQueue.tracks.size);
                     break;
             }
 
