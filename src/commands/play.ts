@@ -78,10 +78,21 @@ export default class playCommand extends commandInterface {
         if (!voiceChannel) {
           return interaction.reply({ content: "You need to be in a voice channel to use this command!", ephemeral: true });
         }
-        
         if (!guildQueue.connection) {
-          await guildQueue.connect(voiceChannel);
+            if (voiceChannel.joinable === false) {
+                return interaction.followUp('I cannot join your voice channel. Please check my permissions.');
+            }
+            if (voiceChannel.full) {
+                return interaction.followUp('Your voice channel is full. I cannot join.');
+            }
+            
+            await guildQueue.connect(voiceChannel);
+            if (!guildQueue.connection) {
+                return interaction.followUp('Failed to connect to the voice channel.');
+            }
         }
+
+
     
         // Assuming interaction is of type CommandInteraction
         const subcommand = (interaction.options as CommandInteractionOptionResolver).getSubcommand();
