@@ -10,6 +10,7 @@ import { createEmbedUtil } from '../utils/createEmbedUtil';
 import axios from 'axios';
 import { MusicDto, ScoredAlbum, ScoredTrack, SearchResultsDto } from 'src/types/searchResultInterface';
 import formatDuration from '../utils/formatDurationUtil';
+import TrackMetadata from 'src/types/trackMetadata';
 
 // Isn't this fila a charm eh?
 // I love me when I did shitcode like this.
@@ -290,7 +291,17 @@ export default class playCommand extends commandInterface {
     }
 
     // Helper to play a track
-    private async playTrack(track: Track, queue: GuildQueue, interaction: CommandInteraction): Promise<void> {
+    private async playTrack(track: Track, queue: GuildQueue, interaction: CommandInteraction, scoredTrack?: ScoredTrack): Promise<void> {
+        const metadata = track.metadata as TrackMetadata;
+        const newMetadata: TrackMetadata = {
+            interaction,
+            startedPlaying: new Date(),
+            scoredTrack: scoredTrack,
+            duration_ms: metadata.duration_ms | 0,
+            live: metadata.live || false,
+            duration: metadata.duration || '0:00',
+        };
+        track.setMetadata(newMetadata);
         await queue.play(track, {
             nodeOptions: {
                 metadata: interaction,
@@ -457,21 +468,12 @@ export default class playCommand extends commandInterface {
                 
                 // If we get here, we have a valid track to play
                 const song = result.tracks[0];
-                song.setMetadata(response.data.tracks[0]); // Set metadata from the database track
-                await guildQueue.play(song, {
-                    nodeOptions: {
-                        metadata: interaction,
-                        noEmitInsert: true,
-                        leaveOnEnd: false,
-                        leaveOnEmpty: false,
-                        leaveOnStop: false,
-                    },
-                });
+                this.playTrack(song, guildQueue, interaction, response.data.tracks[0]);
                 return interaction.editReply({
                     embeds: [createEmbedUtil(
-                        `**${(song.metadata as ScoredTrack).title}** has been added to the queue`, 
+                        `**${(song.metadata as TrackMetadata).scoredTrack!.title}** has been added to the queue`, 
                         `https://www.funckenobi42.space/images/AlbumCoverArt/${response.data.tracks[0].album.pathToCoverArt}`, // Use the cover from the first track if available
-                        `Duration: ${(formatDuration((song.metadata as ScoredTrack).duration * 1000))} Position: ${guildQueue.tracks.size + 1}`
+                        `Duration: ${(formatDuration((song.metadata as TrackMetadata).scoredTrack!.duration * 1000))} Position: ${guildQueue.tracks.size + 1}`
                     )]
                 });
             } else if (response.data.albums.length > 0) {
@@ -577,16 +579,7 @@ export default class playCommand extends commandInterface {
                     
                     // If we get here, we have a valid track to play
                     const song = result.tracks[0];
-                    song.setMetadata(track);
-                    await guildQueue.play(song, {
-                        nodeOptions: {
-                            metadata: interaction,
-                            noEmitInsert: true,
-                            leaveOnEnd: false,
-                            leaveOnEmpty: false,
-                            leaveOnStop: false,
-                        },
-                    });
+                    this.playTrack(song, guildQueue, interaction, track as ScoredTrack);
                 }
                 
                 return interaction.editReply({

@@ -1,11 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { Track, useQueue } from 'discord-player';
-import { start } from 'repl';
 import commandInterface from '../types/commandInterface';
-import { ExtendedTrack } from '../types/extendedTrackInterface';
-import { ScoredTrack } from '../types/searchResultInterface';
 import formatDuration from '../utils/formatDurationUtil';
+import TrackMetadata from '../types/trackMetadata';
 
 export default class nowPlayingCommand extends commandInterface {
     data = new SlashCommandBuilder()
@@ -14,7 +12,7 @@ export default class nowPlayingCommand extends commandInterface {
 
     execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
         // Get the queue for the server
-        if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
+        if (!interaction.guild || !interaction.guildId) return interaction.followUp('You need to be in a guild.');
         const queue = useQueue(interaction.guild);
 
         // If there is no queue, return
@@ -28,52 +26,56 @@ export default class nowPlayingCommand extends commandInterface {
             return;
         }
 
-        const currentSong = (queue.currentTrack as ExtendedTrack<unknown>);
+        const currentTrack = queue.currentTrack as Track<TrackMetadata>;
+        const metadata = currentTrack.metadata;
 
-        // Calculate the elapsed time
-        const startedPlaying = currentSong.startedPlaying;
-        if (!startedPlaying || !(startedPlaying instanceof Date)) return interaction.reply('Could not calculate dates.')
-        console.log(`[${new Date().toISOString()}] [Started Playing: ${startedPlaying}]`);
-        const elapsedTime = new Date().getTime() - startedPlaying.getTime(); // in milliseconds
-        let durationMs;
-        let durationParts: string[] = [];
-        // Convert the duration string to milliseconds
-        if (currentSong.metadata && typeof (currentSong.metadata as ScoredTrack).duration !== 'undefined') {
-           durationMs = (currentSong.metadata as ScoredTrack).duration * 1000;
-        }
-        else {
-            durationParts = currentSong.duration.split(':').reverse();
-            durationMs = durationParts.reduce((total, part, index) => {
-                return total + parseInt(part, 10) * Math.pow(60, index) * 1000;
-            }, 0);
+        if (!metadata) {
+            return interaction.reply('Missing track metadata.');
         }
 
-        // Calculate the current position
+        // Calculate elapsed time based on when the track started playing
+        let elapsedTime = 0;
+        console.log(`------------------------------------------------------------------------------`);
+        if (metadata.startedPlaying instanceof Date) {
+            elapsedTime = new Date().getTime() - metadata.startedPlaying.getTime();
+            console.log(`Track started at: ${metadata.startedPlaying.toISOString()}, elapsed: ${elapsedTime}ms`);
+        } else {
+            // Fallback if startedPlaying is not available
+            console.log('No startedPlaying timestamp available');
+        }
+        
+        // Get track duration in milliseconds
+        let durationMs: number = (metadata.scoredTrack?.duration !== undefined
+            ? metadata.scoredTrack.duration * 1000
+            : (metadata.duration_ms || 0));
+        console.log(`Track duration (ms): ${durationMs}`);
+        // Calculate the current position (capped at track duration)
         const currentPosition = Math.min(elapsedTime, durationMs);
-
-        // Format the current position
         const currentPositionFormatted = formatDuration(currentPosition);
+        console.log(`Current position: ${currentPosition}ms, formatted: ${currentPositionFormatted}`);
+
+        // Format the full duration
+        const fullDuration = formatDuration(durationMs);
+
+        // Get artist name
+        const artistName = metadata.scoredTrack?.artist?.name ?? currentTrack.author;
+
+        // Get track source URL
+        const sourceUrl = metadata.scoredTrack?.id
+            ? `https://www.funckenobi42.space/music/tracks/${metadata.scoredTrack?.id}`
+            : currentTrack.url;
+
+        // Get album cover
+        const thumbnailUrl = metadata.scoredTrack?.album?.pathToCoverArt
+            ? `https://www.funckenobi42.space/images/AlbumCoverArt/${metadata.scoredTrack?.album.pathToCoverArt}`
+            : currentTrack.thumbnail || 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png';
+
         // Create the embed
         const embed = new EmbedBuilder()
-            .setDescription(`Currently playing: **${(currentSong.metadata as ScoredTrack).title ?? currentSong.title}** by **${(currentSong.metadata as ScoredTrack).artist.name ?? currentSong.author}** from [source](${
-                currentSong.metadata && (currentSong.metadata as ScoredTrack).id
-                    ? 'https://www.funckenobi42.space/music/tracks/' + (currentSong.metadata as ScoredTrack).id
-                    : currentSong.url
-            })`)
-            .setThumbnail(
-                currentSong.metadata && 
-                (currentSong.metadata as ScoredTrack).album && 
-                (currentSong.metadata as ScoredTrack).album.pathToCoverArt
-                    ? 'https://www.funckenobi42.space/images/AlbumCoverArt/' + (currentSong.metadata as ScoredTrack).album.pathToCoverArt
-                    : currentSong.thumbnail || 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png'
-            )
+            .setDescription(`Currently playing: **${metadata.scoredTrack?.title ?? currentTrack.title}** by **${artistName}** from [source](${sourceUrl})`)
+            .setThumbnail(thumbnailUrl)
             .setFooter({
-                text: `Elapsed time: ${currentPositionFormatted} / ${
-                    currentSong.metadata && 
-                    typeof (currentSong.metadata as ScoredTrack).duration !== 'undefined' 
-                        ? formatDuration((currentSong.metadata as ScoredTrack).duration * 1000) 
-                        : currentSong.duration
-                }`,
+                text: `Elapsed time: ${currentPositionFormatted} / ${fullDuration}`,
                 iconURL: interaction.user.displayAvatarURL(),
             });
 

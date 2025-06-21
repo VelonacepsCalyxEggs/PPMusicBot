@@ -22,17 +22,13 @@ import whereami from './commands/whereami';
 import queueCommand from './commands/queue';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
+import TrackMetadata from './types/trackMetadata';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
     interface Client {
         commands: Collection<string, commandInterface>;
     }
-}
-
-// Define the extended Track type with an optional property 
-interface ExtendedTrack<T> extends Track<T> { 
-    startedPlaying?: Date; 
 }
 interface StatusMessage {
     status: string;
@@ -151,16 +147,24 @@ class BotApplication {
             
             this.player.events.on('playerFinish', (queue: GuildQueue) => {
                 if (queue.tracks.size !== 0) {
-                    (queue.tracks.at(0) as ExtendedTrack<unknown>).startedPlaying = new Date();
+                    const track = queue.tracks.at(0) as Track<TrackMetadata>;
+                    if (track.metadata) {
+                        track.metadata.startedPlaying = new Date();
+                    }
                 } else {
-                    (queue.currentTrack as ExtendedTrack<unknown>).startedPlaying = new Date();
+                    const metadata = (queue.currentTrack as Track<TrackMetadata>).metadata;
+                    if (metadata) {
+                        metadata.startedPlaying = new Date();
+                    }
                 }
             });
             
-            // Use the extended type in your event handler
-            this.player.events.on('audioTrackAdd', async (queue: GuildQueue, track: ExtendedTrack<unknown>) => {
+            this.player.events.on('audioTrackAdd', async (queue: GuildQueue, track: Track<TrackMetadata>) => {
                 if (queue.tracks.size !== 0) {
-                    (queue.tracks.at(0) as ExtendedTrack<unknown>).startedPlaying = new Date();
+                    const trackMeta = (queue.tracks.at(0) as Track<TrackMetadata>).metadata;
+                    if (trackMeta) {
+                        trackMeta.startedPlaying = new Date();
+                    }
                 }
             });
             
