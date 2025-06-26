@@ -356,7 +356,8 @@ export default class playCommand extends commandInterface {
             
             // First, verify we have any results at all
             if (response.data.tracks.length === 0 && response.data.albums.length === 0) {
-                return interaction.editReply({
+                return interaction.followUp({ 
+                    flags: ['SuppressNotifications'],
                     embeds: [createEmbedUtil(
                         'No results found.',
                         'https://www.funckenobi42.space/images/', 
@@ -396,7 +397,8 @@ export default class playCommand extends commandInterface {
                     .map(item => `${item.name} (${item.type}, score: ${item.score})`)
                     .join('\n- ');
                     
-                return interaction.editReply({
+                return interaction.followUp({ 
+                    flags: ['SuppressNotifications'],
                     embeds: [createEmbedUtil(
                         `Low confidence matches found.\n\nDid you mean:\n- ${suggestions}`, 
                         `https://www.funckenobi42.space/images/`, 
@@ -429,7 +431,8 @@ export default class playCommand extends commandInterface {
                             .map(track => track.title)
                             .join('\n- ');
                             
-                        return interaction.editReply({
+                        return interaction.followUp({ 
+                            flags: ['SuppressNotifications'],
                             embeds: [createEmbedUtil(
                                 `No results found.\n\nMaybe you meant:\n- ${suggestions}`, 
                                 `https://www.funckenobi42.space/images/`, // Default thumbnail
@@ -438,7 +441,8 @@ export default class playCommand extends commandInterface {
                         });
                     }
                     
-                    return interaction.editReply({
+                    return interaction.followUp({ 
+                        flags: ['SuppressNotifications'],
                         embeds: [createEmbedUtil(
                             'No results found.',
                             `https://www.funckenobi42.space/images/`, // Default thumbnail
@@ -450,7 +454,8 @@ export default class playCommand extends commandInterface {
                 // If we get here, we have a valid track to play
                 const song = result.tracks[0];
                 this.playTrack(song, guildQueue, interaction, response.data.tracks[0]);
-                return interaction.editReply({
+                return interaction.followUp({ 
+                    flags: ['SuppressNotifications'],
                     embeds: [createEmbedUtil(
                         `**${(song.metadata as TrackMetadata).scoredTrack!.title}** has been added to the queue`, 
                         `https://www.funckenobi42.space/images/AlbumCoverArt/${response.data.tracks[0].album.pathToCoverArt}`, // Use the cover from the first track if available
@@ -466,7 +471,7 @@ export default class playCommand extends commandInterface {
                             .map(track => track.name)
                             .join('\n- ');
                             
-                        return interaction.editReply({
+                        return interaction.followUp({ flags: ['SuppressNotifications'],
                             embeds: [createEmbedUtil(
                                 `No results found.\n\nMaybe you meant:\n- ${suggestions}`, 
                                 `https://www.funckenobi42.space/images/`, // Default thumbnail
@@ -483,7 +488,8 @@ export default class playCommand extends commandInterface {
                 const foundAlbum = albumResponse.data.data as MusicDto[];
                 if (!foundAlbum || foundAlbum.length === 0) {
                     console.log('No tracks found in the album');
-                    return interaction.editReply({
+                    return interaction.followUp({ 
+                        flags: ['SuppressNotifications'],
                         embeds: [createEmbedUtil(
                             'No tracks found in the album.',
                             `https://www.funckenobi42.space/images/`, // Default thumbnail
@@ -549,7 +555,8 @@ export default class playCommand extends commandInterface {
                     
                     if (!result || !result.tracks || result.tracks.length === 0) {
                         console.log(`No results found for track: ${track.title}`);
-                        return interaction.editReply({
+                        return interaction.followUp({ 
+                            flags: ['SuppressNotifications'],
                             embeds: [createEmbedUtil(
                                 'No results found for the album.',
                                 `https://www.funckenobi42.space/images/`, // Default thumbnail
@@ -563,7 +570,8 @@ export default class playCommand extends commandInterface {
                     this.playTrack(song, guildQueue, interaction, track as ScoredTrack);
                 }
                 
-                return interaction.editReply({
+                return interaction.followUp({ 
+                    flags: ['SuppressNotifications'],
                     embeds: [createEmbedUtil(
                         `**${(response.data.albums[0] as ScoredAlbum).name}** has been added to the queue`, 
                         `https://www.funckenobi42.space/images/AlbumCoverArt/${(response.data.albums[0] as ScoredAlbum).pathToCoverArt}`, // Use the cover from the album
@@ -573,7 +581,8 @@ export default class playCommand extends commandInterface {
             }
         } catch (error) {
             console.error('Error in handleFromDbCommand:', error);
-            return interaction.editReply({
+            return interaction.followUp({ 
+                flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
                     "An error occurred while playing from database", 
                     'https://www.funckenobi42.space/images/',
