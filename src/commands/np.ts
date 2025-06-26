@@ -35,7 +35,6 @@ export default class nowPlayingCommand extends commandInterface {
 
         // Calculate elapsed time based on when the track started playing
         let elapsedTime = 0;
-        console.log(`------------------------------------------------------------------------------`);
         if (metadata.startedPlaying instanceof Date) {
             elapsedTime = new Date().getTime() - metadata.startedPlaying.getTime();
             console.log(`Track started at: ${metadata.startedPlaying.toISOString()}, elapsed: ${elapsedTime}ms`);
@@ -43,12 +42,38 @@ export default class nowPlayingCommand extends commandInterface {
             // Fallback if startedPlaying is not available
             console.log('No startedPlaying timestamp available');
         }
+
+        // Check if this is a database track or a regular track
+        const isFromDatabase = !!metadata.scoredTrack;
         
-        // Get track duration in milliseconds
-        let durationMs: number = (metadata.scoredTrack?.duration !== undefined
-            ? metadata.scoredTrack.duration * 1000
-            : (metadata.duration_ms || 0));
+        // Get track information based on source
+        let trackTitle: string;
+        let artistName: string;
+        let durationMs: number;
+        let sourceUrl: string;
+        let thumbnailUrl: string;
+
+        if (isFromDatabase) {
+            // Database track - use scoredTrack data
+            const dbTrack = metadata.scoredTrack!;
+            trackTitle = dbTrack.title;
+            artistName = dbTrack.artist?.name || 'Unknown Artist';
+            durationMs = dbTrack.duration * 1000; // Convert seconds to milliseconds
+            sourceUrl = `https://www.funckenobi42.space/music/tracks/${dbTrack.id}`;
+            thumbnailUrl = dbTrack.album?.pathToCoverArt 
+                ? `https://www.funckenobi42.space/images/AlbumCoverArt/${dbTrack.album.pathToCoverArt}`
+                : 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png';
+        } else {
+            // Regular track - use currentTrack data
+            trackTitle = currentTrack.title;
+            artistName = currentTrack.author;
+            durationMs = metadata.duration_ms || 0;
+            sourceUrl = currentTrack.url;
+            thumbnailUrl = currentTrack.thumbnail || 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png';
+        }
+
         console.log(`Track duration (ms): ${durationMs}`);
+        
         // Calculate the current position (capped at track duration)
         const currentPosition = Math.min(elapsedTime, durationMs);
         const currentPositionFormatted = formatDuration(currentPosition);
@@ -57,22 +82,9 @@ export default class nowPlayingCommand extends commandInterface {
         // Format the full duration
         const fullDuration = formatDuration(durationMs);
 
-        // Get artist name
-        const artistName = metadata.scoredTrack?.artist?.name ?? currentTrack.author;
-
-        // Get track source URL
-        const sourceUrl = metadata.scoredTrack?.id
-            ? `https://www.funckenobi42.space/music/tracks/${metadata.scoredTrack?.id}`
-            : currentTrack.url;
-
-        // Get album cover
-        const thumbnailUrl = metadata.scoredTrack?.album?.pathToCoverArt
-            ? `https://www.funckenobi42.space/images/AlbumCoverArt/${metadata.scoredTrack?.album.pathToCoverArt}`
-            : currentTrack.thumbnail || 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png';
-
         // Create the embed
         const embed = new EmbedBuilder()
-            .setDescription(`Currently playing: **${metadata.scoredTrack?.title ?? currentTrack.title}** by **${artistName}** from [source](${sourceUrl})`)
+            .setDescription(`Currently playing: **${trackTitle}** by **${artistName}** from [source](${sourceUrl})`)
             .setThumbnail(thumbnailUrl)
             .setFooter({
                 text: `Elapsed time: ${currentPositionFormatted} / ${fullDuration}`,
