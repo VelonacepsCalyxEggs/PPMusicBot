@@ -567,7 +567,7 @@ export default class playCommand extends commandInterface {
                     embeds: [createEmbedUtil(
                         `**${(response.data.albums[0] as ScoredAlbum).name}** has been added to the queue`, 
                         `https://www.funckenobi42.space/images/AlbumCoverArt/${(response.data.albums[0] as ScoredAlbum).pathToCoverArt}`, // Use the cover from the album
-                        `Tracks: ${foundAlbum.length} | Starting from position: ${guildQueue.tracks.size + 1 - sortedAlbumTracks.length + 1}`
+                        `Tracks: ${foundAlbum.length} | Starting from position: ${guildQueue.tracks.size - sortedAlbumTracks.length + 1}`
                     )]
                 });
             }
