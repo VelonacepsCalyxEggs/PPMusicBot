@@ -195,7 +195,7 @@ export default class playCommand extends commandInterface {
             await this.playTrack(song, guildQueue, interaction);
         }
 
-        return await interaction.editReply({embeds: [embed] });
+        return await interaction.followUp({embeds: [embed] });
     };
 
     // Helper method to detect source type
@@ -336,7 +336,7 @@ export default class playCommand extends commandInterface {
             },
         });
 
-        await interaction.editReply({ embeds: [embed] });
+        await interaction.followUp({ embeds: [embed] });
     };
 
     private handleFromDbCommand = async (player: Player, interaction: CommandInteraction, guildQueue: GuildQueue) => {
