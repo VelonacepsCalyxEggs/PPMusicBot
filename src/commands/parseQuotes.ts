@@ -33,7 +33,7 @@ export default class parseQuotesCommand extends commandInterface {
         )
 
     execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: ['Ephemeral'] });
         const debug = Boolean(interaction.options.get('debug')?.value) || this.QUOTE_DEBUG_MODE;
         console.log(debug)
         try {

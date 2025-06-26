@@ -17,13 +17,13 @@ export default class shuffleCommand extends commandInterface {
                     { name: 'Sattolo', value: 'st' },
                 ))
     execute = async ({ interaction }: { interaction: CommandInteraction }) => {
-        if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
+        if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
         if (!queue) {
-            return interaction.reply('There is no queue to shuffle.');
+            return interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
         }
         if (!queue.size) {
-            return interaction.reply('There are no songs in the queue to shuffle.');
+            return interaction.reply({ content: 'There are no tracks in the queue to shuffle!', flags: ['Ephemeral'] });
         }
 
         const shuffleAlgorithm = interaction.options.get('algorithm')?.value || 'fy';
@@ -62,6 +62,9 @@ export default class shuffleCommand extends commandInterface {
 
         queue.clear();
         tracks.forEach(track => queue.addTrack(track));
-        return interaction.reply(`The queue has been shuffled using ${shuffleAlgorithm} algorithm!`);
+        return interaction.reply({
+            content: `The queue has been shuffled using ${shuffleAlgorithm} algorithm!`,
+            flags: ['SuppressNotifications']
+        });
     }
 };

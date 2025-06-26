@@ -18,7 +18,7 @@ export default class loopCommand extends commandInterface {
                 ))
     execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
         // Get the queue for the server
-        if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
+        if (!interaction.guild || !interaction.guildId) return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
         const repeatDict: { [key: number]: string } = {
             0: 'Off',
@@ -27,12 +27,12 @@ export default class loopCommand extends commandInterface {
         };
         // If there is no queue, return
         if (!queue) {
-            await interaction.reply('There is no queue.');
+            await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
             return;
         }
 
         if (!queue.currentTrack) {
-            await interaction.reply('There are no songs playing.');
+            await interaction.reply({ content: 'There is no current track to loop!', flags: ['Ephemeral'] });
             return;
         }
         let repeatModeString = '';
@@ -47,7 +47,7 @@ export default class loopCommand extends commandInterface {
             queue.setRepeatMode(QueueRepeatMode.OFF);
             repeatModeString = 'OFF';
         } else {
-            return interaction.reply(`Current looping mode is ${repeatDict[queue.repeatMode]}.`);
+            return interaction.reply({ content: `Current looping mode is ${repeatDict[queue.repeatMode]}.`, flags: ['Ephemeral'] });
         }
 
         // Create the embed
@@ -55,6 +55,6 @@ export default class loopCommand extends commandInterface {
             .setDescription(`Current looping mode is now ${repeatModeString}`);
 
         // Reply with the embed
-        return interaction.reply({ ephemeral: false, embeds: [embed] }).catch(console.error);
+        return interaction.reply({ flags: ['SuppressNotifications'], embeds: [embed] }).catch(console.error);
     }
 };

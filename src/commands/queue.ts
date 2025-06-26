@@ -16,14 +16,14 @@ export default class queueCommand extends commandInterface {
         )
     execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId) {
-            return interaction.followUp('You need to be in a guild.');
+            return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         }
         const queue = useQueue(interaction.guild);
         if (!queue) {
-            return interaction.reply('There is no queue.');
+            return interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
         }
         if (queue.size === 0) {
-            return interaction.reply('There are no songs in the queue.');
+            return interaction.reply({ content: 'There are no tracks in the queue!', flags: ['Ephemeral'] });
         }
 
         let page = Number(interaction.options.get('page', false)?.value) ?? 1;

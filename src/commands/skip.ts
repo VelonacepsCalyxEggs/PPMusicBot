@@ -10,16 +10,16 @@ export default class skipCommand extends commandInterface {
         .setDescription('Skips the current song')
     execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
         // Get the queue for the server
-        if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
+        if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
 
         // If there is no queue, return
         if (!queue) {
-            await interaction.reply('There is no queue!');
+            await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
             return;
         } 
         const currentSong = queue.currentTrack;
-        if (!currentSong) return interaction.followUp('No song is currently playing.');
+        if (!currentSong) return interaction.followUp({ content: 'No song is currently playing.', flags: ['Ephemeral'] });
         
         // Check if track has metadata
         const hasMetadata = currentSong.metadata && (currentSong.metadata as ScoredTrack);
@@ -37,6 +37,6 @@ export default class skipCommand extends commandInterface {
             .setDescription(`${title} has been skipped!`)
             .setThumbnail(thumbnail);
 
-        return interaction.reply({ ephemeral: true, embeds: [embed] }).catch(console.error);
+        return interaction.reply({ flags: ['SuppressNotifications'], embeds: [embed] }).catch(console.error);
     }
 };

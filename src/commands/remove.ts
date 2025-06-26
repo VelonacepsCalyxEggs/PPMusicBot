@@ -18,37 +18,33 @@ export default class removeCommand extends commandInterface {
                 .setRequired(false)
         )
     execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
-        if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
+        if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
         if (!queue) {
-            return interaction.reply('There is no queue to remove music.');
+            return interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
         }
         if (!queue.size) {
-            return interaction.reply('There are no songs in the queue to remove.');
+            return interaction.reply({ content: 'There are no tracks in the queue!', flags: ['Ephemeral'] });
         }
         
         const tracks = queue.tracks.toArray();
         const position = interaction.options.get('position')?.value;
         const position2 = interaction.options.get('position2')?.value;
         
-        if (position) {
-            if (!position2) {
-                tracks.splice(Number(position) - 1, 1);
-                queue.clear();
-                for (let i = 0; i < tracks.length; i++) {
-                    queue.addTrack(tracks[i]);
-                }
-                return interaction.reply('The track has been removed!');
-            } else {
-                tracks.splice(Number(position)- 1, Number(position2));
-                queue.clear();
-                for (let i = 0; i < tracks.length; i++) {
-                    queue.addTrack(tracks[i]);
-                }
-                return interaction.reply(`The tracks from ${position} to ${position2} have been removed!`);
+        if (!position2) {
+            tracks.splice(Number(position) - 1, 1);
+            queue.clear();
+            for (let i = 0; i < tracks.length; i++) {
+                queue.addTrack(tracks[i]);
             }
+            return interaction.reply({ content: `The track at position ${position} has been removed!`, flags: ['SuppressNotifications'] });
+        } else {
+            tracks.splice(Number(position)- 1, Number(position2));
+            queue.clear();
+            for (let i = 0; i < tracks.length; i++) {
+                queue.addTrack(tracks[i]);
+            }
+            return interaction.reply({ content: `The tracks from position ${position} to ${Number(position) + Number(position2) - 1} have been removed!`, flags: ['SuppressNotifications'] });
         }
-
-        return interaction.reply('An error occurred while removing tracks.');
     }
 };

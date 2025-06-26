@@ -14,7 +14,7 @@ export default class getQuouteCommand extends commandInterface {
                 .setRequired(false)
         )
     execute = async ({ interaction }: { interaction: CommandInteraction }) => {
-        await interaction.deferReply({ ephemeral: false });
+        await interaction.deferReply({ flags: ['Ephemeral'] });
         const pool = new Pool({connectionString: process.env.DATABASE_URL});
         try {
             const quoteId = interaction.options.get('id')?.value?.toString();

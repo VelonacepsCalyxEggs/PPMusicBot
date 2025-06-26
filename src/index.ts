@@ -79,7 +79,7 @@ class BotApplication {
             if (!command) return;
 
             try {
-                if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
+                if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
                 console.log(`[${new Date().toISOString()}] Command: ${interaction.commandName} | User: ${interaction.user.tag} | Guild: ${interaction.guild.name !== undefined}`);
                 
                 await command.execute({ client: this.client, player: this.player, interaction });
@@ -139,7 +139,7 @@ class BotApplication {
                     if ( queue.connection && queue.connection.state.status === 'destroyed') {
                         return; 
                     }
-                    (interaction.channel as TextChannel).send("Everyone left the channel.");
+                    (interaction.channel as TextChannel).send({content : `Everyone left the channel.`, flags: ['SuppressNotifications']});
                 } catch (error) {
                     console.error('No queue was deleted:', error);
                 }
@@ -169,13 +169,7 @@ class BotApplication {
             });
             
             this.player.events.on('playerError', (queue: GuildQueue, error: Error) => {
-                const interaction = queue.metadata as Interaction;
-                if (interaction && interaction.channel && 'send' in interaction.channel) {
-                    console.error(`Player Error: ${error.message}`);
-                    (interaction.channel as TextChannel).send(`The player encountered an error while trying to play a track.`);
-                } else {
-                    console.error(`Player Error: ${error.message}`);
-                }
+                console.error(`Player Error: ${error.message}`);
             });
             
             this.player.events.on('playerStart', (queue: GuildQueue) => {
@@ -183,13 +177,8 @@ class BotApplication {
             });
             
             this.player.events.on('error', (queue: GuildQueue, error: Error) => {
-                const interaction = queue.metadata as Interaction;
-                if (interaction && interaction.channel) {
-                    (interaction.channel as TextChannel).send(`The queue encountered an error while trying to play the track: \n\`\`\`js\n${error.message}\`\`\``);
-                } else {
-                    console.log(`Queue Error: ${error.message}`);
-                    console.log(queue.currentTrack);
-                }
+                console.error(`Queue Error: ${error.message}`);
+                console.error(queue.currentTrack);
             });
             
             this.player.events.on('emptyQueue', (queue: GuildQueue) => {
@@ -200,7 +189,7 @@ class BotApplication {
                         return;
                     }
                     try {
-                        (interaction.channel as TextChannel).send("The queue is now empty.");
+                        (interaction.channel as TextChannel).send({ content: 'The queue is now empty.' });
                     } catch (error) {
                         console.error('Error when handling emptyQueue:', error);
                     }
@@ -210,12 +199,12 @@ class BotApplication {
         this.player.events.on('connectionDestroyed', (queue: GuildQueue) => {
                 const interaction = queue.metadata as Interaction;
                 if (!interaction || !interaction.channel) {
-                    console.log("No interaction or channel found.");
+                    console.error("No interaction or channel found.");
                     return;
                 }
                 try {
                     if ( queue.connection && queue.connection.state.status !== 'destroyed') {
-                        (interaction.channel as TextChannel).send("I was manually disconnected.");
+                        (interaction.channel as TextChannel).send({ content: 'The connection to the voice channel was destroyed. The queue has been cleared.', flags: ['SuppressNotifications'] });
                     } else {
                         return;
                     }

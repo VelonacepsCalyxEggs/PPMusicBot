@@ -17,7 +17,7 @@ export default class scanCommand extends commandInterface {
                 .setDescription('The number of messages to scan')
                 .setRequired(true))
     execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: ['Ephemeral'] });
         
         // Get command options
         const channelId = interaction.options.get('channelid');

@@ -12,20 +12,6 @@ import { MusicDto, ScoredAlbum, ScoredTrack, SearchResultsDto } from 'src/types/
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from 'src/types/trackMetadata';
 
-// Isn't this fila a charm eh?
-// I love me when I did shitcode like this.
-
-// This will later be replaced with a proper interface for the database track
-interface DbTrack {
-    id: number;
-    name: string;
-    author: string;
-    album: string;
-    thumbnail: string;
-    local: string;
-    path_to_cover: string;
-}
-
 export default class playCommand extends commandInterface {
     constructor() {
         super();
@@ -62,7 +48,7 @@ export default class playCommand extends commandInterface {
         await interaction.deferReply();
 
         if (!(interaction.member as GuildMember).voice.channel) {
-            return interaction.followUp('You need to be in a Voice Channel to play a song.');
+            return interaction.followUp({content: 'You need to be in a voice channel to use this command!', flags: ['Ephemeral']});
         }
         if (!interaction.guild)return interaction.followUp('You need to be in a guild.');
         const player = useMainPlayer();
@@ -81,15 +67,15 @@ export default class playCommand extends commandInterface {
         }
         if (!guildQueue.connection) {
             if (voiceChannel.joinable === false) {
-                return interaction.followUp('I cannot join your voice channel. Please check my permissions.');
+                return interaction.followUp({content: 'I cannot join your voice channel. Please check my permissions.', flags: ['Ephemeral']});
             }
             if (voiceChannel.full) {
-                return interaction.followUp('Your voice channel is full. I cannot join.');
+                return interaction.followUp({content: 'Your voice channel is full.', flags: ['Ephemeral']});
             }
             
             await guildQueue.connect(voiceChannel);
             if (!guildQueue.connection) {
-                return interaction.followUp('Failed to connect to the voice channel.');
+                return interaction.followUp({content: 'Failed to connect to the voice channel.', flags: ['SuppressNotifications']});
             }
         }
 
@@ -118,103 +104,98 @@ export default class playCommand extends commandInterface {
         
         const argument = interaction.options.get('music')?.value;
         if (!(typeof(argument) === 'string')) {
-            return interaction.followUp('Please provide an argument.');
+            throw new Error('Invalid argument type. Expected a string.');
         }
+    
+        const sourceType = this.detectSourceType(argument);
+        let result: SearchResult;
+        let song: Track<unknown> | null = null;
+        let embed: EmbedBuilder;
         
-        try {
-            const sourceType = this.detectSourceType(argument);
-            let result: SearchResult;
-            let song;
-            let embed;
-            
-            switch (sourceType) {
-                case 'spotify':
-                    console.log('Spotify URL detected');
-                    result = await player.search(argument, {
-                        requestedBy: interaction.user,
-                        searchEngine: QueryType.SPOTIFY_SEARCH
-                    });
-                    if (!result.tracks.length) {
-                        return interaction.followUp("No results found for the Spotify track.");
-                    }
-                    song = result.tracks[0];
-                    embed = this.createTrackEmbed(song, guildQueue.tracks.size);
-                    break;
-                case 'stream':
-                    console.log('Live stream detected');
-                    const streamUrl = this.normalizeStreamUrl(argument);
-                    result = await this.searchTrack(player, streamUrl, interaction.user);
-                    
-                    if (!result.tracks.length) return interaction.followUp('No results found for the stream.');
-                    song = result.tracks[0];
-                    song.duration = '∞';
-                    embed = this.createTrackEmbed(song, guildQueue.tracks.size);
-                    break;
-                    
-                case 'external_url':
-                    console.log('External URL detected');
-                    const localPath = await this.downloadFile(argument.split('?')[0], argument);
-                    result = await this.searchFile(player, localPath, interaction.user);
-                    
-                    if (!result.tracks.length) return interaction.followUp('No results found for the URL.');
-                    song = result.tracks[0];
-                    embed = this.createTrackEmbed(song, guildQueue.tracks.size);
-                    break;
-                    
-                case 'youtube_video':
-                    console.log('YouTube URL detected');
-                    //return interaction.followUp('Oops... sorry, the DRM doomsday clock hit midnight and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
-                    const cleanYoutubeUrl = this.cleanYoutubeUrl(argument);
-                    result = await this.searchTrack(player, cleanYoutubeUrl, interaction.user);
-                    
-                    if (!result.tracks.length) {
-                        return interaction.followUp("No results or couldn't extract the track from YouTube.");
-                    }
-                    song = result.tracks[0];
-                    embed = this.createTrackEmbed(song, guildQueue.tracks.size);
-                    break;
-                    
-                case 'youtube_playlist':
-                    console.log('YouTube playlist detected');
-                    //return interaction.followUp('Oops... sorry, the DRM shit hit the fan and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
-                    result = await player.search(argument, {
-                        requestedBy: interaction.user,
-                        searchEngine: QueryType.YOUTUBE_PLAYLIST
-                    });
-                    
-                    if (!result.playlist) return interaction.followUp('No results found for the playlist.');
-                    
-                    await this.playTrack(result.tracks[0], guildQueue, interaction);
-                    embed = createEmbedUtil(
-                        `**${result.tracks.length} songs from ${result.playlist.title}** have been added to the queue`, 
-                        result.playlist.thumbnail, 
-                        null
-                    );
-                    break;
-                    
-                case 'search_term':
-                default:
-                    console.log('YouTube Search detected');
-                    //return interaction.followUp('Oops... sorry, the fentanyl bag hit the turboprop and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
-                    result = await this.searchYoutube(player, argument, interaction.user);
-                    
-                    if (!result.tracks.length) {
-                        return interaction.followUp("No results found for your search.");
-                    }
-                    song = result.tracks[0];
-                    embed = this.createTrackEmbed(song, guildQueue.tracks.size);
-                    break;
-            }
-
-            if (song) {
-                await this.playTrack(song, guildQueue, interaction);
-            }
-
-            return await interaction.editReply({ embeds: [embed] });
-        } catch (error) {
-            console.error('Error in handleSongCommand:', error);
-            return interaction.followUp(`An error occurred: ${error.message}`);
+        switch (sourceType) {
+            case 'spotify':
+                console.log('Spotify URL detected');
+                result = await player.search(argument, {
+                    requestedBy: interaction.user,
+                    searchEngine: QueryType.SPOTIFY_SEARCH
+                });
+                if (!result.tracks.length) {
+                    return interaction.followUp({content: 'No results found for the Spotify URL.', flags: ['Ephemeral']});
+                }
+                song = result.tracks[0];
+                embed = this.createTrackEmbed(song, guildQueue.tracks.size);
+                break;
+            case 'stream':
+                console.log('Live stream detected');
+                const streamUrl = this.normalizeStreamUrl(argument);
+                result = await this.searchTrack(player, streamUrl, interaction.user);
+                
+                if (!result.tracks.length) return interaction.followUp({content: 'No results found for the stream URL.', flags: ['Ephemeral']});
+                song = result.tracks[0];
+                song.duration = '∞';
+                embed = this.createTrackEmbed(song, guildQueue.tracks.size);
+                break;
+                
+            case 'external_url':
+                console.log('External URL detected');
+                const localPath = await this.downloadFile(argument.split('?')[0], argument);
+                result = await this.searchFile(player, localPath, interaction.user);
+                
+                if (!result.tracks.length) return interaction.followUp({content: 'No results found for the external URL.', flags: ['Ephemeral']});
+                song = result.tracks[0];
+                embed = this.createTrackEmbed(song, guildQueue.tracks.size);
+                break;
+                
+            case 'youtube_video':
+                console.log('YouTube URL detected');
+                //return interaction.followUp('Oops... sorry, the DRM doomsday clock hit midnight and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
+                const cleanYoutubeUrl = this.cleanYoutubeUrl(argument);
+                result = await this.searchTrack(player, cleanYoutubeUrl, interaction.user);
+                
+                if (!result.tracks.length) {
+                    return interaction.followUp({content: 'No results found for the YouTube URL.', flags: ['Ephemeral']});
+                }
+                song = result.tracks[0];
+                embed = this.createTrackEmbed(song, guildQueue.tracks.size);
+                break;
+                
+            case 'youtube_playlist':
+                console.log('YouTube playlist detected');
+                //return interaction.followUp('Oops... sorry, the DRM shit hit the fan and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
+                result = await player.search(argument, {
+                    requestedBy: interaction.user,
+                    searchEngine: QueryType.YOUTUBE_PLAYLIST
+                });
+                
+                if (!result.playlist) return interaction.followUp({content: 'No results found for the playlist.', flags: ['Ephemeral']});
+                
+                await this.playTrack(result.tracks[0], guildQueue, interaction);
+                embed = createEmbedUtil(
+                    `**${result.tracks.length} songs from ${result.playlist.title}** have been added to the queue`, 
+                    result.playlist.thumbnail, 
+                    null
+                );
+                break;
+                
+            case 'search_term':
+            default:
+                console.log('YouTube Search detected');
+                //return interaction.followUp('Oops... sorry, the fentanyl bag hit the turboprop and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
+                result = await this.searchYoutube(player, argument, interaction.user);
+                
+                if (!result.tracks.length) {
+                    return interaction.followUp({content: 'No results found for the search term.', flags: ['Ephemeral']});
+                }
+                song = result.tracks[0];
+                embed = this.createTrackEmbed(song, guildQueue.tracks.size);
+                break;
         }
+
+        if (song) {
+            await this.playTrack(song, guildQueue, interaction);
+        }
+
+        return await interaction.editReply({embeds: [embed] });
     };
 
     // Helper method to detect source type
@@ -318,7 +299,7 @@ export default class playCommand extends commandInterface {
         return createEmbedUtil(
             `**${track.title}** has been added to the queue`, 
             track.thumbnail.length > 0 ? track.thumbnail : 'https://www.funckenobi42.space/images/AlbumCoverArt/DefaultCoverArt.png', 
-            `Duration: ${track.duration} Position: ${queueSize + 1}`
+            `Duration: ${track.duration} Position: ${queueSize}`
         );
     }
 
@@ -341,7 +322,7 @@ export default class playCommand extends commandInterface {
             .setDescription(`**${song.title}** has been added to the queue`)
             .setThumbnail(song.thumbnail)
             .setFooter({
-                text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size + 1}`,
+                text: `Duration: ${song.duration} Position: ${guildQueue.tracks.size}`,
                 iconURL: interaction.user.displayAvatarURL(),
             });
 
@@ -473,7 +454,7 @@ export default class playCommand extends commandInterface {
                     embeds: [createEmbedUtil(
                         `**${(song.metadata as TrackMetadata).scoredTrack!.title}** has been added to the queue`, 
                         `https://www.funckenobi42.space/images/AlbumCoverArt/${response.data.tracks[0].album.pathToCoverArt}`, // Use the cover from the first track if available
-                        `Duration: ${(formatDuration((song.metadata as TrackMetadata).scoredTrack!.duration * 1000))} Position: ${guildQueue.tracks.size + 1}`
+                        `Duration: ${(formatDuration((song.metadata as TrackMetadata).scoredTrack!.duration * 1000))} Position: ${guildQueue.tracks.size}`
                     )]
                 });
             } else if (response.data.albums.length > 0) {
@@ -586,7 +567,7 @@ export default class playCommand extends commandInterface {
                     embeds: [createEmbedUtil(
                         `**${(response.data.albums[0] as ScoredAlbum).name}** has been added to the queue`, 
                         `https://www.funckenobi42.space/images/AlbumCoverArt/${(response.data.albums[0] as ScoredAlbum).pathToCoverArt}`, // Use the cover from the album
-                        `Tracks: ${foundAlbum.length} Starting from position: ${guildQueue.tracks.size + 1}`
+                        `Tracks: ${foundAlbum.length} | Starting from position: ${guildQueue.tracks.size + 1 - sortedAlbumTracks.length + 1}`
                     )]
                 });
             }

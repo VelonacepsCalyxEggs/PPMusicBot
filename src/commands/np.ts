@@ -17,12 +17,12 @@ export default class nowPlayingCommand extends commandInterface {
 
         // If there is no queue, return
         if (!queue) {
-            await interaction.reply('There is no queue.');
+            await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
             return;
         }
 
         if (!queue.currentTrack) {
-            await interaction.reply('There are no songs playing.');
+            await interaction.reply({ content: 'There are no songs playing.', flags: ['Ephemeral'] });
             return;
         }
 
@@ -30,7 +30,7 @@ export default class nowPlayingCommand extends commandInterface {
         const metadata = currentTrack.metadata;
 
         if (!metadata) {
-            return interaction.reply('Missing track metadata.');
+            throw new Error('Missing track metadata.');
         }
 
         // Calculate elapsed time based on when the track started playing
@@ -52,6 +52,7 @@ export default class nowPlayingCommand extends commandInterface {
         let durationMs: number;
         let sourceUrl: string;
         let thumbnailUrl: string;
+        let albumName: string | null = null;
 
         if (isFromDatabase) {
             // Database track - use scoredTrack data
@@ -63,6 +64,7 @@ export default class nowPlayingCommand extends commandInterface {
             thumbnailUrl = dbTrack.album?.pathToCoverArt 
                 ? `https://www.funckenobi42.space/images/AlbumCoverArt/${dbTrack.album.pathToCoverArt}`
                 : 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png';
+            albumName = dbTrack.album?.name || null;
         } else {
             // Regular track - use currentTrack data
             trackTitle = currentTrack.title;
@@ -84,7 +86,7 @@ export default class nowPlayingCommand extends commandInterface {
 
         // Create the embed
         const embed = new EmbedBuilder()
-            .setDescription(`Currently playing: **${trackTitle}** by **${artistName}** from [source](${sourceUrl})`)
+            .setDescription(`Currently playing: **${trackTitle}** by **${artistName}** from [${albumName || 'Source'}](${sourceUrl})`)
             .setThumbnail(thumbnailUrl)
             .setFooter({
                 text: `Elapsed time: ${currentPositionFormatted} / ${fullDuration}`,
@@ -92,6 +94,6 @@ export default class nowPlayingCommand extends commandInterface {
             });
 
         // Reply with the embed
-        return interaction.reply({ ephemeral: true, embeds: [embed] }).catch(console.error);
+        return interaction.reply({ flags: 'Ephemeral', embeds: [embed] }).catch(console.error);
     }
 };

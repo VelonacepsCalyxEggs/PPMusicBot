@@ -7,7 +7,7 @@ export default class whereAmICommand extends commandInterface {
         .setName('whereami')
         .setDescription('Returns all servers the bot is currently in.')
     execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: ['Ephemeral'] });
 
         const guildIds = client.guilds.cache.map(guild => guild.id);
         let guildInfoString = '';

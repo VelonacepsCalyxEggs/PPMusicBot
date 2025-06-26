@@ -10,17 +10,17 @@ export default class replayCommand extends commandInterface {
 
     execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
         // Get the queue for the server
-        if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
+        if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
 
         // If there is no queue, return
         if (!queue) {
-            await interaction.reply('There is no queue!');
+            await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
             return;
         }
         
         const currentSong = queue.currentTrack;
-        if (!currentSong) return interaction.reply('No song is currently playing.');
+        if (!currentSong) return interaction.reply({ content: 'No song is currently playing.', flags: ['Ephemeral'] });
 
         // Add the current song and skip the current song.
         queue.addTrack(currentSong);
@@ -32,6 +32,6 @@ export default class replayCommand extends commandInterface {
             .setDescription(`${currentSong.title} has been skipped and replayed!`)
             .setThumbnail(currentSong.thumbnail);
 
-        return interaction.reply({ ephemeral: true, embeds: [embed] }).catch(console.error);
+        return interaction.reply({ flags: ['SuppressNotifications'], embeds: [embed] }).catch(console.error);
     }
 };

@@ -11,12 +11,12 @@ export default class pauseCommand extends commandInterface {
 
     execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
         // Get the queue for the server
-        if (!interaction.guild || !interaction.guildId)return interaction.followUp('You need to be in a guild.');
+        if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
 
         // If there is no queue, return
         if (!queue) {
-            await interaction.reply('There is no queue!');
+            await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
             return;
         }
         // Create an embed to inform the user
@@ -31,6 +31,6 @@ export default class pauseCommand extends commandInterface {
             embed.setDescription(`You have paused the queue!`);
         }
 
-        return interaction.reply({ ephemeral: true, embeds: [embed] }).catch(console.error);
+        return interaction.reply({ flags: 'SuppressNotifications', embeds: [embed] }).catch(console.error);
     }
 };
