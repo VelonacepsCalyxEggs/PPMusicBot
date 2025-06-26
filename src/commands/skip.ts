@@ -1,14 +1,14 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, CommandInteraction } from 'discord.js';
-import { useQueue } from 'discord-player';
+import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
+import { useQueue, Track } from 'discord-player';
 import commandInterface from '../types/commandInterface';
-import { ScoredTrack } from '../types/searchResultInterface';
+import TrackMetadata from '../types/trackMetadata';
 
 export default class skipCommand extends commandInterface {
     data = new SlashCommandBuilder()
         .setName('skip')
         .setDescription('Skips the current song')
-    execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
@@ -18,16 +18,33 @@ export default class skipCommand extends commandInterface {
             await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
             return;
         } 
-        const currentSong = queue.currentTrack;
+        const currentSong = queue.currentTrack as Track<TrackMetadata>;
         if (!currentSong) return interaction.followUp({ content: 'No song is currently playing.', flags: ['Ephemeral'] });
         
-        // Check if track has metadata
-        const hasMetadata = currentSong.metadata && (currentSong.metadata as ScoredTrack);
-        const title = hasMetadata ? (currentSong.metadata as ScoredTrack).title || currentSong.title : currentSong.title;
-        // For thumbnail, check if there's path to cover art in metadata
-        const thumbnail = hasMetadata && (currentSong.metadata as ScoredTrack).album?.pathToCoverArt
-            ? `https://www.funckenobi42.space/images/AlbumCoverArt/${(currentSong.metadata as ScoredTrack).album.pathToCoverArt}`
-            : currentSong.thumbnail;
+        const metadata = currentSong.metadata;
+        if (!metadata) {
+            throw new Error('Missing track metadata.');
+        }
+
+        // Check if this is a database track or a regular track
+        const isFromDatabase = !!metadata.scoredTrack;
+        
+        // Get track information based on source
+        let title: string;
+        let thumbnail: string;
+
+        if (isFromDatabase) {
+            // Database track - use scoredTrack data
+            const dbTrack = metadata.scoredTrack!;
+            title = dbTrack.title;
+            thumbnail = dbTrack.album?.pathToCoverArt 
+                ? `https://www.funckenobi42.space/images/AlbumCoverArt/${dbTrack.album.pathToCoverArt}`
+                : 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png';
+        } else {
+            // Regular track - use currentTrack data
+            title = currentSong.title;
+            thumbnail = currentSong.thumbnail || 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png';
+        }
         
         // Skip the current song
         queue.node.skip();

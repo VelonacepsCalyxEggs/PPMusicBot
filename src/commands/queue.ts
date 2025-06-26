@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, CommandInteraction, Client, ActionRowBuilder, ButtonBuilder, ButtonStyle, Message } from 'discord.js';
+import { EmbedBuilder, CommandInteraction, Client, ActionRowBuilder, ButtonBuilder, ButtonStyle, Message, ButtonInteraction } from 'discord.js';
 import { useQueue, Track } from 'discord-player';
 import commandInterface from '../types/commandInterface';
 import formatDuration from '../utils/formatDurationUtil';
@@ -134,10 +134,10 @@ export default class queueCommand extends commandInterface {
         await interaction.reply({ ephemeral: true, embeds: [embed], components: [actionRow] }).catch(console.error);
         const message = await interaction.fetchReply() as Message;
 
-        const filter = (i: any) => ['prev_page', 'next_page', 'first_page', 'last_page'].includes(i.customId);
+        const filter = (i: ButtonInteraction) => ['prev_page', 'next_page', 'first_page', 'last_page'].includes(i.customId);
         const collector = message.createMessageComponentCollector({ filter, time: 60000 });
 
-        collector.on('collect', async (i: any) => {
+        collector.on('collect', async (i: ButtonInteraction) => {
             if (i.customId === 'prev_page') {
                 page--;
             } else if (i.customId === 'next_page') {
@@ -153,7 +153,7 @@ export default class queueCommand extends commandInterface {
             const end = page * multiple;
             const start = end - multiple;
 
-            const tracks = queue.tracks.toArray().slice(start, end);
+            const tracks = queue.tracks.toArray().slice(start, end) as Track<TrackMetadata>[];
             const description = tracks
                 .map(
                     (track, i) => {
@@ -219,7 +219,7 @@ export default class queueCommand extends commandInterface {
             await i.update({ embeds: [updatedEmbed], components: [updatedActionRow] });
         });
 
-        collector.on('end', collected => {
+        collector.on('end', (collected) => {
             console.log(`Collected ${collected.size} interactions.`);
         });
     }

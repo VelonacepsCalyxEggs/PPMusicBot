@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { useQueue, QueueRepeatMode } from 'discord-player';
-import { CommandInteraction, EmbedBuilder } from 'discord.js';
+import { Client, CommandInteraction, EmbedBuilder } from 'discord.js';
 import commandInterface from '../types/commandInterface';
 
 export default class loopCommand extends commandInterface {
@@ -16,7 +16,7 @@ export default class loopCommand extends commandInterface {
                     { name: 'Track', value: '2' },
                     { name: 'Off', value: '3' }
                 ))
-    execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId) return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);

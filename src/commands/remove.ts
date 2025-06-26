@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, CommandInteraction } from 'discord.js';
+import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { useQueue, GuildQueue } from 'discord-player';
 import commandInterface from '../types/commandInterface';
 
@@ -17,7 +17,7 @@ export default class removeCommand extends commandInterface {
                 .setDescription('index 2')
                 .setRequired(false)
         )
-    execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
         if (!queue) {

@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, CommandInteraction, TextChannel } from 'discord.js';
+import { EmbedBuilder, CommandInteraction, TextChannel, Client } from 'discord.js';
 import { Pool } from 'pg';
 import commandInterface from '../types/commandInterface';
 
@@ -32,19 +32,19 @@ export default class parseQuotesCommand extends commandInterface {
                 .setRequired(false)
         )
 
-    execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
         await interaction.deferReply({ flags: ['Ephemeral'] });
         const debug = Boolean(interaction.options.get('debug')?.value) || this.QUOTE_DEBUG_MODE;
         console.log(debug)
         try {
-            const channelId = interaction.options.get('channelid', true)?.value;
+            const channelId = interaction.options.get('channelid', true)?.value as string;
             const channel = await client.channels.fetch(channelId);
             
             if (!(channel instanceof TextChannel)) {
                 return interaction.editReply('Invalid text channel');
             }
 
-            const permissions = channel.permissionsFor(client.user);
+            const permissions = channel.permissionsFor(client.user?.id || '');
             if (!permissions?.has(['ViewChannel', 'ReadMessageHistory'])) {
                 return interaction.editReply('Missing permissions to read this channel');
             }
