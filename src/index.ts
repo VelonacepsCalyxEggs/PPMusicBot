@@ -23,6 +23,18 @@ import queueCommand from './commands/queue';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
 import TrackMetadata from './types/trackMetadata';
+import { 
+    logBotStartup, 
+    logCommandUsage, 
+    logPlayerEvent, 
+    logError,
+    discordLogger,
+    playerLogger,
+    databaseLogger,
+    createPerformanceLogger
+} from './utils/loggerUtil';
+import { log } from 'console';
+import errorCommand from './commands/error';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
@@ -41,6 +53,7 @@ class BotApplication {
     public commands: Collection<string, commandInterface>;
     private restrictedCommands: { [key: string]: string } = {
             scan: '644950708160036864',
+            error: '644950708160036864',
     }
     public currentStatus: string = '';
     
@@ -49,16 +62,16 @@ class BotApplication {
     }
 
     private async initializeDatabase() {
-        console.log('Loading DB config...');
+        databaseLogger.info('Loading DB config...');
         if (!process.env.DATABASE_URL) {
             throw new Error('DATABASE_URL environment variable is not set.');
         }
         this.pool = new Pool({connectionString: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/mydatabase'});
-        console.log('Connecting to DB...');
+        databaseLogger.info('Connecting to DB...');
         this.pool.connect();
     }
     private initializeClient() {
-        console.log('Initializing Discord client...');
+        discordLogger.info('Initializing Discord client...');
         this.client = new Client({
             intents: [
             GatewayIntentBits.Guilds,
@@ -71,7 +84,7 @@ class BotApplication {
 
     private intializeClientEvents() {
 
-            console.log('Initializing client events...');
+            discordLogger.info('Initializing Discord client events...');
             this.client.on('interactionCreate', async (interaction: Interaction) => {
             if (!interaction.isCommand()) return;
         
@@ -80,13 +93,20 @@ class BotApplication {
 
             try {
                 if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
-                console.log(`[${new Date().toISOString()}] Command: ${interaction.commandName} | User: ${interaction.user.tag} | Guild: ${interaction.guild.name !== undefined}`);
+                
+                logCommandUsage(interaction.commandName, interaction.user.id, interaction.guildId || undefined, true);
                 
                 await command.execute({ client: this.client, player: this.player, interaction });
             } catch (error) {
-                console.error(error);
+                logError(error as Error, 'command execution', { 
+                    commandName: interaction.commandName,
+                    userId: interaction.user.id,
+                    guildId: interaction.guildId 
+                });
+                
+                logCommandUsage(interaction.commandName, interaction.user.id, interaction.guildId || undefined, false);
                 const status = await this.checkDiscordStatus();
-                console.log('Discord API Status:', status); // Logs the status for your reference
+                discordLogger.warn('Discord API Status:', status); // Logs the status for your reference
                 // Fetch a random quote from the database
                 const res = await this.pool.query('SELECT quote_text FROM quotes ORDER BY RANDOM() LIMIT 1');
                 const randomQuote = res.rows[0].quote_text;
@@ -123,16 +143,22 @@ class BotApplication {
         
                 try {
                     await this.pool.query(query, values);
-                    console.log(`User ${userId} moved from ${oldChannel} to ${newChannel} in server ${serverName} at ${timestamp}`);
+                    discordLogger.info('Voice state update recorded', {
+                        userId,
+                        oldChannel,
+                        newChannel,
+                        serverName,
+                        timestamp
+                    });
                 } catch (err) {
-                    console.error('Error saving voice state:', err);
+                    logError(err as Error, 'voice state update', { userId, serverName });
                 }
             }
         });
     }
 
     private initializePlayerEvents() {
-            console.log('Initializing Discord Player events...');
+            discordLogger.info('Initializing Discord Player events...');
             this.player.events.on('emptyChannel', (queue: GuildQueue) => {
                 const interaction = queue.metadata as Interaction;
                 try {
@@ -141,7 +167,7 @@ class BotApplication {
                     }
                     (interaction.channel as TextChannel).send({content : `Everyone left the channel.`, flags: ['SuppressNotifications']});
                 } catch (error) {
-                    console.error('No queue was deleted:', error);
+                    discordLogger.error('Error when handling emptyChannel:', error);
                 }
             });
             
@@ -169,7 +195,7 @@ class BotApplication {
             });
             
             this.player.events.on('playerError', (queue: GuildQueue, error: Error) => {
-                console.error(`Player Error: ${error.message}`);
+                logPlayerEvent('playerError', queue.guild?.id, { error: error.message });
             });
             
             this.player.events.on('playerStart', (queue: GuildQueue) => {
@@ -177,21 +203,23 @@ class BotApplication {
             });
             
             this.player.events.on('error', (queue: GuildQueue, error: Error) => {
-                console.error(`Queue Error: ${error.message}`);
-                console.error(queue.currentTrack);
+                logPlayerEvent('queueError', queue.guild?.id, { 
+                    error: error.message,
+                    currentTrack: queue.currentTrack?.title 
+                });
             });
             
             this.player.events.on('emptyQueue', (queue: GuildQueue) => {
                 if ( queue.connection && queue.connection.state.status !== 'destroyed') {
                     const interaction = queue.metadata as Interaction;
                     if (!interaction || !interaction.channel) {
-                        console.log("No interaction or channel found.");
+                        discordLogger.error("No interaction or channel found.");
                         return;
                     }
                     try {
-                        (interaction.channel as TextChannel).send({ content: 'The queue is now empty.' });
+                        (interaction.channel as TextChannel).send({ content: 'The queue is now empty.', flags: ['SuppressNotifications']},);
                     } catch (error) {
-                        console.error('Error when handling emptyQueue:', error);
+                        logError(error as Error, 'Queue', { interaction });
                     }
                 }
             });
@@ -199,7 +227,7 @@ class BotApplication {
         this.player.events.on('connectionDestroyed', (queue: GuildQueue) => {
                 const interaction = queue.metadata as Interaction;
                 if (!interaction || !interaction.channel) {
-                    console.error("No interaction or channel found.");
+                    discordLogger.error("No interaction or channel found.");
                     return;
                 }
                 try {
@@ -209,7 +237,7 @@ class BotApplication {
                         return;
                     }
                 } catch (error) {
-                    console.error('Error when handling connectionDestroyed:', error);
+                    logError(error as Error, 'connectionDestroyed', { interaction });
                 }
             });
             
@@ -219,7 +247,7 @@ class BotApplication {
     }
 
     private initializeRest() {
-        console.log('Initializing REST client...');
+        discordLogger.info('Initializing REST client...');
         if (!process.env.TOKEN) {
             throw new Error('TOKEN environment variable is not set.');
         }
@@ -227,7 +255,7 @@ class BotApplication {
     }
 
     private initializePlayer() {
-        console.log('Initializing Discord Player...');
+        playerLogger.info('Initializing Discord Player...');
         this.player = new Player(this.client, {
             
             skipFFmpeg: false,
@@ -241,12 +269,12 @@ class BotApplication {
         //generateWithPoToken: true,
         //authentication: process.env.YT_ACCESS_TOKEN,
         });
-        console.log(this.player.scanDeps());
-        this.player.on('debug', console.log).events.on('debug', (_, m) => console.log(m));
+        playerLogger.info(this.player.scanDeps());
+        this.player.on('debug', playerLogger.debug).events.on('debug', (_, m) => playerLogger.debug(m));
     }
     private async initializeCommands() {
         this.commands = new Collection<string, commandInterface>();
-        console.log('Loading commands...');
+        discordLogger.info('Initializing commands...');
         this.commands.set('play', new playCommand());
         this.commands.set('queue', new queueCommand());
         this.commands.set('leave', new leaveCommand());
@@ -261,6 +289,7 @@ class BotApplication {
         this.commands.set('re-add', new readdCommand());
         this.commands.set('remove', new removeCommand());
         this.commands.set('whereami', new whereami());
+        this.commands.set('error', new errorCommand());
         // Get all ids of the servers
         const guild_ids = this.client.guilds.cache.map(guild => guild.id);
 
@@ -279,20 +308,20 @@ class BotApplication {
             await this.rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID!, guildId), {
                 body: guildCommands.map(command => command.data.toJSON())
             })
-            .then(() => console.log('Successfully updated commands for guild ' + guildId))
-            .catch(console.error);
+            .then(() => discordLogger.info('Successfully updated commands for guild ' + guildId))
+            .catch(discordLogger.error);
         }
     }
 
     private updateBotStatusMessage(forced=false) {
         if (!process.env.PATH_TO_STATUS_JSON) {
-            console.error('PATH_TO_STATUS environment variable is not set.');
+            discordLogger.error('PATH_TO_STATUS_JSON environment variable is not set.');
             return;
         }
         const data: string = readFileSync(process.env.PATH_TO_STATUS_JSON!, { encoding: 'utf-8' });
         const parsedData: StatusMessage = JSON.parse(data);
         if (this.currentStatus == parsedData.status && forced == false) return;
-        console.log('Updating bot status message...');
+        discordLogger.info('Updating bot status message...');
         this.currentStatus = parsedData.status;
         (this.client.user as ClientUser).setPresence({
             activities: [{
@@ -321,26 +350,27 @@ class BotApplication {
         
         // Register the 'ready' event handler first
         this.client.on('ready', async () => {
-            console.log('Client is ready!');
+            discordLogger.info('Client is ready!');
             this.initializeRest();
             this.initializePlayer();
             await this.initializeCommands();
             this.intializeClientEvents();
             this.initializePlayerEvents();
             this.updateBotStatusMessage();
+            logBotStartup();
             cron.schedule('*/2 * * * *', () => {
-                console.log('[Cron] Running status update check...');
+                discordLogger.debug('[Cron] Running status update check...');
                 this.updateBotStatusMessage();
             });
             cron.schedule('*/30 * * * *', () => {
-                console.log('[Cron] Running forced status update...');
+                discordLogger.debug('[Cron] Running forced status update...');
                 this.updateBotStatusMessage(true);
             });
-            console.log(`[${new Date()}] Bot is online.`);
+            discordLogger.info('Bot is online and ready');
         });
         
         // Then login to Discord - this must be OUTSIDE the 'ready' handler
-        console.log('Logging in to Discord...');
+        discordLogger.info('Logging in to Discord...');
         if (!process.env.TOKEN) {
             throw new Error('TOKEN environment variable is not set.');
         }
@@ -349,8 +379,16 @@ class BotApplication {
 }
 
 async function startBot() {
-        const bot = new BotApplication();
+    const bot = new BotApplication();
+    try {
         await bot.run();
+    }
+    catch (error) {
+        logError(error as Error, 'Bot runtime', { message: 'Bot process failed.' });
+        discordLogger.debug(JSON.stringify(bot.player.queues.cache.toJSON()));
+        discordLogger.error(`Bot exited with error: ${error}`);
+    }
+
 }
 
 

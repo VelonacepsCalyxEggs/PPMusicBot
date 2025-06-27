@@ -11,6 +11,7 @@ import axios from 'axios';
 import { MusicDto, ScoredAlbum, ScoredTrack, SearchResultsDto } from 'src/types/searchResultInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from 'src/types/trackMetadata';
+import { commandLogger, logError } from '../utils/loggerUtil';
 
 export default class playCommand extends commandInterface {
     constructor() {
@@ -84,7 +85,7 @@ export default class playCommand extends commandInterface {
         // Assuming interaction is of type CommandInteraction
         const subcommand = (interaction.options as CommandInteractionOptionResolver).getSubcommand();
 
-        console.log(`Subcommand: ${subcommand}`);
+        commandLogger.info(`Subcommand used: ${subcommand}`)
 
         switch (subcommand) {
             case 'song':
@@ -100,7 +101,7 @@ export default class playCommand extends commandInterface {
     }
 
     private handleSongCommand = async (player: Player, interaction: CommandInteraction, guildQueue: GuildQueue): Promise<Message<boolean>> => {
-        console.log('Play song used.');
+        commandLogger.debug(`Handling song command with interaction: ${interaction.id}`);
         
         const argument = interaction.options.get('music')?.value;
         if (!(typeof(argument) === 'string')) {
@@ -114,7 +115,7 @@ export default class playCommand extends commandInterface {
         
         switch (sourceType) {
             case 'spotify':
-                console.log('Spotify URL detected');
+                commandLogger.debug(`Spotify URL detected: ${argument}`);
                 result = await player.search(argument, {
                     requestedBy: interaction.user,
                     searchEngine: QueryType.SPOTIFY_SEARCH
@@ -126,7 +127,7 @@ export default class playCommand extends commandInterface {
                 embed = this.createTrackEmbed(song, guildQueue.tracks.size);
                 break;
             case 'stream':
-                console.log('Live stream detected');
+                commandLogger.debug(`Stream URL detected: ${argument}`);
                 const streamUrl = this.normalizeStreamUrl(argument);
                 result = await this.searchTrack(player, streamUrl, interaction.user);
                 
@@ -137,7 +138,7 @@ export default class playCommand extends commandInterface {
                 break;
                 
             case 'external_url':
-                console.log('External URL detected');
+                commandLogger.debug(`External URL detected: ${argument}`);
                 const localPath = await this.downloadFile(argument.split('?')[0], argument);
                 result = await this.searchFile(player, localPath, interaction.user);
                 
@@ -147,7 +148,7 @@ export default class playCommand extends commandInterface {
                 break;
                 
             case 'youtube_video':
-                console.log('YouTube URL detected');
+                commandLogger.debug(`YouTube video URL detected: ${argument}`);
                 //return interaction.followUp('Oops... sorry, the DRM doomsday clock hit midnight and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
                 const cleanYoutubeUrl = this.cleanYoutubeUrl(argument);
                 result = await this.searchTrack(player, cleanYoutubeUrl, interaction.user);
@@ -160,7 +161,7 @@ export default class playCommand extends commandInterface {
                 break;
                 
             case 'youtube_playlist':
-                console.log('YouTube playlist detected');
+                commandLogger.debug(`YouTube playlist URL detected: ${argument}`);
                 //return interaction.followUp('Oops... sorry, the DRM shit hit the fan and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
                 result = await player.search(argument, {
                     requestedBy: interaction.user,
@@ -179,7 +180,7 @@ export default class playCommand extends commandInterface {
                 
             case 'search_term':
             default:
-                console.log('YouTube Search detected');
+                commandLogger.debug(`Search term detected: ${argument}`);
                 //return interaction.followUp('Oops... sorry, the fentanyl bag hit the turboprop and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
                 result = await this.searchYoutube(player, argument, interaction.user);
                 
@@ -345,14 +346,14 @@ export default class playCommand extends commandInterface {
         }
         
         try {
-            console.log('Querying database for music');
+            commandLogger.http(`Searching database for query: ${interaction.options.get('dbquery')?.value}`);
             const response = await axios.request<SearchResultsDto>({
                 method: 'POST',
                 url: `${process.env.API_URL}/music/search`,
                 data: { query: interaction.options.get('dbquery')?.value },
                 timeout: 5000, // Set a timeout of 5 seconds
             });
-            console.log(`Search response: tracks=${response.data.tracks.length}, albums=${response.data.albums.length}`);
+            commandLogger.debug(`Database response: ${JSON.stringify(response.data)}`);
             
             // First, verify we have any results at all
             if (response.data.tracks.length === 0 && response.data.albums.length === 0) {
@@ -372,7 +373,7 @@ export default class playCommand extends commandInterface {
             
             // If the highest score is below confidence threshold, show combined suggestions
             if (Math.max(highestTrackScore, highestAlbumScore) <= 25) {
-                console.log('Low confidence matches found, showing suggestions');
+                commandLogger.debug('Low confidence match found, showing suggestions');
                 
                 // Create combined suggestions list from tracks and albums
                 const combinedSuggestions: Array<{type: 'track' | 'album', name: string, score: number}> = [
@@ -410,12 +411,12 @@ export default class playCommand extends commandInterface {
             // Otherwise, proceed with the normal flow - play track or album based on which has higher score
             if (response.data.albums.length === 0 || highestTrackScore > highestAlbumScore) {
                 // Play track logic - unchanged from your existing code
-                console.log(`Found track: ${response.data.tracks[0].MusicFile[0].filePath}`);
+                commandLogger.debug(`Found track: ${response.data.tracks[0].title}`);
                 
                 // Use the file path directly, but convert it to a proper file:// URI
                 const filePath = response.data.tracks[0].MusicFile[0].filePath;
                 
-                console.log(`Using file path: ${filePath}`);
+                commandLogger.debug(`Searching for file: ${filePath}`);
                 
                 const result = await player.search(filePath, {
                     requestedBy: interaction.user,
@@ -425,7 +426,7 @@ export default class playCommand extends commandInterface {
                 if (!result || !result.tracks || result.tracks.length === 0) {
                     // Show suggestions if there are other tracks
                     if (response.data.tracks[0].score <= 25 && response.data.tracks.length > 1) {
-                        console.log('Unconfident match found, showing suggestions');
+                        commandLogger.debug('Unconfident track match found, showing suggestions');
                         const suggestions = response.data.tracks
                             .slice(0, 5)
                             .map(track => track.title)
@@ -463,9 +464,9 @@ export default class playCommand extends commandInterface {
                     )]
                 });
             } else if (response.data.albums.length > 0) {
-                console.log(`Found album: ${response.data.albums[0].name} with score ${response.data.albums[0].score}`);
+                commandLogger.debug(`Found album: ${response.data.albums[0].name}`);
                     if (response.data.albums[0].score <= 25 && response.data.albums.length > 1) {
-                        console.log('Unconfident match found, showing suggestions');
+                        commandLogger.debug('Unconfident album match found, showing suggestions');
                         const suggestions = response.data.albums
                             .slice(0, 5)
                             .map(track => track.name)
@@ -484,10 +485,9 @@ export default class playCommand extends commandInterface {
                     url: `${process.env.API_URL}/music`,
                     params: { albumId: response.data.albums[0].id, sortBy:"trackNumber", limit: 512, sortOrder: "asc" }
                 });
-                //console.log(`Album response: ${JSON.stringify(albumResponse.data)}`);
                 const foundAlbum = albumResponse.data.data as MusicDto[];
                 if (!foundAlbum || foundAlbum.length === 0) {
-                    console.log('No tracks found in the album');
+                    commandLogger.debug('No tracks found in the album');
                     return interaction.followUp({ 
                         flags: ['SuppressNotifications'],
                         embeds: [createEmbedUtil(
@@ -554,7 +554,7 @@ export default class playCommand extends commandInterface {
                     });
                     
                     if (!result || !result.tracks || result.tracks.length === 0) {
-                        console.log(`No results found for track: ${track.title}`);
+                        commandLogger.debug(`No results found for track: ${track.title}`);
                         return interaction.followUp({ 
                             flags: ['SuppressNotifications'],
                             embeds: [createEmbedUtil(
@@ -580,7 +580,7 @@ export default class playCommand extends commandInterface {
                 });
             }
         } catch (error) {
-            console.error('Error in handleFromDbCommand:', error);
+            logError(error as Error, 'playCommand.handleFromDbCommand', { interaction });
             return interaction.followUp({ 
                 flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
@@ -603,11 +603,11 @@ export default class playCommand extends commandInterface {
                 res.pipe(writeStream);
                 writeStream.on('finish', () => {
                     writeStream.close();
-                    console.log('Download completed! File saved at:', localPath);
+                    commandLogger.info('Download completed! File saved at:', localPath);
                     resolve(localPath);
                 });
             }).on('error', (err) => {
-                console.error('Error downloading file:', err.message);
+                logError(err as Error, 'Download Error', { url, localPath });
                 reject(err);
             });
         });
