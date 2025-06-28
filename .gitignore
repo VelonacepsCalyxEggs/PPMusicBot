@@ -9,3 +9,6 @@ quotes.json
 status.json
 *.js
 dist
+.env.development
+.env.production
+.env
