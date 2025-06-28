@@ -4,7 +4,7 @@ import { DefaultExtractors } from '@discord-player/extractor';
 import { YoutubeiExtractor } from 'discord-player-youtubei';
 import { Pool } from 'pg';
 import axios from 'axios';
-import { accessSync, existsSync, readFileSync, writeFileSync } from 'fs';
+import { accessSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import commandInterface from './types/commandInterface';
 import playCommand from './commands/play';
 import leaveCommand from './commands/leave';
@@ -33,6 +33,7 @@ import {
     databaseLogger,
 } from './utils/loggerUtil';
 import errorCommand from './commands/error';
+import { join } from 'path';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
@@ -328,7 +329,7 @@ class BotApplication {
             discordLogger.error('PATH_TO_STATUS_JSON environment variable is not set.');
             return;
         }
-        const data: string = readFileSync(process.env.PATH_TO_STATUS_JSON!, { encoding: 'utf-8' });
+        const data: string = readFileSync(join(process.env.PATH_TO_STATUS_JSON, 'status.json'), { encoding: 'utf-8' });
         const parsedData: StatusMessage = JSON.parse(data);
         if (this.currentStatus == parsedData.status && forced == false) return;
         discordLogger.info('Updating bot status message...');
@@ -349,7 +350,8 @@ class BotApplication {
         }
         if (!existsSync(process.env.PATH_TO_STATUS_JSON)) {
             discordLogger.warn('Status file does not exist, creating a new one.');
-            writeFileSync(process.env.PATH_TO_STATUS_JSON, JSON.stringify({ status: 'Hello There!' }, null, 2), { encoding: 'utf-8' });
+            mkdirSync(process.env.PATH_TO_STATUS_JSON.replace(/\/[^\/]+$/, ''), { recursive: true });
+            writeFileSync(join(process.env.PATH_TO_STATUS_JSON, 'status.json'), JSON.stringify({ status: 'Hello There!' }, null, 2), { encoding: 'utf-8' });
         }
     }
     // Function to check Discord statusfunction 
@@ -379,7 +381,7 @@ class BotApplication {
 
             this.checkIfStatusFileExists();
             this.updateBotStatusMessage();
-            
+
             logBotStartup();
             cron.schedule('*/2 * * * *', () => {
                 discordLogger.debug('[Cron] Running status update check...');
