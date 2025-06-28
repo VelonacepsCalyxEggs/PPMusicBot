@@ -4,7 +4,7 @@ import { DefaultExtractors } from '@discord-player/extractor';
 import { YoutubeiExtractor } from 'discord-player-youtubei';
 import { Pool } from 'pg';
 import axios from 'axios';
-import { readFileSync } from 'fs';
+import { accessSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import commandInterface from './types/commandInterface';
 import playCommand from './commands/play';
 import leaveCommand from './commands/leave';
@@ -342,6 +342,16 @@ class BotApplication {
             status: 'dnd'
         });
     }
+
+    private checkIfStatusFileExists() {
+        if (!process.env.PATH_TO_STATUS_JSON) {
+            throw new Error('PATH_TO_STATUS_JSON environment variable is not set.');
+        }
+        if (!existsSync(process.env.PATH_TO_STATUS_JSON)) {
+            discordLogger.warn('Status file does not exist, creating a new one.');
+            writeFileSync(process.env.PATH_TO_STATUS_JSON, JSON.stringify({ status: 'Hello There!' }, null, 2), { encoding: 'utf-8' });
+        }
+    }
     // Function to check Discord statusfunction 
     private async checkDiscordStatus(): Promise<string> {
         try {
@@ -366,7 +376,10 @@ class BotApplication {
             await this.initializeCommands();
             this.intializeClientEvents();
             this.initializePlayerEvents();
+
+            this.checkIfStatusFileExists();
             this.updateBotStatusMessage();
+            
             logBotStartup();
             cron.schedule('*/2 * * * *', () => {
                 discordLogger.debug('[Cron] Running status update check...');
