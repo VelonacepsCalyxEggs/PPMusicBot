@@ -2,9 +2,9 @@ import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, Voic
 import { Player, GuildQueue, Track } from 'discord-player';
 import { DefaultExtractors } from '@discord-player/extractor';
 import { YoutubeiExtractor } from 'discord-player-youtubei';
-import { Client as PgClient, Pool } from 'pg';
+import { Pool } from 'pg';
 import axios from 'axios';
-import fs, { readFileSync } from 'fs';
+import { readFileSync } from 'fs';
 import commandInterface from './types/commandInterface';
 import playCommand from './commands/play';
 import leaveCommand from './commands/leave';
@@ -31,9 +31,7 @@ import {
     discordLogger,
     playerLogger,
     databaseLogger,
-    createPerformanceLogger
 } from './utils/loggerUtil';
-import { log } from 'console';
 import errorCommand from './commands/error';
 
 // Extend the Client interface to include a 'commands' property
@@ -70,6 +68,7 @@ class BotApplication {
         databaseLogger.info('Connecting to DB...');
         this.pool.connect();
     }
+
     private initializeClient() {
         discordLogger.info('Initializing Discord client...');
         this.client = new Client({
@@ -85,48 +84,50 @@ class BotApplication {
     private intializeClientEvents() {
 
             discordLogger.info('Initializing Discord client events...');
+            // This event is triggered when any interaction is created, i.e. a message or a command.
             this.client.on('interactionCreate', async (interaction: Interaction) => {
-            if (!interaction.isCommand()) return;
-        
-            const command = this.commands.get(interaction.commandName);
-            if (!command) return;
+                if (!interaction.isCommand()) return;
+            
+                const command = this.commands.get(interaction.commandName);
+                if (!command) return;
 
-            try {
-                if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
-                
-                logCommandUsage(interaction.commandName, interaction.user.id, interaction.guildId || undefined, true);
-                
-                await command.execute({ client: this.client, player: this.player, interaction });
-            } catch (error) {
-                logError(error as Error, 'command execution', { 
-                    commandName: interaction.commandName,
-                    userId: interaction.user.id,
-                    guildId: interaction.guildId 
-                });
-                
-                logCommandUsage(interaction.commandName, interaction.user.id, interaction.guildId || undefined, false);
-                const status = await this.checkDiscordStatus();
-                discordLogger.warn('Discord API Status:', status); // Logs the status for your reference
-                // Fetch a random quote from the database
-                const res = await this.pool.query('SELECT quote_text FROM quotes ORDER BY RANDOM() LIMIT 1');
-                const randomQuote = res.rows[0].quote_text;
-                const quoteLines = randomQuote.split('\n');
-                const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
-                const randomLine = quoteLines[randomLineIndex];
+                try {
+                    if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
+                    
+                    logCommandUsage(interaction.commandName, interaction.user.id, interaction.guildId || undefined, true);
+                    
+                    await command.execute({ client: this.client, player: this.player, interaction });
+                } catch (error) {
+                    logError(error as Error, 'command execution', { 
+                        commandName: interaction.commandName,
+                        userId: interaction.user.id,
+                        guildId: interaction.guildId 
+                    });
+                    
+                    logCommandUsage(interaction.commandName, interaction.user.id, interaction.guildId || undefined, false);
+                    const status = await this.checkDiscordStatus();
+                    discordLogger.warn('Discord API Status:', status); // Logs the status for your reference
+                    // Fetch a random quote from the database
+                    const res = await this.pool.query('SELECT quote_text FROM quotes ORDER BY RANDOM() LIMIT 1');
+                    const randomQuote = res.rows[0].quote_text;
+                    const quoteLines = randomQuote.split('\n');
+                    const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
+                    const randomLine = quoteLines[randomLineIndex];
 
-                // Reply with the random line and the error message
-                if (interaction.deferred) {
-                    await interaction.editReply({
-                        content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\n Discord API Status: ${status}`
-                    });
-                } else {
-                    await (interaction.channel as TextChannel).send({
-                        content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n${randomLine}\n\n Discord API Status: ${status}`
-                    });
+                    // Reply with the random line and the error message
+                    if (interaction.deferred) {
+                        await interaction.editReply({
+                            content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\n Discord API Status: ${status}`
+                        });
+                    } else {
+                        await (interaction.channel as TextChannel).send({
+                            content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n${randomLine}\n\n Discord API Status: ${status}`
+                        });
+                    }
                 }
-            }
         });
 
+        // This event is triggered when a user joins or leaves a voice channel
         this.client.on('voiceStateUpdate', async (oldState: VoiceState, newState: VoiceState) => {
             if (oldState.channelId !== newState.channelId) {
                 const userId = newState.id;
@@ -159,6 +160,8 @@ class BotApplication {
 
     private initializePlayerEvents() {
             discordLogger.info('Initializing Discord Player events...');
+
+            // This event is triggered when everyone leaves the voice channel
             this.player.events.on('emptyChannel', (queue: GuildQueue) => {
                 const interaction = queue.metadata as Interaction;
                 try {
@@ -171,6 +174,7 @@ class BotApplication {
                 }
             });
             
+            // This event is triggered when a track finishes playing
             this.player.events.on('playerFinish', (queue: GuildQueue) => {
                 if (queue.tracks.size !== 0) {
                     const track = queue.tracks.at(0) as Track<TrackMetadata>;
@@ -185,6 +189,7 @@ class BotApplication {
                 }
             });
             
+            // This event is triggered when a track is added to the queue
             this.player.events.on('audioTrackAdd', async (queue: GuildQueue, track: Track<TrackMetadata>) => {
                 if (queue.tracks.size !== 0) {
                     const trackMeta = (queue.tracks.at(0) as Track<TrackMetadata>).metadata;
@@ -194,6 +199,7 @@ class BotApplication {
                 }
             });
             
+            // This event is triggered when the player encounters a playback error
             this.player.events.on('playerError', (queue: GuildQueue, error: Error) => {
                 logPlayerEvent('playerError', queue.guild?.id, { error: error.message });
             });
@@ -202,6 +208,7 @@ class BotApplication {
                 
             });
             
+            // This event is triggered when the player encounters a regular error.
             this.player.events.on('error', (queue: GuildQueue, error: Error) => {
                 logPlayerEvent('queueError', queue.guild?.id, { 
                     error: error.message,
@@ -209,6 +216,7 @@ class BotApplication {
                 });
             });
             
+            // This event is triggered when the queue is empty
             this.player.events.on('emptyQueue', (queue: GuildQueue) => {
                 if ( queue.connection && queue.connection.state.status !== 'destroyed') {
                     const interaction = queue.metadata as Interaction;
@@ -223,7 +231,8 @@ class BotApplication {
                     }
                 }
             });
-            
+        
+        // This event is triggered when the connection to the voice channel is destroyed
         this.player.events.on('connectionDestroyed', (queue: GuildQueue) => {
                 const interaction = queue.metadata as Interaction;
                 if (!interaction || !interaction.channel) {
@@ -240,7 +249,8 @@ class BotApplication {
                     logError(error as Error, 'connectionDestroyed', { interaction });
                 }
             });
-            
+        
+        // This event is triggered when a connection is established to a voice channel
         this.player.events.on('connection', (queue: GuildQueue) => {
             
         });
@@ -390,37 +400,5 @@ async function startBot() {
     }
 
 }
-
-
-/* function shouldHandleError(error: Error): boolean {
-    // Only handle 'terminated' errors
-    return error.message === 'terminated';
-}
-
-process.on('uncaughtException', (error) => {
-    if (shouldHandleError(error)) {
-        handleCrash(error);
-    }
-});
-
-process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-    if (shouldHandleError(reason)) {
-        handleCrash(reason);
-    }
-}); */
-
-/* function handleCrash(error: Error) {
-    const timestamp = new Date().toISOString();
-    const logMessage = `[${timestamp}] ${error.message}\n${error.stack}\n`;
-
-    fs.writeFile('./logs/crash_log.txt', logMessage, (err) => {
-        if (err) {
-            console.error('Error writing crash log:', err);
-        }
-        console.error('Caught terminated error:', error);
-        process.exit(1);  // Exit to trigger the restart
-    });
-}
- */
 // Start the bot
 startBot();
