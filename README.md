@@ -2,7 +2,7 @@
 
 A feature-rich Discord music bot built with TypeScript for the Prosto Patka Tier 9001 Discord server. This bot provides comprehensive music playback capabilities with support for YouTube, Spotify, local files, and database-stored tracks.
 
-## 🎵 Features
+## Features
 
 ### Music Playback
 - **Multiple Audio Sources**: YouTube videos/playlists, Spotify tracks, direct URLs, and local files
@@ -42,7 +42,7 @@ A feature-rich Discord music bot built with TypeScript for the Prosto Patka Tier
 - Discord Bot Token
 - FFmpeg installed on system
 
-## 🚀 Installation
+## Installation
 
 1. **Clone the repository**
    ```bash
