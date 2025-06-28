@@ -35,8 +35,8 @@ const getLogLevel = (): string => {
         return envLevel;
     }
     
-    // Default to 'info' in production, 'debug' in development
-    return process.env.NODE_ENV === 'production' ? 'info' : 'debug';
+    // Default to 'http' in production (excludes verbose, debug and silly), 'debug' in development
+    return process.env.NODE_ENV === 'production' ? 'http' : 'debug';
 };
 
 // Create custom format for console output
@@ -68,10 +68,29 @@ if (process.env.NODE_ENV !== 'production' || process.env.LOG_CONSOLE === 'true')
             level: getLogLevel()
         })
     );
+} else {
+    // In production, show the same level as files (error, warn, info, http)
+    transports.push(
+        new winston.transports.Console({
+            format: consoleFormat,
+            level: getLogLevel() // Use the same level as the main logger
+        })
+    );
 }
 
 // Add file transports
 const logsDir = path.join(process.cwd(), 'logs');
+
+// Ensure logs directory exists
+try {
+    const fs = require('fs');
+    if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir, { recursive: true });
+        console.log(`Created logs directory: ${logsDir}`);
+    }
+} catch (error) {
+    console.error('Failed to create logs directory:', error);
+}
 
 // General application logs
 transports.push(
@@ -81,7 +100,9 @@ transports.push(
         level: getLogLevel(),
         maxsize: 5242880, // 5MB
         maxFiles: 5,
-        tailable: true
+        tailable: true,
+        handleExceptions: false,
+        handleRejections: false
     })
 );
 
@@ -124,6 +145,21 @@ const logger = winston.createLogger({
             tailable: true
         })
     ]
+});
+
+// Debug logging configuration
+console.log('Logger Configuration:', {
+    nodeEnv: process.env.NODE_ENV,
+    logLevel: getLogLevel(),
+    logsDir,
+    transportCount: transports.length,
+    logConsole: process.env.LOG_CONSOLE
+});
+
+// Test log to verify logger is working
+logger.info('Logger initialized successfully', { 
+    environment: process.env.NODE_ENV || 'development',
+    level: getLogLevel()
 });
 
 // Helper functions for different logging contexts
