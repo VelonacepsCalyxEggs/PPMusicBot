@@ -698,6 +698,7 @@ export default class PlayCommand extends CommandInterface {
                 });
                 
             } catch (error) {
+                logError(error as Error, 'downloadFile', { file, url });
                 reject(error);
             }
         });

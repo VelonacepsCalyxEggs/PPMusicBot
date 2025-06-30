@@ -100,31 +100,58 @@ class BotApplication {
                     
                     await command.execute({ client: this.client, player: this.player, interaction });
                 } catch (error) {
-                    logError(error as Error, 'command execution', { 
+                    const errorObj = error as Error;
+                    logError(errorObj, 'command execution', { 
                         commandName: interaction.commandName,
                         userId: interaction.user.id,
                         guildId: interaction.guildId 
                     });
+
                     
                     logCommandUsage(interaction.commandName, interaction.user.id, interaction.guildId || undefined, false);
+                    this.player.queues.cache.forEach((queue: GuildQueue) => {
+                        if (queue.guild.id == interaction.guildId) {
+                            playerLogger.silly('IT IS POSSIBLE TO BACKUP THE QUEUE! WHEEEE!');
+                        }
+                    });
+                    // Check if it's a YouTube/extractor related error
+                    let errorMessage = "Oops! Something went wrong.";
+                    if (errorObj.message.includes('fetch failed') || errorObj.message.includes('ConnectTimeoutError') || errorObj.message.includes('youtubei')) {
+                        errorMessage = "YouTube connection timeout occurred. This is usually temporary - please try again in a moment.";
+                    }
+                    
                     const status = await this.checkDiscordStatus();
                     discordLogger.warn('Discord API Status:', status); // Logs the status for your reference
+                    
                     // Fetch a random quote from the database
-                    const res = await this.pool.query('SELECT quote_text FROM quotes ORDER BY RANDOM() LIMIT 1');
-                    const randomQuote = res.rows[0].quote_text;
-                    const quoteLines = randomQuote.split('\n');
-                    const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
-                    const randomLine = quoteLines[randomLineIndex];
+                    try {
+                        const res = await this.pool.query('SELECT quote_text FROM quotes ORDER BY RANDOM() LIMIT 1');
+                        const randomQuote = res.rows[0].quote_text;
+                        const quoteLines = randomQuote.split('\n');
+                        const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
+                        const randomLine = quoteLines[randomLineIndex];
 
-                    // Reply with the random line and the error message
-                    if (interaction.deferred) {
-                        await interaction.editReply({
-                            content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n"${randomLine}"\n\n Discord API Status: ${status}`
-                        });
-                    } else {
-                        await (interaction.channel as TextChannel).send({
-                            content: `Oops! Something went wrong. Here's a random quote to lighten the mood:\n${randomLine}\n\n Discord API Status: ${status}`
-                        });
+                        // Reply with the random line and the error message
+                        if (interaction.deferred) {
+                            await interaction.editReply({
+                                content: `${errorMessage}\n\nHere's a random quote to lighten the mood:\n"${randomLine}"\n\nDiscord API Status: ${status}`
+                            });
+                        } else {
+                            await (interaction.channel as TextChannel).send({
+                                content: `${errorMessage}\nHere's a random quote:\n"${randomLine}"\n\nDiscord API Status: ${status}`
+                            });
+                        }
+                    } catch (quoteError) {
+                        // Fallback if quote fetching fails
+                        if (interaction.deferred) {
+                            await interaction.editReply({
+                                content: `${errorMessage}\n\nDiscord API Status: ${status}`
+                            });
+                        } else {
+                            await (interaction.channel as TextChannel).send({
+                                content: `${errorMessage}\n\nDiscord API Status: ${status}`
+                            });
+                        }
                     }
                 }
         });
@@ -204,6 +231,33 @@ class BotApplication {
             // This event is triggered when the player encounters a playback error
             this.player.events.on('playerError', (queue: GuildQueue, error: Error) => {
                 logPlayerEvent('playerError', queue.guild?.id, { error: error.message });
+                
+                // Check if it's a YouTube/extractor related error
+                if (error.message.includes('fetch failed') || error.message.includes('ConnectTimeoutError') || error.message.includes('youtubei')) {
+                    playerLogger.warn('YouTube extractor error detected, attempting recovery...');
+                    
+                    const interaction = queue.metadata as Interaction;
+                    if (interaction && interaction.channel) {
+                        try {
+                            (interaction.channel as TextChannel).send({
+                                content: '⚠️ Connection timeout occurred while fetching track data. Attempting to continue...',
+                                flags: ['SuppressNotifications']
+                            });
+                        } catch (sendError) {
+                            logError(sendError as Error, 'error_message_send', { guildId: queue.guild?.id });
+                        }
+                    }
+                    
+                    // Try to skip to next track if available
+                    if (queue.tracks.size > 0) {
+                        try {
+                            queue.node.skip();
+                            playerLogger.info('Skipped problematic track due to extractor error');
+                        } catch (skipError) {
+                            logError(skipError as Error, 'recovery_skip_failed', { guildId: queue.guild?.id });
+                        }
+                    }
+                }
             });
             
             this.player.events.on('playerStart', (queue: GuildQueue) => {
@@ -269,20 +323,58 @@ class BotApplication {
     private initializePlayer() {
         playerLogger.info('Initializing Discord Player...');
         this.player = new Player(this.client, {
-            
             skipFFmpeg: false,
-        }
-    );
-        this.player.extractors.loadMulti(DefaultExtractors);
-        this.player.extractors.register(YoutubeiExtractor, {
-               streamOptions: {
-            useClient: "WEB_EMBEDDED",
-        },
-        //generateWithPoToken: true,
-        //authentication: process.env.YT_ACCESS_TOKEN,
         });
-        playerLogger.info(this.player.scanDeps());
-        this.player.on('debug', playerLogger.debug).events.on('debug', (_, m) => playerLogger.debug(m));
+        
+        try {
+            this.player.extractors.loadMulti(DefaultExtractors);
+            
+            // Initialize YouTube extractor with additional error handling
+            try {
+                this.player.extractors.register(YoutubeiExtractor, {
+                    streamOptions: {
+                        useClient: "WEB_EMBEDDED",
+                        // Add timeout and retry options if available
+                    },
+                    // Add any timeout configurations
+                    //generateWithPoToken: true,
+                    //authentication: process.env.YT_ACCESS_TOKEN,
+                });
+                playerLogger.info('YouTube extractor registered successfully');
+            } catch (youtubeError) {
+                logError(youtubeError as Error, 'youtube_extractor_init', { message: 'Failed to register YouTube extractor' });
+                playerLogger.warn('YouTube extractor failed to initialize, some features may not work');
+            }
+            
+            playerLogger.info(this.player.scanDeps());
+            
+            // Add error handling for the player itself
+            this.player.on('debug', playerLogger.debug);
+            this.player.events.on('debug', (_, m) => playerLogger.debug(m));
+            
+            // Add error handler for extractor errors
+            this.player.events.on('error', (queue: GuildQueue, error: Error) => {
+                logError(error, 'player_error', {
+                    guildId: queue.guild?.id,
+                    currentTrack: queue.currentTrack?.title,
+                    queueSize: queue.tracks.size
+                });
+                
+                // Try to recover by skipping the current track if possible
+                if (queue.currentTrack && queue.tracks.size > 0) {
+                    try {
+                        queue.node.skip();
+                        playerLogger.info('Skipped problematic track and continued playback');
+                    } catch (skipError) {
+                        logError(skipError as Error, 'skip_after_error', { guildId: queue.guild?.id });
+                    }
+                }
+            });
+            
+        } catch (error) {
+            logError(error as Error, 'player_initialization', { message: 'Failed to initialize player' });
+            throw error;
+        }
     }
     private async initializeCommands() {
         this.commands = new Collection<string, CommandInterface>();
@@ -367,7 +459,57 @@ class BotApplication {
         }
     }
 
+    private setupGlobalErrorHandlers() {
+        // Handle unhandled promise rejections
+        process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+            logError(
+                new Error(`Unhandled Rejection: ${reason}`), 
+                'unhandledRejection', 
+                { 
+                    reason: reason?.toString(),
+                    stack: reason?.stack,
+                    promise: promise.toString()
+                }
+            );
+            
+            // Don't exit the process, just log the error
+            discordLogger.error('Unhandled Promise Rejection caught:', reason);
+        });
+
+        // Handle uncaught exceptions
+        process.on('uncaughtException', (error: Error) => {
+            logError(error, 'uncaughtException', { 
+                message: 'Critical error occurred',
+                stack: error.stack 
+            });
+            
+            discordLogger.error('Uncaught Exception:', error);
+            
+            // For uncaught exceptions, we should exit gracefully
+            process.exit(1);
+        });
+
+        // Handle SIGINT (Ctrl+C)
+        process.on('SIGINT', () => {
+            discordLogger.info('Received SIGINT, shutting down gracefully...');
+            this.client.destroy();
+            this.pool.end();
+            process.exit(0);
+        });
+
+        // Handle SIGTERM
+        process.on('SIGTERM', () => {
+            discordLogger.info('Received SIGTERM, shutting down gracefully...');
+            this.client.destroy();
+            this.pool.end();
+            process.exit(0);
+        });
+    }
+
     public async run() {
+        // Setup global error handlers first
+        this.setupGlobalErrorHandlers();
+        
         await this.initializeDatabase();
         this.initializeClient();
         
