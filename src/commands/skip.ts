@@ -3,6 +3,7 @@ import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { useQueue, Track } from 'discord-player';
 import commandInterface from '../types/commandInterface';
 import TrackMetadata from '../types/trackMetadata';
+import { logError } from 'src/utils/loggerUtil';
 
 export default class skipCommand extends commandInterface {
     data = new SlashCommandBuilder()
@@ -10,16 +11,16 @@ export default class skipCommand extends commandInterface {
         .setDescription('Skips the current song')
     execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
         // Get the queue for the server
-        if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
+        if (!interaction.guild || !interaction.guildId) return interaction.reply({ content: 'You need to be in a guild.', ephemeral: true });
         const queue = useQueue(interaction.guild);
 
         // If there is no queue, return
         if (!queue) {
-            await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
+            await interaction.reply({ content: 'There is no queue!', ephemeral: true });
             return;
         } 
         const currentSong = queue.currentTrack as Track<TrackMetadata>;
-        if (!currentSong) return interaction.followUp({ content: 'No song is currently playing.', flags: ['Ephemeral'] });
+        if (!currentSong) return interaction.reply({ content: 'No song is currently playing.', ephemeral: true });
         
         const metadata = currentSong.metadata;
         if (!metadata) {
@@ -47,7 +48,12 @@ export default class skipCommand extends commandInterface {
         }
         
         // Skip the current song
-        queue.node.skip();
+        try {
+            queue.node.skip();
+        } catch (error) {
+            logError(error);
+            return interaction.reply({ content: 'Failed to skip the current song.', ephemeral: true });
+        }
         
         // Create an embed to inform the user with metadata-aware properties
         const embed = new EmbedBuilder()
