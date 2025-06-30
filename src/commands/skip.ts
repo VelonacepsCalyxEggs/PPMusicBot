@@ -3,7 +3,7 @@ import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { useQueue, Track } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import TrackMetadata from '../types/trackMetadata';
-import { logError } from 'src/utils/loggerUtil';
+import { logError } from '../utils/loggerUtil';
 
 export default class SkipCommand extends CommandInterface {
     data = new SlashCommandBuilder()

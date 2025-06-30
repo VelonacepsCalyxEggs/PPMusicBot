@@ -8,9 +8,9 @@ import path from 'path';
 import CommandInterface from '../types/commandInterface';
 import { createEmbedUtil } from '../utils/createEmbedUtil';
 import axios from 'axios';
-import { MusicDto, ScoredAlbum, ScoredTrack, SearchResultsDto } from 'src/types/searchResultInterface';
+import { MusicDto, ScoredAlbum, ScoredTrack, SearchResultsDto } from '../types/searchResultInterface';
 import formatDuration from '../utils/formatDurationUtil';
-import TrackMetadata from 'src/types/trackMetadata';
+import TrackMetadata from '../types/trackMetadata';
 import { commandLogger, logError } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
 
