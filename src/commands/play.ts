@@ -241,7 +241,7 @@ export default class PlayCommand extends CommandInterface {
         return url;
     }
 
-    // Helper to normalize stream URLs
+    // This is a hardcoded thing, which will be replaced with a proper implementation later...
     private normalizeStreamUrl(url: string): string {
         if (url.includes('funckenobi42.space')) {
             return 'http://127.0.0.1:55060/stream.mp3';
@@ -334,15 +334,7 @@ export default class PlayCommand extends CommandInterface {
                 iconURL: interaction.user.displayAvatarURL(),
             });
 
-        await guildQueue.play(song, {
-            nodeOptions: {
-                metadata: interaction,
-                noEmitInsert: true,
-                leaveOnEnd: false,
-                leaveOnEmpty: false,
-                leaveOnStop: false,
-            },
-        });
+        await this.playTrack(song, guildQueue, interaction);
 
         await interaction.followUp({ embeds: [embed] });
     };
@@ -379,7 +371,7 @@ export default class PlayCommand extends CommandInterface {
             const highestAlbumScore = response.data.albums.length > 0 ? response.data.albums[0].score : 0;
             
             // If the highest score is below confidence threshold, show combined suggestions
-            if (Math.max(highestTrackScore, highestAlbumScore) <= 25) {
+            if (Math.max(highestTrackScore, highestAlbumScore) <= 300) {
                 commandLogger.debug('Low confidence match found, showing suggestions');
                 
                 // Create combined suggestions list from tracks and albums
@@ -472,7 +464,7 @@ export default class PlayCommand extends CommandInterface {
                 });
             } else if (response.data.albums.length > 0) {
                 commandLogger.debug(`Found album: ${response.data.albums[0].name}`);
-                    if (response.data.albums[0].score <= 25 && response.data.albums.length > 1) {
+                    if (response.data.albums[0].score <= 300 && response.data.albums.length > 1) {
                         commandLogger.debug('Unconfident album match found, showing suggestions');
                         const suggestions = response.data.albums
                             .slice(0, 5)
