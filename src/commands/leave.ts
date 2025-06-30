@@ -1,9 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 
-export default class leaveCommand extends commandInterface {
+export default class LeaveCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('leave')
         .setDescription('Drops the queue and leaves from the channel.')

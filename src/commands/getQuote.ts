@@ -1,9 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction } from 'discord.js';
 import { Pool } from 'pg';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 
-export default class getQuouteCommand extends commandInterface {
+export default class GetQuouteCommand extends CommandInterface {
     private pool: Pool;
     data = new SlashCommandBuilder()
         .setName('getquote')

@@ -1,9 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { useQueue, QueueRepeatMode } from 'discord-player';
 import { Client, CommandInteraction, EmbedBuilder } from 'discord.js';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 
-export default class loopCommand extends commandInterface {
+export default class LoopCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('loop')
         .setDescription('Loops with the given mode.')

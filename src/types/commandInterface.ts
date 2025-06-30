@@ -2,7 +2,7 @@ import { SlashCommandBuilder, CommandInteraction, Message, InteractionResponse, 
 import { SlashCommandSubcommandsOnlyBuilder, SlashCommandOptionsOnlyBuilder } from "@discordjs/builders";
 import { Player } from "discord-player";
 
-export default abstract class commandInterface {
+export default abstract class CommandInterface {
     data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder | SlashCommandOptionsOnlyBuilder;
     execute: ({ client, player, interaction }: {
         client?: Client;

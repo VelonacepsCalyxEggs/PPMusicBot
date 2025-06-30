@@ -1,8 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { QueryType, useQueue } from 'discord-player';
+import CommandInterface from '../types/commandInterface';
 
-export default class moveCommand {
+export default class MoveCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('move')
         .setDescription('moves the track from one index to another index.')

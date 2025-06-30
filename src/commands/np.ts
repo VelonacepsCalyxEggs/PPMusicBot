@@ -1,11 +1,11 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { Track, useQueue } from 'discord-player';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
 
-export default class nowPlayingCommand extends commandInterface {
+export default class NowPlayingCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('np')
         .setDescription('Gets the currently playing song.')

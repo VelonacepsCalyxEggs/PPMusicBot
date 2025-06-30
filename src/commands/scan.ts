@@ -2,9 +2,9 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { Client, CommandInteraction, EmbedBuilder, TextChannel } from 'discord.js';
 import * as fs from 'fs';
 import * as path from 'path';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 
-export default class scanCommand extends commandInterface {
+export default class ScanCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('scan')
         .setDescription('Extracts messages from a channel and saves them to a file for debugging.')

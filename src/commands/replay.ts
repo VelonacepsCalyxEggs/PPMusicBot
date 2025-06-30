@@ -1,9 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { useQueue } from 'discord-player';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 
-export default class replayCommand extends commandInterface {
+export default class ReplayCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('replay')
         .setDescription('Skips the current song and plays it again.')

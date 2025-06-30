@@ -5,21 +5,7 @@ import { YoutubeiExtractor } from 'discord-player-youtubei';
 import { Pool } from 'pg';
 import axios from 'axios';
 import { accessSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import commandInterface from './types/commandInterface';
-import playCommand from './commands/play';
-import leaveCommand from './commands/leave';
-import loopCommand from './commands/loop';
-import moveCommand from './commands/move';
-import nowPlayingCommand  from './commands/np';
-import pauseCommand  from './commands/pause';
-import scanCommand from './commands/scan';
-import shuffleCommand from './commands/shuffle';
-import skipCommand from './commands/skip';
-import replayCommand from './commands/replay';
-import readdCommand from './commands/re-add';
-import removeCommand from './commands/remove';
-import whereami from './commands/whereami';
-import queueCommand from './commands/queue';
+import CommandInterface from './types/commandInterface';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
 import TrackMetadata from './types/trackMetadata';
@@ -34,11 +20,26 @@ import {
 } from './utils/loggerUtil';
 import errorCommand from './commands/error';
 import { join } from 'path';
+import ErrorCommand from './commands/error';
+import LeaveCommand from './commands/leave';
+import LoopCommand from './commands/loop';
+import MoveCommand from './commands/move';
+import NowPlayingCommand from './commands/np';
+import PauseCommand from './commands/pause';
+import PlayCommand from './commands/play';
+import QueueCommand from './commands/queue';
+import ReaddCommand from './commands/re-add';
+import RemoveCommand from './commands/remove';
+import ReplayCommand from './commands/replay';
+import ScanCommand from './commands/scan';
+import ShuffleCommand from './commands/shuffle';
+import SkipCommand from './commands/skip';
+import WhereAmICommand from './commands/whereami';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
     interface Client {
-        commands: Collection<string, commandInterface>;
+        commands: Collection<string, CommandInterface>;
     }
 }
 interface StatusMessage {
@@ -49,7 +50,7 @@ class BotApplication {
     private rest: REST;
     public player: Player;
     public pool: Pool;
-    public commands: Collection<string, commandInterface>;
+    public commands: Collection<string, CommandInterface>;
     private restrictedCommands: { [key: string]: string } = {
             scan: '644950708160036864',
             error: '644950708160036864',
@@ -284,29 +285,29 @@ class BotApplication {
         this.player.on('debug', playerLogger.debug).events.on('debug', (_, m) => playerLogger.debug(m));
     }
     private async initializeCommands() {
-        this.commands = new Collection<string, commandInterface>();
+        this.commands = new Collection<string, CommandInterface>();
         discordLogger.info('Initializing commands...');
-        this.commands.set('play', new playCommand());
-        this.commands.set('queue', new queueCommand());
-        this.commands.set('leave', new leaveCommand());
-        this.commands.set('loop', new loopCommand());
-        this.commands.set('move', new moveCommand());
-        this.commands.set('np', new nowPlayingCommand());
-        this.commands.set('pause', new pauseCommand());
-        this.commands.set('scan', new scanCommand());
-        this.commands.set('shuffle', new shuffleCommand());
-        this.commands.set('skip', new skipCommand());
-        this.commands.set('replay', new replayCommand());
-        this.commands.set('re-add', new readdCommand());
-        this.commands.set('remove', new removeCommand());
-        this.commands.set('whereami', new whereami());
-        this.commands.set('error', new errorCommand());
+        this.commands.set('play', new PlayCommand());
+        this.commands.set('queue', new QueueCommand());
+        this.commands.set('leave', new LeaveCommand());
+        this.commands.set('loop', new LoopCommand());
+        this.commands.set('move', new MoveCommand());
+        this.commands.set('np', new NowPlayingCommand());
+        this.commands.set('pause', new PauseCommand());
+        this.commands.set('scan', new ScanCommand());
+        this.commands.set('shuffle', new ShuffleCommand());
+        this.commands.set('skip', new SkipCommand());
+        this.commands.set('replay', new ReplayCommand());
+        this.commands.set('re-add', new ReaddCommand());
+        this.commands.set('remove', new RemoveCommand());
+        this.commands.set('whereami', new WhereAmICommand());
+        this.commands.set('error', new ErrorCommand());
         // Get all ids of the servers
         const guild_ids = this.client.guilds.cache.map(guild => guild.id);
 
         for (const guildId of guild_ids) {
             // Convert the commands map to an array and then filter based on the guild ID
-            const guildCommands = Array.from(this.commands.values()).filter((command: commandInterface) => {
+            const guildCommands = Array.from(this.commands.values()).filter((command: CommandInterface) => {
                 // If the command is restricted, check if the guild ID matches
                 if (this.restrictedCommands[command.data.name]) {
                     return this.restrictedCommands[command.data.name] === guildId;

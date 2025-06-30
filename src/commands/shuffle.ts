@@ -1,9 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { CommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 
-export default class shuffleCommand extends commandInterface {
+export default class ShuffleCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('shuffle')
         .setDescription('Shuffles the playlist')

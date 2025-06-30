@@ -1,11 +1,11 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client, ActionRowBuilder, ButtonBuilder, ButtonStyle, Message, ButtonInteraction } from 'discord.js';
 import { useQueue, Track } from 'discord-player';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
 
-export default class queueCommand extends commandInterface {
+export default class QueueCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('queue')
         .setDescription('show the queue')

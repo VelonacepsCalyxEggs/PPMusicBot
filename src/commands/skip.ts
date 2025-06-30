@@ -1,11 +1,11 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { useQueue, Track } from 'discord-player';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 import TrackMetadata from '../types/trackMetadata';
 import { logError } from 'src/utils/loggerUtil';
 
-export default class skipCommand extends commandInterface {
+export default class SkipCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('skip')
         .setDescription('Skips the current song')

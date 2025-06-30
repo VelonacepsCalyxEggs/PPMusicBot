@@ -5,7 +5,7 @@ import https from 'https';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 import { createEmbedUtil } from '../utils/createEmbedUtil';
 import axios from 'axios';
 import { MusicDto, ScoredAlbum, ScoredTrack, SearchResultsDto } from 'src/types/searchResultInterface';
@@ -14,7 +14,7 @@ import TrackMetadata from 'src/types/trackMetadata';
 import { commandLogger, logError } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
 
-export default class playCommand extends commandInterface {
+export default class PlayCommand extends CommandInterface {
     constructor() {
         super();
     }
@@ -598,7 +598,7 @@ export default class playCommand extends commandInterface {
             });
         }
     };    
-    
+
     private async getfileMD5(filePath: string): Promise<string> {
         return new Promise((resolve, reject) => {
             const hash = createHash('md5');

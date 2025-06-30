@@ -1,8 +1,8 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { Client, CommandInteraction, EmbedBuilder } from 'discord.js';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 
-export default class whereAmICommand extends commandInterface {
+export default class WhereAmICommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('whereami')
         .setDescription('Returns all servers the bot is currently in.')

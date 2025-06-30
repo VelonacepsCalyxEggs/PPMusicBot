@@ -1,9 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { useQueue } from 'discord-player';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 
-export default class readdCommand extends commandInterface {
+export default class ReaddCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('re-add')
         .setDescription('Adds the current song to the queue.')

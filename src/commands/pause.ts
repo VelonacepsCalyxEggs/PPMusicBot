@@ -1,9 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
  
-export default class pauseCommand extends commandInterface {
+export default class PauseCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('pause')
         .setDescription('Pauses the playback. Use again to unpause.')

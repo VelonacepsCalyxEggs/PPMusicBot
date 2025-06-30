@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, TextChannel, Client } from 'discord.js';
 import { Pool } from 'pg';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 
 // I FUCKING HATE REGEX
 // NOTHING EVER HAPPENS
@@ -9,7 +9,7 @@ import commandInterface from '../types/commandInterface';
 // MORE REGEX
 // FUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUCK
 
-export default class parseQuotesCommand extends commandInterface {
+export default class ParseQuotesCommand extends CommandInterface {
     private pool: Pool;
     private QUOTE_DEBUG_MODE = process.env.DEBUG_MODE === 'true'; // Use environment variable for debug mode
 

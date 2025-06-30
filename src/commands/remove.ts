@@ -1,9 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
 import { useQueue, GuildQueue } from 'discord-player';
-import commandInterface from '../types/commandInterface';
+import CommandInterface from '../types/commandInterface';
 
-export default class removeCommand extends commandInterface {
+export default class RemoveCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('remove')
         .setDescription('removes the track with an index.')
