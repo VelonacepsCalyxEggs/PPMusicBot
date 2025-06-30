@@ -35,6 +35,7 @@ import ScanCommand from './commands/scan';
 import ShuffleCommand from './commands/shuffle';
 import SkipCommand from './commands/skip';
 import WhereAmICommand from './commands/whereami';
+import RecoverCommand from './commands/recover';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
@@ -109,11 +110,7 @@ class BotApplication {
 
                     
                     logCommandUsage(interaction.commandName, interaction.user.id, interaction.guildId || undefined, false);
-                    this.player.queues.cache.forEach((queue: GuildQueue) => {
-                        if (queue.guild.id == interaction.guildId) {
-                            playerLogger.silly('IT IS POSSIBLE TO BACKUP THE QUEUE! WHEEEE!');
-                        }
-                    });
+
                     // Check if it's a YouTube/extractor related error
                     let errorMessage = "Oops! Something went wrong.";
                     if (errorObj.message.includes('fetch failed') || errorObj.message.includes('ConnectTimeoutError') || errorObj.message.includes('youtubei')) {
@@ -394,6 +391,7 @@ class BotApplication {
         this.commands.set('remove', new RemoveCommand());
         this.commands.set('whereami', new WhereAmICommand());
         this.commands.set('error', new ErrorCommand());
+        this.commands.set('recover', new RecoverCommand());
         // Get all ids of the servers
         const guild_ids = this.client.guilds.cache.map(guild => guild.id);
 
