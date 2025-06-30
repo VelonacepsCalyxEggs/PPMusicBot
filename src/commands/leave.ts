@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, CommandInteraction } from 'discord.js';
+import { EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 
@@ -8,7 +8,7 @@ export default class LeaveCommand extends CommandInterface {
         .setName('leave')
         .setDescription('Drops the queue and leaves from the channel.')
 
-    execute = async ({ interaction }: { interaction: CommandInteraction }) : Promise<void | import('discord.js').InteractionResponse | import('discord.js').Message> => {
+    execute = async ({ interaction }: { interaction: ChatInputCommandInteraction }) : Promise<void | import('discord.js').InteractionResponse | import('discord.js').Message> => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId) {
             return interaction.followUp({content: 'You need to be in a guild.', flags: ['Ephemeral']});

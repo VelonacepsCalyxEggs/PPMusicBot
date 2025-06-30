@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { Client, CommandInteraction, EmbedBuilder, TextChannel } from 'discord.js';
+import { Client, ChatInputCommandInteraction, EmbedBuilder, TextChannel } from 'discord.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import CommandInterface from '../types/commandInterface';
@@ -16,7 +16,7 @@ export default class ScanCommand extends CommandInterface {
             option.setName('limit')
                 .setDescription('The number of messages to scan')
                 .setRequired(true))
-    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         await interaction.deferReply({ flags: ['Ephemeral'] });
         
         // Get command options

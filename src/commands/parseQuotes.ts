@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, CommandInteraction, TextChannel, Client } from 'discord.js';
+import { EmbedBuilder, ChatInputCommandInteraction, TextChannel, Client } from 'discord.js';
 import { Pool } from 'pg';
 import CommandInterface from '../types/commandInterface';
 
@@ -32,7 +32,7 @@ export default class ParseQuotesCommand extends CommandInterface {
                 .setRequired(false)
         )
 
-    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         await interaction.deferReply({ flags: ['Ephemeral'] });
         const debug = Boolean(interaction.options.get('debug')?.value) || this.QUOTE_DEBUG_MODE;
         console.log(debug)

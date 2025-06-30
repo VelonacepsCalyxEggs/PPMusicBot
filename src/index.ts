@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, VoiceState, Interaction, TextChannel, CommandInteraction, ClientUser, NewsChannel } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, VoiceState, Interaction, TextChannel, ChatInputCommandInteraction, ClientUser, NewsChannel } from 'discord.js';
 import { Player, GuildQueue, Track } from 'discord-player';
 import { DefaultExtractors } from '@discord-player/extractor';
 import { YoutubeiExtractor } from 'discord-player-youtubei';
@@ -88,7 +88,7 @@ class BotApplication {
 
             discordLogger.info('Initializing Discord client events...');
             // This event is triggered when any interaction is created, i.e. a message or a command.
-            this.client.on('interactionCreate', async (interaction: Interaction) => {
+            this.client.on('interactionCreate', async (interaction: ChatInputCommandInteraction) => {
                 if (!interaction.isCommand()) return;
             
                 const command = this.commands.get(interaction.commandName);
@@ -469,9 +469,6 @@ class BotApplication {
                     promise: promise.toString()
                 }
             );
-            
-            // Don't exit the process, just log the error
-            discordLogger.error('Unhandled Promise Rejection caught:', reason);
         });
 
         // Handle uncaught exceptions

@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { CommandInteraction } from 'discord.js';
+import { ChatInputCommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 
@@ -16,7 +16,7 @@ export default class ShuffleCommand extends CommandInterface {
                     { name: 'Durstenfeld', value: 'df' },
                     { name: 'Sattolo', value: 'st' },
                 ))
-    execute = async ({ interaction }: { interaction: CommandInteraction }) => {
+    execute = async ({ interaction }: { interaction: ChatInputCommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
         if (!queue) {

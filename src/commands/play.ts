@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { CommandInteraction, CommandInteractionOptionResolver, EmbedBuilder, GuildMember, Message, User } from 'discord.js';
+import { ChatInputCommandInteraction, CommandInteractionOptionResolver, EmbedBuilder, GuildMember, Message, User } from 'discord.js';
 import { QueryType, useQueue, GuildQueue, Player, useMainPlayer, Track, SearchResult } from 'discord-player';
 import https from 'https';
 import http from 'http';
@@ -46,7 +46,7 @@ export default class PlayCommand extends CommandInterface {
                     option.setName('file').setDescription('play\'s the song').setRequired(true)
                 )
         )
-    execute = async ({ interaction }: { interaction: CommandInteraction }) => {
+    execute = async ({ interaction }: { interaction: ChatInputCommandInteraction }) => {
         await interaction.deferReply();
 
         if (!(interaction.member as GuildMember).voice.channel) {
@@ -83,7 +83,7 @@ export default class PlayCommand extends CommandInterface {
 
 
     
-        // Assuming interaction is of type CommandInteraction
+        // Assuming interaction is of type ChatInputCommandInteraction
         const subcommand = (interaction.options as CommandInteractionOptionResolver).getSubcommand();
 
         commandLogger.info(`Subcommand used: ${subcommand}`)
@@ -101,7 +101,7 @@ export default class PlayCommand extends CommandInterface {
         }
     }
 
-    private handleSongCommand = async (player: Player, interaction: CommandInteraction, guildQueue: GuildQueue): Promise<Message<boolean>> => {
+    private handleSongCommand = async (player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<Message<boolean>> => {
         commandLogger.debug(`Handling song command with interaction: ${interaction.id}`);
         
         const argument = interaction.options.get('music')?.value;
@@ -275,7 +275,7 @@ export default class PlayCommand extends CommandInterface {
 
     // Helper to play a track
     // To optimize, it's probably best to pass a list of tracks.
-    private async playTrack(track: Track, queue: GuildQueue, interaction: CommandInteraction, scoredTrack?: ScoredTrack): Promise<void> {
+    private async playTrack(track: Track, queue: GuildQueue, interaction: ChatInputCommandInteraction, scoredTrack?: ScoredTrack): Promise<void> {
         const metadata = track.metadata as TrackMetadata;
         const newMetadata: TrackMetadata = {
             interaction,
@@ -311,7 +311,7 @@ export default class PlayCommand extends CommandInterface {
         );
     }
 
-    private async handleFileCommand(player: Player, interaction: CommandInteraction, guildQueue: GuildQueue) {
+    private async handleFileCommand(player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue) {
         const file = interaction.options.get('file')?.attachment;
         if (!file) {
             return interaction.followUp("No file attachment found");
@@ -339,7 +339,7 @@ export default class PlayCommand extends CommandInterface {
         await interaction.followUp({ embeds: [embed] });
     };
 
-    private handleFromDbCommand = async (player: Player, interaction: CommandInteraction, guildQueue: GuildQueue) => {
+    private handleFromDbCommand = async (player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue) => {
         if (!process.env.API_URL) {
             return interaction.followUp('API URL is not set. Please contact the bot owner.');
         }

@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
+import { EmbedBuilder, ChatInputCommandInteraction, Client } from 'discord.js';
 import { Track, useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import formatDuration from '../utils/formatDurationUtil';
@@ -10,7 +10,7 @@ export default class NowPlayingCommand extends CommandInterface {
         .setName('np')
         .setDescription('Gets the currently playing song.')
 
-    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId) return interaction.followUp('You need to be in a guild.');
         const queue = useQueue(interaction.guild);

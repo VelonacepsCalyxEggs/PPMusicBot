@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, CommandInteraction, Message, InteractionResponse, Client } from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction, Message, InteractionResponse, Client } from "discord.js";
 import { SlashCommandSubcommandsOnlyBuilder, SlashCommandOptionsOnlyBuilder } from "@discordjs/builders";
 import { Player } from "discord-player";
 
@@ -7,6 +7,6 @@ export default abstract class CommandInterface {
     execute: ({ client, player, interaction }: {
         client?: Client;
         player?: Player;
-        interaction: CommandInteraction;
+        interaction: ChatInputCommandInteraction;
     }) => Promise<void | InteractionResponse<boolean> | Message<any>>;
 }

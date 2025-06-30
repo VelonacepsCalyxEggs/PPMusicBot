@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, CommandInteraction } from 'discord.js';
+import { EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { Pool } from 'pg';
 import CommandInterface from '../types/commandInterface';
 
@@ -13,7 +13,7 @@ export default class GetQuouteCommand extends CommandInterface {
                 .setDescription('Quote ID (leave empty for random)')
                 .setRequired(false)
         )
-    execute = async ({ interaction }: { interaction: CommandInteraction }) => {
+    execute = async ({ interaction }: { interaction: ChatInputCommandInteraction }) => {
         await interaction.deferReply({ flags: ['Ephemeral'] });
         const pool = new Pool({connectionString: process.env.DATABASE_URL});
         try {

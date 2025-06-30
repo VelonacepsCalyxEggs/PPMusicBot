@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, CommandInteraction } from 'discord.js';
+import { EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
  
@@ -9,7 +9,7 @@ export default class PauseCommand extends CommandInterface {
         .setDescription('Pauses the playback. Use again to unpause.')
 
 
-    execute = async ({ client, interaction }: { client: any; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: any; interaction: ChatInputCommandInteraction }) => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);

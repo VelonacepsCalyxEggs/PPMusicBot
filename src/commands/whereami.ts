@@ -1,12 +1,12 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { Client, CommandInteraction, EmbedBuilder } from 'discord.js';
+import { Client, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import CommandInterface from '../types/commandInterface';
 
 export default class WhereAmICommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('whereami')
         .setDescription('Returns all servers the bot is currently in.')
-    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         await interaction.deferReply({ flags: ['Ephemeral'] });
 
         const guildIds = client.guilds.cache.map(guild => guild.id);

@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, CommandInteraction, Client, ActionRowBuilder, ButtonBuilder, ButtonStyle, Message, ButtonInteraction } from 'discord.js';
+import { EmbedBuilder, ChatInputCommandInteraction, Client, ActionRowBuilder, ButtonBuilder, ButtonStyle, Message, ButtonInteraction } from 'discord.js';
 import { useQueue, Track } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import formatDuration from '../utils/formatDurationUtil';
@@ -14,7 +14,7 @@ export default class QueueCommand extends CommandInterface {
                 .setDescription('page number')
                 .setRequired(false)
         )
-    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId) {
             return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         }

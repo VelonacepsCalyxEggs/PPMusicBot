@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, CommandInteraction, Client } from 'discord.js';
+import { EmbedBuilder, ChatInputCommandInteraction, Client } from 'discord.js';
 import { useQueue, Track } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import TrackMetadata from '../types/trackMetadata';
@@ -9,7 +9,7 @@ export default class SkipCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('skip')
         .setDescription('Skips the current song')
-    execute = async ({ client, interaction }: { client: Client; interaction: CommandInteraction }) => {
+    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId) return interaction.reply({ content: 'You need to be in a guild.', ephemeral: true });
         const queue = useQueue(interaction.guild);

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, CommandInteraction, TextChannel, Client } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, TextChannel, Client } from 'discord.js';
 import CommandInterface from '../types/commandInterface';
 import { Player, GuildQueue, Track } from 'discord-player';
 import { commandLogger, logError } from '../utils/loggerUtil';
@@ -9,7 +9,7 @@ export default class RecoverCommand implements CommandInterface {
         .setName('recover')
         .setDescription('Force recovery from stuck playback state');
 
-    async execute({ client, player, interaction }: { client: Client, player: Player, interaction: CommandInteraction }) {
+    async execute({ client, player, interaction }: { client: Client, player: Player, interaction: ChatInputCommandInteraction }) {
         if (!interaction.guild) {
             return interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true });
         }
@@ -52,7 +52,7 @@ export default class RecoverCommand implements CommandInterface {
                 await interaction.editReply(`Recovery complete. Queue was empty and has been reset.`);
             }
         } catch (error) {
-            console.error('Recovery command error:', error);
+            logError(error, `Error during recovery for guild: ${interaction.guild.id}`);
             
             // Nuclear option: completely reset
             try {
