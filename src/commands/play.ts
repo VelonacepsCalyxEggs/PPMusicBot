@@ -12,6 +12,7 @@ import { MusicDto, ScoredAlbum, ScoredTrack, SearchResultsDto } from 'src/types/
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from 'src/types/trackMetadata';
 import { commandLogger, logError } from '../utils/loggerUtil';
+import { randomUUID, createHash } from 'crypto';
 
 export default class playCommand extends commandInterface {
     constructor() {
@@ -273,6 +274,7 @@ export default class playCommand extends commandInterface {
     }
 
     // Helper to play a track
+    // To optimize, it's probably best to pass a list of tracks.
     private async playTrack(track: Track, queue: GuildQueue, interaction: CommandInteraction, scoredTrack?: ScoredTrack): Promise<void> {
         const metadata = track.metadata as TrackMetadata;
         const newMetadata: TrackMetadata = {
@@ -284,7 +286,11 @@ export default class playCommand extends commandInterface {
             duration: metadata.duration || '0:00',
         };
         track.setMetadata(newMetadata);
-        await queue.play(track, {
+        if (queue.isPlaying()) {
+            queue.addTrack(track);
+        }
+        else {
+            await queue.play(track, {
             nodeOptions: {
                 metadata: interaction,
                 noEmitInsert: true,
@@ -293,6 +299,7 @@ export default class playCommand extends commandInterface {
                 leaveOnStop: false,
             }
         });
+        }
     }
 
     // Helper to create a track embed
@@ -590,26 +597,117 @@ export default class playCommand extends commandInterface {
                 )]
             });
         }
+    };    
+    
+    private async getfileMD5(filePath: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const hash = createHash('md5');
+            if (!fs.existsSync(filePath)) {
+                reject(new Error(`File does not exist: ${filePath}`));
+                return;
+            }
+            const stream = fs.createReadStream(filePath);
+            
+            stream.on('error', (err) => {
+                reject(err);
+            });
+            
+            stream.on('data', (chunk) => {
+                hash.update(chunk);
+            });
+            
+            stream.on('end', () => {
+                const md5Hash = hash.digest('hex');
+                resolve(md5Hash);
+            });
+        });
     };
 
     private async downloadFile (file: string, url: string): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const fileExtension = path.extname(file);
-            const localPath = 'C:/Server/DSMBot/PP_DMB_TS/cache/' + Math.random().toString().slice(2, 11) + fileExtension;
-            const writeStream = fs.createWriteStream(localPath);
-            const protocol = url.startsWith('https') ? https : http;
+        return new Promise(async (resolve, reject) => {
+            try {
+                // Extract the original filename from the URL
+                const originalFilename = path.basename(file);
+                const fileExtension = path.extname(originalFilename);
+                const baseFilename = path.basename(originalFilename, fileExtension);
+                const cacheDir = process.env.CACHE_DIR || path.join(process.cwd(), 'cache');
+                
+                if (!fs.existsSync(cacheDir)) {
+                    fs.mkdirSync(cacheDir, { recursive: true });
+                }
 
-            protocol.get(url, (res) => {
-                res.pipe(writeStream);
-                writeStream.on('finish', () => {
-                    writeStream.close();
-                    commandLogger.info('Download completed! File saved at:', localPath);
-                    resolve(localPath);
+                // First, download to a temporary file to get MD5
+                const tempPath = path.join(cacheDir, `temp_${randomUUID().slice(0, 8)}${fileExtension}`);
+                const tempWriteStream = fs.createWriteStream(tempPath);
+                const protocol = url.startsWith('https') ? https : http;
+
+                protocol.get(url, async (res) => {
+                    res.pipe(tempWriteStream);
+                    
+                    tempWriteStream.on('finish', async () => {
+                        tempWriteStream.close();
+                        
+                        try {
+                            // Get MD5 of the downloaded file
+                            const newFileMD5 = await this.getfileMD5(tempPath);
+                            
+                            // Check if a file with the same MD5 already exists
+                            const existingFiles = fs.readdirSync(cacheDir).filter(f => 
+                                f.endsWith(fileExtension) && f !== path.basename(tempPath)
+                            );
+                            
+                            // This is infefficient, but I am too lazy to make a database, so I'll wait till I get this to use Prisma.
+                            for (const existingFile of existingFiles) {
+                                const existingPath = path.join(cacheDir, existingFile);
+                                try {
+                                    const existingMD5 = await this.getfileMD5(existingPath);
+                                    if (existingMD5 === newFileMD5) {
+                                        // File already exists, delete temp file and return existing
+                                        fs.unlinkSync(tempPath);
+                                        commandLogger.info(`File already exists in cache: ${existingPath}`);
+                                        resolve(existingPath);
+                                        return;
+                                    }
+                                } catch (error) {
+                                    // If we can't read an existing file, skip it
+                                    commandLogger.warn(`Could not read existing file ${existingPath}: ${error}`);
+                                    continue;
+                                }
+                            }
+                            
+                            // No matching file found, move temp file to final location with UUID
+                            const finalPath = path.join(
+                                cacheDir,
+                                `${baseFilename}___${randomUUID().slice(0, 6)}${fileExtension}`
+                            );
+                            fs.renameSync(tempPath, finalPath);
+                            commandLogger.info(`Download completed! New file saved at: ${finalPath}`);
+                            resolve(finalPath);
+                            
+                        } catch (error) {
+                            // Clean up temp file on error
+                            if (fs.existsSync(tempPath)) {
+                                fs.unlinkSync(tempPath);
+                            }
+                            reject(error);
+                        }
+                    });
+                    
+                    tempWriteStream.on('error', (err) => {
+                        // Clean up temp file on error
+                        if (fs.existsSync(tempPath)) {
+                            fs.unlinkSync(tempPath);
+                        }
+                        reject(err);
+                    });
+                }).on('error', (err) => {
+                    logError(err as Error, 'Download Error', { url, tempPath });
+                    reject(err);
                 });
-            }).on('error', (err) => {
-                logError(err as Error, 'Download Error', { url, localPath });
-                reject(err);
-            });
+                
+            } catch (error) {
+                reject(error);
+            }
         });
     };
 };

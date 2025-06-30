@@ -107,6 +107,7 @@ A feature-rich Discord music bot built with TypeScript for the Prosto Patka Tier
 ### Environment Variables
 - `TOKEN` - Discord bot token (required)
 - `DATABASE_URL` - PostgreSQL connection string (optional)
+- `CACHE_DIR` - Directory where download files are saved
 - `NODE_ENV` - Environment mode (development/production)
 
 ### Bot Permissions
