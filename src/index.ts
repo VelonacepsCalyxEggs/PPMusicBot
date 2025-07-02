@@ -17,6 +17,7 @@ import {
     discordLogger,
     playerLogger,
     databaseLogger,
+    closeLogger, // Add this import
 } from './utils/loggerUtil';
 import errorCommand from './commands/error';
 import { join } from 'path';
@@ -460,45 +461,90 @@ class BotApplication {
     private setupGlobalErrorHandlers() {
         // Handle unhandled promise rejections
         process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-            logError(
-                new Error(`Unhandled Rejection: ${reason}`), 
-                'unhandledRejection', 
-                { 
-                    reason: reason?.toString(),
-                    stack: reason?.stack,
-                    promise: promise.toString()
+            console.error('Unhandled Rejection:', reason);
+            
+            // Try to log but don't crash if logging fails
+            try {
+                if (reason && typeof reason === 'object' && 'message' in reason) {
+                    const error = reason as Error;
+                    // Don't log YouTube connection errors as they're temporary
+                    if (!error.message.includes('fetch failed') && 
+                        !error.message.includes('ECONNRESET') && 
+                        !error.message.includes('youtubei')) {
+                        logError(error, 'unhandled_rejection');
+                    }
                 }
-            );
+            } catch (logErr) {
+                console.error('Failed to log unhandled rejection:', logErr);
+            }
         });
 
         // Handle uncaught exceptions
         process.on('uncaughtException', (error: Error) => {
-            logError(error, 'uncaughtException', { 
-                message: 'Critical error occurred',
-                stack: error.stack 
-            });
+            console.error('Uncaught Exception:', error);
             
-            discordLogger.error('Uncaught Exception:', error);
+            // Don't try to log the winston "write after end" errors
+            if (!error.message.includes('write after end')) {
+                try {
+                    discordLogger.error('Uncaught Exception:', error);
+                } catch (logErr) {
+                    console.error('Failed to log uncaught exception:', logErr);
+                }
+            }
             
-            // For uncaught exceptions, we should exit gracefully
-            process.exit(1);
+            // Exit gracefully
+            this.gracefulShutdown();
         });
 
         // Handle SIGINT (Ctrl+C)
         process.on('SIGINT', () => {
-            discordLogger.info('Received SIGINT, shutting down gracefully...');
-            this.client.destroy();
-            this.pool.end();
-            process.exit(0);
+            console.log('Received SIGINT, shutting down gracefully...');
+            try {
+                discordLogger.info('Received SIGINT, shutting down gracefully...');
+            } catch (err) {
+                console.error('Failed to log SIGINT:', err);
+            }
+            this.gracefulShutdown();
         });
 
         // Handle SIGTERM
         process.on('SIGTERM', () => {
-            discordLogger.info('Received SIGTERM, shutting down gracefully...');
-            this.client.destroy();
-            this.pool.end();
-            process.exit(0);
+            console.log('Received SIGTERM, shutting down gracefully...');
+            try {
+                discordLogger.info('Received SIGTERM, shutting down gracefully...');
+            } catch (err) {
+                console.error('Failed to log SIGTERM:', err);
+            }
+            this.gracefulShutdown();
         });
+    }
+
+    private gracefulShutdown() {
+        console.log('Initiating graceful shutdown...');
+        
+        try {
+            discordLogger.info('Initiating graceful shutdown...');
+        } catch (err) {
+            console.error('Failed to log shutdown:', err);
+        }
+        
+        // Close logger first to prevent further write attempts
+        closeLogger();
+        
+        // Destroy Discord client
+        if (this.client) {
+            this.client.destroy();
+        }
+        
+        // Close database connection
+        if (this.pool) {
+            this.pool.end();
+        }
+        
+        // Give time for cleanup
+        setTimeout(() => {
+            process.exit(0);
+        }, 1000); // Reduced timeout since logger is already closed
     }
 
     public async run() {
@@ -548,7 +594,6 @@ async function startBot() {
     }
     catch (error) {
         logError(error as Error, 'Bot runtime', { message: 'Bot process failed.' });
-        discordLogger.debug(JSON.stringify(bot.player.queues.cache.toJSON()));
         discordLogger.error(`Bot exited with error: ${error}`);
     }
 

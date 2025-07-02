@@ -65,7 +65,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.LOG_CONSOLE === 'true')
     transports.push(
         new winston.transports.Console({
             format: consoleFormat,
-            level: getLogLevel()
+            level: getLogLevel(),
+            handleExceptions: false,
+            handleRejections: false
         })
     );
 } else {
@@ -73,7 +75,9 @@ if (process.env.NODE_ENV !== 'production' || process.env.LOG_CONSOLE === 'true')
     transports.push(
         new winston.transports.Console({
             format: consoleFormat,
-            level: getLogLevel() // Use the same level as the main logger
+            level: getLogLevel(),
+            handleExceptions: false,
+            handleRejections: false
         })
     );
 }
@@ -114,11 +118,16 @@ transports.push(
         level: 'error',
         maxsize: 5242880, // 5MB
         maxFiles: 5,
-        tailable: true
+        tailable: true,
+        handleExceptions: false,
+        handleRejections: false
     })
 );
 
-// Create the logger
+// Handle process events manually to ensure graceful shutdown
+let isShuttingDown = false;
+
+// Create the logger with safer configuration - NO exception/rejection handlers
 const logger = winston.createLogger({
     levels: logLevels,
     level: getLogLevel(),
@@ -126,26 +135,24 @@ const logger = winston.createLogger({
     defaultMeta: { service: 'discord-bot' },
     transports,
     exitOnError: false,
-    // Handle uncaught exceptions and unhandled rejections
-    exceptionHandlers: [
-        new winston.transports.File({
-            filename: path.join(logsDir, 'exceptions.log'),
-            format: fileFormat,
-            maxsize: 5242880, // 5MB
-            maxFiles: 3,
-            tailable: true
-        })
-    ],
-    rejectionHandlers: [
-        new winston.transports.File({
-            filename: path.join(logsDir, 'rejections.log'),
-            format: fileFormat,
-            maxsize: 5242880, // 5MB
-            maxFiles: 3,
-            tailable: true
-        })
-    ]
+    // REMOVED: exceptionHandlers and rejectionHandlers to prevent conflicts
+    silent: false
 });
+
+// Add error handling for the logger itself to prevent crashes
+logger.on('error', (error) => {
+    console.error('Logger error:', error);
+});
+
+// Export a function to safely close the logger
+export const closeLogger = () => {
+    if (!isShuttingDown) {
+        isShuttingDown = true;
+        logger.close();
+    }
+};
+
+// REMOVED: All process event handlers from this file - they should only be in index.ts
 
 // Debug logging configuration
 console.log('Logger Configuration:', {
@@ -165,14 +172,55 @@ logger.info('Logger initialized successfully', {
 // Helper functions for different logging contexts
 export const createContextLogger = (context: string) => {
     return {
-        // Removed the context for now, as I don't like how cluttered it looks
-        error: (message: string, meta?: any) => logger.error(message, { ...meta }),
-        warn: (message: string, meta?: any) => logger.warn(message, { ...meta }),
-        info: (message: string, meta?: any) => logger.info(message, { ...meta }),
-        http: (message: string, meta?: any) => logger.http(message, { ...meta }),
-        verbose: (message: string, meta?: any) => logger.verbose(message, { ...meta }),
-        debug: (message: string, meta?: any) => logger.debug(message, { ...meta }),
-        silly: (message: string, meta?: any) => logger.silly(message, { ...meta })
+        error: (message: string, meta?: any) => {
+            try {
+                if (!isShuttingDown) logger.error(message, { ...meta });
+            } catch (err) {
+                console.error('Logging error:', err);
+            }
+        },
+        warn: (message: string, meta?: any) => {
+            try {
+                if (!isShuttingDown) logger.warn(message, { ...meta });
+            } catch (err) {
+                console.error('Logging error:', err);
+            }
+        },
+        info: (message: string, meta?: any) => {
+            try {
+                if (!isShuttingDown) logger.info(message, { ...meta });
+            } catch (err) {
+                console.error('Logging error:', err);
+            }
+        },
+        http: (message: string, meta?: any) => {
+            try {
+                if (!isShuttingDown) logger.http(message, { ...meta });
+            } catch (err) {
+                console.error('Logging error:', err);
+            }
+        },
+        verbose: (message: string, meta?: any) => {
+            try {
+                if (!isShuttingDown) logger.verbose(message, { ...meta });
+            } catch (err) {
+                console.error('Logging error:', err);
+            }
+        },
+        debug: (message: string, meta?: any) => {
+            try {
+                if (!isShuttingDown) logger.debug(message, { ...meta });
+            } catch (err) {
+                console.error('Logging error:', err);
+            }
+        },
+        silly: (message: string, meta?: any) => {
+            try {
+                if (!isShuttingDown) logger.silly(message, { ...meta });
+            } catch (err) {
+                console.error('Logging error:', err);
+            }
+        }
     };
 };
 
@@ -227,12 +275,19 @@ export const logDatabaseOperation = (operation: string, success: boolean, durati
 
 // Log errors with context
 export const logError = (error: Error, context?: string, additionalData?: any) => {
-    errorLogger.error(`Error${context ? ` in ${context}` : ''}`, {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-        ...additionalData
-    });
+    try {
+        if (!isShuttingDown) {
+            errorLogger.error(`Error${context ? ` in ${context}` : ''}`, {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+                ...additionalData
+            });
+        }
+    } catch (logErr) {
+        console.error('Failed to log error:', logErr);
+        console.error('Original error:', error);
+    }
 };
 
 // Performance logging
