@@ -32,19 +32,19 @@ export default class RemoveCommand extends CommandInterface {
         const position2 = interaction.options.get('position2')?.value;
         
         if (!position2) {
-            tracks.splice(Number(position) - 1, 1);
+            tracks.splice(Number(position), 1);
             queue.clear();
             for (let i = 0; i < tracks.length; i++) {
                 queue.addTrack(tracks[i]);
             }
             return interaction.reply({ content: `The track at position ${position} has been removed!`, flags: ['SuppressNotifications'] });
         } else {
-            tracks.splice(Number(position)- 1, Number(position2));
+            tracks.splice(Number(position), Number(position2));
             queue.clear();
             for (let i = 0; i < tracks.length; i++) {
                 queue.addTrack(tracks[i]);
             }
-            return interaction.reply({ content: `The tracks from position ${position} to ${Number(position) + Number(position2) - 1} have been removed!`, flags: ['SuppressNotifications'] });
+            return interaction.reply({ content: `The tracks from position ${position} to ${position2} have been removed!`, flags: ['SuppressNotifications'] });
         }
     }
 };

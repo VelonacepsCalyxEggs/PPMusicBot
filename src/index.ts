@@ -7,6 +7,7 @@ import axios from 'axios';
 import { accessSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import CommandInterface from './types/commandInterface';
 import dotenv from 'dotenv';
+dotenv.config();
 import cron from 'node-cron';
 import TrackMetadata from './types/trackMetadata';
 import { 
@@ -37,11 +38,14 @@ import ShuffleCommand from './commands/shuffle';
 import SkipCommand from './commands/skip';
 import WhereAmICommand from './commands/whereami';
 import RecoverCommand from './commands/recover';
+import { ServiceInterface } from './types/serviceInterface';
+import { atGrokIsThisTrueService } from './services/atGrokIsThisTrueService';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
     interface Client {
         commands: Collection<string, CommandInterface>;
+        services: Collection<string, ServiceInterface>;
     }
 }
 interface StatusMessage {
@@ -58,10 +62,6 @@ class BotApplication {
             error: '644950708160036864',
     }
     public currentStatus: string = '';
-    
-    constructor() {
-        dotenv.config();
-    }
 
     private async initializeDatabase() {
         databaseLogger.info('Loading DB config...');
@@ -90,69 +90,125 @@ class BotApplication {
             discordLogger.info('Initializing Discord client events...');
             // This event is triggered when any interaction is created, i.e. a message or a command.
             this.client.on('interactionCreate', async (interaction: ChatInputCommandInteraction) => {
-                if (!interaction.isCommand()) return;
-            
-                const command = this.commands.get(interaction.commandName);
-                if (!command) return;
+                if (interaction.isCommand()) {
 
-                try {
-                    if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
-                    
-                    logCommandUsage(interaction.commandName, interaction.user.id, interaction.guildId || undefined, true);
-                    
-                    await command.execute({ client: this.client, player: this.player, interaction });
-                } catch (error) {
-                    const errorObj = error as Error;
-                    logError(errorObj, 'command execution', { 
-                        commandName: interaction.commandName,
-                        userId: interaction.user.id,
-                        guildId: interaction.guildId 
-                    });
+                
+                    const command = this.commands.get(interaction.commandName);
+                    if (!command) return;
 
-                    
-                    logCommandUsage(interaction.commandName, interaction.user.id, interaction.guildId || undefined, false);
-
-                    // Check if it's a YouTube/extractor related error
-                    let errorMessage = "Oops! Something went wrong.";
-                    if (errorObj.message.includes('fetch failed') || errorObj.message.includes('ConnectTimeoutError') || errorObj.message.includes('youtubei')) {
-                        errorMessage = "YouTube connection timeout occurred. This is usually temporary - please try again in a moment.";
-                    }
-                    
-                    const status = await this.checkDiscordStatus();
-                    discordLogger.warn('Discord API Status:', status); // Logs the status for your reference
-                    
-                    // Fetch a random quote from the database
                     try {
-                        const res = await this.pool.query('SELECT quote_text FROM quotes ORDER BY RANDOM() LIMIT 1');
-                        const randomQuote = res.rows[0].quote_text;
-                        const quoteLines = randomQuote.split('\n');
-                        const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
-                        const randomLine = quoteLines[randomLineIndex];
+                        if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
+                        
+                        logCommandUsage(interaction.commandName, interaction.user.id, interaction.guildId || undefined, true);
+                        
+                        await command.execute({ client: this.client, player: this.player, interaction });
+                    } catch (error) {
+                        const errorObj = error as Error;
+                        logError(errorObj, 'command execution', { 
+                            commandName: interaction.commandName,
+                            userId: interaction.user.id,
+                            guildId: interaction.guildId 
+                        });
 
-                        // Reply with the random line and the error message
-                        if (interaction.deferred) {
-                            await interaction.editReply({
-                                content: `${errorMessage}\n\nHere's a random quote to lighten the mood:\n"${randomLine}"\n\nDiscord API Status: ${status}`
-                            });
-                        } else {
-                            await (interaction.channel as TextChannel).send({
-                                content: `${errorMessage}\nHere's a random quote:\n"${randomLine}"\n\nDiscord API Status: ${status}`
-                            });
+                        
+                        logCommandUsage(interaction.commandName, interaction.user.id, interaction.guildId || undefined, false);
+
+                        // Check if it's a YouTube/extractor related error
+                        let errorMessage = "Oops! Something went wrong.";
+                        if (errorObj.message.includes('fetch failed') || errorObj.message.includes('ConnectTimeoutError') || errorObj.message.includes('youtubei')) {
+                            errorMessage = "YouTube connection timeout occurred. This is usually temporary - please try again in a moment.";
                         }
-                    } catch (quoteError) {
-                        // Fallback if quote fetching fails
-                        if (interaction.deferred) {
-                            await interaction.editReply({
-                                content: `${errorMessage}\n\nDiscord API Status: ${status}`
-                            });
-                        } else {
-                            await (interaction.channel as TextChannel).send({
-                                content: `${errorMessage}\n\nDiscord API Status: ${status}`
-                            });
+                        
+                        const status = await this.checkDiscordStatus();
+                        discordLogger.warn('Discord API Status:', status); // Logs the status for your reference
+                        
+                        // Fetch a random quote from the database
+                        try {
+                            const res = await this.pool.query('SELECT quote_text FROM quotes ORDER BY RANDOM() LIMIT 1');
+                            const randomQuote = res.rows[0].quote_text;
+                            const quoteLines = randomQuote.split('\n');
+                            const randomLineIndex = Math.floor(Math.random() * quoteLines.length);
+                            const randomLine = quoteLines[randomLineIndex];
+
+                            // Reply with the random line and the error message
+                            if (interaction.deferred) {
+                                await interaction.editReply({
+                                    content: `${errorMessage}\n\nHere's a random quote to lighten the mood:\n"${randomLine}"\n\nDiscord API Status: ${status}`
+                                });
+                            } else {
+                                await (interaction.channel as TextChannel).send({
+                                    content: `${errorMessage}\nHere's a random quote:\n"${randomLine}"\n\nDiscord API Status: ${status}`
+                                });
+                            }
+                        } catch (quoteError) {
+                            // Fallback if quote fetching fails
+                            if (interaction.deferred) {
+                                await interaction.editReply({
+                                    content: `${errorMessage}\n\nDiscord API Status: ${status}`
+                                });
+                            } else {
+                                await (interaction.channel as TextChannel).send({
+                                    content: `${errorMessage}\n\nDiscord API Status: ${status}`
+                                });
+                            }
                         }
                     }
                 }
         });
+
+            // This event is triggered when a regular message is sent
+    this.client.on('messageCreate', async (message) => {
+        // Ignore messages from bots
+        if (message.author.bot) return;
+        
+        // Ignore messages that don't have content (embeds, files only, etc.)
+        if (!message.content) return;
+        
+        // Only process messages in guilds
+        if (!message.guild) return;
+
+        if (message.content == '@Grok is this true?') {
+            if (message.reference && message.reference.messageId) {
+                await message.channel.sendTyping();
+                const referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
+                if (!referencedMessage) {
+
+                    await message.reply({
+                        content: `@${message.author.username}, I couldn't find the message you referenced.`,
+                        flags: ['SuppressNotifications']
+                    });
+                    return;
+                }
+                const grokService = this.client.services.get('atGrokIsThisTrueService') as atGrokIsThisTrueService;
+                if (!grokService) {
+                    discordLogger.error('atGrokIsThisTrueService is not initialized.');
+                    return;
+                }
+                try {
+                    let response: string;
+                    discordLogger.debug(`Processing Grok query for message with possible attachments: ${referencedMessage.attachments.first()}`);
+                    discordLogger.debug(`Referenced message content: ${referencedMessage.content}`);
+                    if (referencedMessage.attachments.first() && referencedMessage.attachments.first()!.contentType?.startsWith('image/')) {
+                        response = await grokService.query('Is this true? ' + referencedMessage.content, referencedMessage.attachments.first()!.url);
+                    }
+                    else {
+                        response = await grokService.query('Is this true? ' + referencedMessage.content);
+                    }
+                    await message.reply({
+                        content: `<@${message.author.id}>, ${response}`,
+                        flags: ['SuppressNotifications']
+                        
+                    });
+                } catch (error) {
+                    logError(error as Error, 'Grok query', { userId: message.author.id, guildId: message.guild.id });
+                    await message.reply({
+                        content: `<@${message.author.id}>, there was an error processing your request.`,
+                        flags: ['SuppressNotifications']
+                    });
+                }
+            }
+        }
+    });
 
         // This event is triggered when a user joins or leaves a voice channel
         this.client.on('voiceStateUpdate', async (oldState: VoiceState, newState: VoiceState) => {
@@ -416,6 +472,16 @@ class BotApplication {
         }
     }
 
+    private async initializeServices() {
+        discordLogger.info('Initializing services...');
+        this.client.services = new Collection<string, ServiceInterface>();
+        // Initialize the atGrokIsThisTrueService
+        const grokService = new atGrokIsThisTrueService();
+        await grokService.init()
+            .then(() => discordLogger.info('atGrokIsThisTrueService initialized successfully'))
+        this.client.services.set('atGrokIsThisTrueService', grokService);
+    }
+
     private updateBotStatusMessage(forced=false) {
         if (!process.env.PATH_TO_STATUS_JSON) {
             discordLogger.error('PATH_TO_STATUS_JSON environment variable is not set.');
@@ -560,6 +626,7 @@ class BotApplication {
             this.initializeRest();
             this.initializePlayer();
             await this.initializeCommands();
+            await this.initializeServices();
             this.intializeClientEvents();
             this.initializePlayerEvents();
 
