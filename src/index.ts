@@ -189,10 +189,10 @@ class BotApplication {
                     discordLogger.debug(`Processing Grok query for message with possible attachments: ${referencedMessage.attachments.first()}`);
                     discordLogger.debug(`Referenced message content: ${referencedMessage.content}`);
                     if (referencedMessage.attachments.first() && referencedMessage.attachments.first()!.contentType?.startsWith('image/')) {
-                        response = await grokService.query('Is this true? ' + referencedMessage.content, referencedMessage.attachments.first()!.url);
+                        response = await grokService.query('Is this true? ' + referencedMessage.content, message.guild.id, referencedMessage.attachments.first()!.url);
                     }
                     else {
-                        response = await grokService.query('Is this true? ' + referencedMessage.content);
+                        response = await grokService.query('Is this true? ' + referencedMessage.content, message.guild.id);
                     }
                     await message.reply({
                         content: `<@${message.author.id}>, ${response}`,

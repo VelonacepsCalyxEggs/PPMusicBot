@@ -10,10 +10,9 @@ import { createHash } from 'crypto';
 export class atGrokIsThisTrueService extends ServiceInterface {
     private model: string;
     private apiKey: string;
-    private lastQueryDate: Date | null = null;
     private cacheDir: string;
     private imageSupport: boolean;
-    
+    private queryQueues: Map<string, Promise<any>> = new Map();
     constructor() {
         super();
         this.serviceName = 'atGrokIsThisTrueService';
@@ -184,215 +183,229 @@ export class atGrokIsThisTrueService extends ServiceInterface {
         }
     }
 
-    async query(question: string, attachmentUrl?: string): Promise<string> {
+    private async enqueueOperation<T>(
+            key: string,
+            operation: () => Promise<T>,
+        ): Promise<T> {
+        const existingQueue = this.queryQueues.get(key) || Promise.resolve();
+
+        const newQueue = existingQueue
+        .then(() => operation())
+        .finally(() => {
+            if (this.queryQueues.get(key) === newQueue) {
+            this.queryQueues.delete(key);
+            }
+        });
+
+        this.queryQueues.set(key, newQueue);
+        return newQueue;
+    }
+
+    async query(question: string, guildId: string, attachmentUrl?: string): Promise<string> {
         if (!this.model || !this.apiKey) {
             throw new Error('Service not initialized. Call init() first.');
         }
-        
-        // Check rate limiting
-        if (this.lastQueryDate && (new Date().getTime() - this.lastQueryDate.getTime()) < 60000) {
-            return('You must wait at least 60 seconds between queries. Time left: ' +
-                (60 - Math.floor((new Date().getTime() - this.lastQueryDate.getTime()) / 1000)) + ' seconds.');
-        }
+        return await this.enqueueOperation(guildId, async () => {
 
-        discordLogger.info('Making "Grok" API request', {
-            model: this.model,
-            questionLength: question.length,
-            hasApiKey: !!this.apiKey,
-            apiKeyLength: this.apiKey.length,
-            hasAttachment: !!attachmentUrl,
-            imageSupport: this.imageSupport
-        });
-
-        let imagePath: string | null = null;
-        let imageBase64: string | null = null;
-
-        // Download and process image if provided
-        if (attachmentUrl && this.imageSupport) {
-            imagePath = await this.downloadImage(attachmentUrl);
-            if (imagePath) {
-                imageBase64 = this.imageToBase64(imagePath);
-            }
-        }
-
-        try {
-            const messages: any[] = [
-                { 
-                    role: 'system', 
-                    content: 'You are an extremely skeptical AI assistant. Answer with an EXTREME true or false response followed by a short explanation. Keep your response under 200 characters.' 
-                }
-            ];
-
-            // Add user message with or without image
-            if (imageBase64) {
-                messages.push({
-                    role: 'user',
-                    content: [
-                        { type: 'text', text: question },
-                        { 
-                            type: 'image_url', 
-                            image_url: { 
-                                url: imageBase64,
-                                detail: 'high' // or 'low' for faster processing
-                            } 
-                        }
-                    ]
-                });
-                discordLogger.debug('Added image to request', { hasImage: true });
-            } else {
-                messages.push({ role: 'user', content: question });
-            }
-
-            const requestBody = {
+            discordLogger.info('Making "Grok" API request', {
                 model: this.model,
-                messages: messages,
-                max_tokens: 1000, // Increased to allow for reasoning + content
-                temperature: 0.3,
-                // Force the model to output the final answer in content, not just reasoning
-                response_format: { type: "text" },
-                // Some models need this to ensure content is populated
-                stream: false
-            };
-
-            discordLogger.debug('Request body', { 
-                model: requestBody.model,
-                messageCount: requestBody.messages.length,
-                hasImage: !!imageBase64
+                questionLength: question.length,
+                hasApiKey: !!this.apiKey,
+                apiKeyLength: this.apiKey.length,
+                hasAttachment: !!attachmentUrl,
+                imageSupport: this.imageSupport
             });
 
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'HTTP-Referer': process.env.API_URL || 'https://example.com',
-                    'X-Title': 'Discord Bot Grok Service'
-                },
-                body: JSON.stringify(requestBody),
-                signal: AbortSignal.timeout(30000)
-            });
+            let imagePath: string | null = null;
+            let imageBase64: string | null = null;
 
-            discordLogger.info('API Response received', {
-                status: response.status,
-                statusText: response.statusText,
-                ok: response.ok
-            });
+            // Download and process image if provided
+            if (attachmentUrl && this.imageSupport) {
+                imagePath = await this.downloadImage(attachmentUrl);
+                if (imagePath) {
+                    imageBase64 = this.imageToBase64(imagePath);
+                }
+            }
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                discordLogger.error('API Error Response', {
+            try {
+                const messages: any[] = [
+                    { 
+                        role: 'system', 
+                        content: 'You are an extremely skeptical AI assistant. Answer with an EXTREME true or false response followed by a short explanation. Keep your response under 200 characters.' 
+                    }
+                ];
+
+                // Add user message with or without image
+                if (imageBase64) {
+                    messages.push({
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: question },
+                            { 
+                                type: 'image_url', 
+                                image_url: { 
+                                    url: imageBase64,
+                                    detail: 'high'
+                                } 
+                            }
+                        ]
+                    });
+                    discordLogger.debug('Added image to request', { hasImage: true });
+                } else {
+                    messages.push({ role: 'user', content: question });
+                }
+
+                const requestBody = {
+                    model: this.model,
+                    messages: messages,
+                    max_tokens: 1000, // Increased to allow for reasoning + content
+                    temperature: 0.3,
+                    // Force the model to output the final answer in content, not just reasoning
+                    response_format: { type: "text" },
+                    // Some models need this to ensure content is populated
+                    stream: false
+                };
+
+                discordLogger.debug('Request body', { 
+                    model: requestBody.model,
+                    messageCount: requestBody.messages.length,
+                    hasImage: !!imageBase64
+                });
+
+                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiKey}`,
+                        'HTTP-Referer': process.env.API_URL || 'https://example.com',
+                        'X-Title': 'Discord Bot Grok Service'
+                    },
+                    body: JSON.stringify(requestBody),
+                    signal: AbortSignal.timeout(30000)
+                });
+
+                discordLogger.info('API Response received', {
                     status: response.status,
                     statusText: response.statusText,
-                    body: errorText
+                    ok: response.ok
                 });
-                
-                if (response.status === 401) {
-                    throw new Error('Invalid API key. Please check your MOCK_GROK_API_KEY.');
-                } else if (response.status === 429) {
-                    throw new Error('Rate limit exceeded. Please try again later.');
-                } else if (response.status === 400) {
-                    throw new Error(`Bad request: ${errorText}`);
-                } else {
-                    throw new Error(`API Error (${response.status}): ${errorText}`);
-                }
-            }
 
-            const data = await response.json();
-            discordLogger.debug('API Response data', { 
-                hasChoices: !!data.choices,
-                choiceCount: data.choices?.length || 0
-            });
-
-            // Validate response structure
-            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-                discordLogger.error('Invalid API response structure', { data });
-                throw new Error('Invalid response format from API');
-            }
-
-            const choice = data.choices[0];
-            let responseContent = choice.message.content;
-            
-            // If content is empty, try to extract from reasoning or create a fallback
-            if (!responseContent || responseContent.trim() === '') {
-                if (choice.message.reasoning) {
-                    // Extract the actual answer from reasoning if possible
-                    const reasoning = choice.message.reasoning;
-                    discordLogger.debug('Content empty, extracting from reasoning', { 
-                        reasoningLength: reasoning.length 
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    discordLogger.error('API Error Response', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        body: errorText
                     });
                     
-                    // Try to find the final answer in the reasoning
-                    const lines = reasoning.split('\n');
-                    const lastLine = lines[lines.length - 1]?.trim();
-                    
-                    // Look for patterns like "True:" "False:" or simple true/false statements
-                    const answerPattern = /(true|false)/i;
-                    const match = lastLine?.match(answerPattern) || reasoning.match(answerPattern);
-                    
-                    if (match) {
-                        responseContent = `${match[1].toLowerCase() === 'true' ? 'True' : 'False'}: Based on analysis, this appears to be ${match[1].toLowerCase()}.`;
+                    if (response.status === 401) {
+                        throw new Error('Invalid API key. Please check your MOCK_GROK_API_KEY.');
+                    } else if (response.status === 429) {
+                        throw new Error('Rate limit exceeded. Please try again later.');
+                    } else if (response.status === 400) {
+                        throw new Error(`Bad request: ${errorText}`);
                     } else {
-                        // Fallback: take first 200 chars of reasoning
-                        responseContent = reasoning.substring(0, 200) + (reasoning.length > 200 ? '...' : '');
+                        throw new Error(`API Error (${response.status}): ${errorText}`);
                     }
-                } else {
-                    // Ultimate fallback
-                    responseContent = "Unable to determine truth value. Please rephrase your question.";
                 }
-            }
-            
-            // Ensure we have content before proceeding
-            if (!responseContent || responseContent.trim() === '') {
-                discordLogger.error('Still empty response after all attempts', { 
-                    choice,
-                    finishReason: choice.finish_reason
-                });
-                throw new Error('Unable to generate response content');
-            }
 
-            // Handle truncated responses
-            if (choice.finish_reason === 'length') {
-                responseContent += ' (Response was truncated)';
-            }
-
-            // Update last query time
-            this.lastQueryDate = new Date();
-
-            discordLogger.info('Grok query successful', {
-                responseLength: responseContent.length,
-                finishReason: choice.finish_reason,
-                hadToExtractFromReasoning: !choice.message.content,
-                processedImage: !!imageBase64
-            });
-
-            return responseContent.trim() + '\n-# This response was generated by AI, it may be completely innacurate.(duh)';
-
-        } catch (error) {
-            if (error instanceof Error) {
-                discordLogger.error('Grok query error details', {
-                    name: error.name,
-                    message: error.message,
-                    stack: error.stack
+                const data = await response.json();
+                discordLogger.debug('API Response data', { 
+                    hasChoices: !!data.choices,
+                    choiceCount: data.choices?.length || 0
                 });
 
-                if (error.name === 'AbortError') {
-                    throw new Error('Request timed out. The API might be slow or unavailable.');
-                } else if (error.message.includes('fetch failed')) {
-                    throw new Error('Network error: Unable to connect to the API. This might be a temporary issue.');
-                } else if (error.message.includes('ENOTFOUND')) {
-                    throw new Error('DNS error: Cannot resolve API domain. Check your internet connection.');
-                } else if (error.message.includes('ECONNRESET')) {
-                    throw new Error('Connection reset: The API server closed the connection unexpectedly.');
+                // Validate response structure
+                if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                    discordLogger.error('Invalid API response structure', { data });
+                    throw new Error('Invalid response format from API');
                 }
+
+                const choice = data.choices[0];
+                let responseContent = choice.message.content;
+                
+                // If content is empty, try to extract from reasoning or create a fallback
+                if (!responseContent || responseContent.trim() === '') {
+                    if (choice.message.reasoning) {
+                        // Extract the actual answer from reasoning if possible
+                        const reasoning = choice.message.reasoning;
+                        discordLogger.debug('Content empty, extracting from reasoning', { 
+                            reasoningLength: reasoning.length 
+                        });
+                        
+                        // Try to find the final answer in the reasoning
+                        const lines = reasoning.split('\n');
+                        const lastLine = lines[lines.length - 1]?.trim();
+                        
+                        // Look for patterns like "True:" "False:" or simple true/false statements
+                        const answerPattern = /(true|false)/i;
+                        const match = lastLine?.match(answerPattern) || reasoning.match(answerPattern);
+                        
+                        if (match) {
+                            responseContent = `${match[1].toLowerCase() === 'true' ? 'True' : 'False'}: Based on analysis, this appears to be ${match[1].toLowerCase()}.`;
+                        } else {
+                            // Fallback: take first 200 chars of reasoning
+                            responseContent = reasoning.substring(0, 200) + (reasoning.length > 200 ? '...' : '');
+                        }
+                    } else {
+                        // Ultimate fallback
+                        responseContent = "Unable to determine truth value. Please rephrase your question.";
+                    }
+                }
+                
+                // Ensure we have content before proceeding
+                if (!responseContent || responseContent.trim() === '') {
+                    discordLogger.error('Still empty response after all attempts', { 
+                        choice,
+                        finishReason: choice.finish_reason
+                    });
+                    throw new Error('Unable to generate response content');
+                }
+
+                // Handle truncated responses
+                if (choice.finish_reason === 'length') {
+                    responseContent += ' (Response was truncated)';
+                }
+
+                // Update last query time
+                //this.lastQueryDate = new Date();
+
+                discordLogger.info('Grok query successful', {
+                    responseLength: responseContent.length,
+                    finishReason: choice.finish_reason,
+                    hadToExtractFromReasoning: !choice.message.content,
+                    processedImage: !!imageBase64
+                });
+
+                return responseContent.trim() + '\n-# This response was generated by AI, it may be completely innacurate.(duh)';
+
+            } catch (error) {
+                if (error instanceof Error) {
+                    discordLogger.error('Grok query error details', {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack
+                    });
+
+                    if (error.name === 'AbortError') {
+                        throw new Error('Request timed out. The API might be slow or unavailable.');
+                    } else if (error.message.includes('fetch failed')) {
+                        throw new Error('Network error: Unable to connect to the API. This might be a temporary issue.');
+                    } else if (error.message.includes('ENOTFOUND')) {
+                        throw new Error('DNS error: Cannot resolve API domain. Check your internet connection.');
+                    } else if (error.message.includes('ECONNRESET')) {
+                        throw new Error('Connection reset: The API server closed the connection unexpectedly.');
+                    }
+                }
+                
+                throw error;
+            } finally {
+                // Clean up downloaded image if it exists (might want to keep cache, idk, for later prob)
+                // if (imagePath && fs.existsSync(imagePath)) {
+                //     fs.unlinkSync(imagePath);
+                //     discordLogger.debug('Cleaned up temporary image file', { imagePath });
+                // }
             }
-            
-            throw error;
-        } finally {
-            // Clean up downloaded image if it exists (might want to keep cache, idk, for later prob)
-            // if (imagePath && fs.existsSync(imagePath)) {
-            //     fs.unlinkSync(imagePath);
-            //     discordLogger.debug('Cleaned up temporary image file', { imagePath });
-            // }
-        }
+        });
     }
 }
