@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { ChatInputCommandInteraction, CommandInteractionOptionResolver, EmbedBuilder, GuildMember, Message, User } from 'discord.js';
+import { ChatInputCommandInteraction, Client, CommandInteractionOptionResolver, EmbedBuilder, GuildMember, Message, User } from 'discord.js';
 import { QueryType, useQueue, GuildQueue, Player, useMainPlayer, Track, SearchResult } from 'discord-player';
 import https from 'https';
 import http from 'http';
@@ -11,8 +11,9 @@ import axios from 'axios';
 import { MusicDto, ScoredAlbum, ScoredTrack, SearchResultsDto } from '../types/searchResultInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
-import { commandLogger, logError } from '../utils/loggerUtil';
+import { commandLogger, discordLogger, logError } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
+import { YtdlFallbackService } from 'src/services/ytdlFallback';
 
 export default class PlayCommand extends CommandInterface {
     constructor() {
@@ -46,7 +47,7 @@ export default class PlayCommand extends CommandInterface {
                     option.setName('file').setDescription('play\'s the song').setRequired(true)
                 )
         )
-    execute = async ({ interaction }: { interaction: ChatInputCommandInteraction }) => {
+    execute = async ({ interaction, client }: { interaction: ChatInputCommandInteraction, client: Client }) => {
         await interaction.deferReply();
 
         if (!(interaction.member as GuildMember).voice.channel) {
@@ -90,7 +91,7 @@ export default class PlayCommand extends CommandInterface {
 
         switch (subcommand) {
             case 'song':
-                await this.handleSongCommand(player, interaction, guildQueue);
+                await this.handleSongCommand(client, player, interaction, guildQueue);
                 break;
             case 'file':
                 await this.handleFileCommand(player, interaction, guildQueue);
@@ -101,7 +102,7 @@ export default class PlayCommand extends CommandInterface {
         }
     }
 
-    private handleSongCommand = async (player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<Message<boolean>> => {
+    private handleSongCommand = async (client: Client, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<Message<boolean>> => {
         commandLogger.debug(`Handling song command with interaction: ${interaction.id}`);
         
         const argument = interaction.options.get('music')?.value;
@@ -152,8 +153,13 @@ export default class PlayCommand extends CommandInterface {
                 commandLogger.debug(`YouTube video URL detected: ${argument}`);
                 //return interaction.followUp('Oops... sorry, the DRM doomsday clock hit midnight and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
                 const cleanYoutubeUrl = this.cleanYoutubeUrl(argument);
-                result = await this.searchTrack(player, cleanYoutubeUrl, interaction.user);
+                //result = await this.searchTrack(player, cleanYoutubeUrl, interaction.user);
                 
+                discordLogger.warn(`No tracks found for YouTube URL using fallback: ${argument}`);
+                const ytdlFallback = client.services.get('YtdlFallbackService') as YtdlFallbackService;
+                const filePath = await ytdlFallback.getVideo(cleanYoutubeUrl);
+                result = await this.searchFile(player, filePath, interaction.user);
+
                 if (!result.tracks.length) {
                     return interaction.followUp({content: 'No results found for the YouTube URL.', flags: ['Ephemeral']});
                 }

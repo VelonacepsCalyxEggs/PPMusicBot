@@ -7,7 +7,7 @@ import * as path from 'path';
 import { createHash } from 'crypto';
 
 // It is designed to mock the '@Grok is this true?' question.
-export class atGrokIsThisTrueService extends ServiceInterface {
+export class AtGrokIsThisTrueService extends ServiceInterface {
     private model: string;
     private apiKey: string;
     private cacheDir: string;
@@ -15,12 +15,12 @@ export class atGrokIsThisTrueService extends ServiceInterface {
     private queryQueues: Map<string, Promise<any>> = new Map();
     constructor() {
         super();
-        this.serviceName = 'atGrokIsThisTrueService';
+        this.serviceName = 'AtGrokIsThisTrueService';
         this.serviceDescription = 'Service to query "Grok" LLM for "truth" verification.';
     }
 
     async init() {
-        discordLogger.info('Initializing atGrokIsThisTrueService...');
+        discordLogger.info('Initializing AtGrokIsThisTrueService...');
         
         this.model = process.env.MOCK_GROK_MODEL || 'grok-llama-3-70b';
         this.apiKey = process.env.MOCK_GROK_API_KEY || '';
@@ -84,7 +84,7 @@ export class atGrokIsThisTrueService extends ServiceInterface {
             });
         }
         
-        discordLogger.info('atGrokIsThisTrueService initialized successfully');
+        discordLogger.info('AtGrokIsThisTrueService initialized successfully');
     }
 
     private async downloadImage(url: string): Promise<string | null> {

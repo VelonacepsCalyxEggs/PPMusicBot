@@ -39,7 +39,8 @@ import SkipCommand from './commands/skip';
 import WhereAmICommand from './commands/whereami';
 import RecoverCommand from './commands/recover';
 import { ServiceInterface } from './types/serviceInterface';
-import { atGrokIsThisTrueService } from './services/atGrokIsThisTrueService';
+import { AtGrokIsThisTrueService } from './services/atGrokIsThisTrueService';
+import { YtdlFallbackService } from './services/ytdlFallback';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
@@ -179,9 +180,9 @@ class BotApplication {
                     });
                     return;
                 }
-                const grokService = this.client.services.get('atGrokIsThisTrueService') as atGrokIsThisTrueService;
+                const grokService = this.client.services.get('AtGrokIsThisTrueService') as AtGrokIsThisTrueService;
                 if (!grokService) {
-                    discordLogger.error('atGrokIsThisTrueService is not initialized.');
+                    discordLogger.error('AtGrokIsThisTrueService is not initialized.');
                     return;
                 }
                 try {
@@ -390,7 +391,7 @@ class BotApplication {
                         useClient: "WEB_EMBEDDED",
                         // Add timeout and retry options if available
                     },
-                    // Add any timeout configurations
+                    //cookie: process.env.YT_COOKIE || '',
                     //generateWithPoToken: true,
                     //authentication: process.env.YT_ACCESS_TOKEN,
                 });
@@ -475,11 +476,16 @@ class BotApplication {
     private async initializeServices() {
         discordLogger.info('Initializing services...');
         this.client.services = new Collection<string, ServiceInterface>();
-        // Initialize the atGrokIsThisTrueService
-        const grokService = new atGrokIsThisTrueService();
+        // Initialize the AtGrokIsThisTrueService
+        const grokService = new AtGrokIsThisTrueService();
         await grokService.init()
-            .then(() => discordLogger.info('atGrokIsThisTrueService initialized successfully'))
-        this.client.services.set('atGrokIsThisTrueService', grokService);
+            .then(() => discordLogger.info('AtGrokIsThisTrueService initialized successfully'))
+
+        const youtubeFallbackService = new YtdlFallbackService();
+        await youtubeFallbackService.init()
+            .then(() => discordLogger.info('YtdlFallbackService initialized successfully'))
+        this.client.services.set('AtGrokIsThisTrueService', grokService);
+        this.client.services.set('YtdlFallbackService', youtubeFallbackService);
     }
 
     private updateBotStatusMessage(forced=false) {
