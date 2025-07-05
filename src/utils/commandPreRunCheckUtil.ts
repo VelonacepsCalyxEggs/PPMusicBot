@@ -9,6 +9,11 @@ export default function commandPreRunCheckUtil(interaction: ChatInputCommandInte
         return false;
     }
 
+    if (!queue) {
+        interaction.reply({ content: 'There is no queue for this guild.', flags: ['Ephemeral'] });
+        return false;
+    }
+    
     if (queue && queue.size === 0) {
         interaction.reply({ content: 'The queue is empty.', flags: ['Ephemeral'] });
         return false;
