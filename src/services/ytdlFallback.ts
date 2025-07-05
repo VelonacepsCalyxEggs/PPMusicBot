@@ -4,7 +4,7 @@ import { ServiceInterface } from '../types/serviceInterface';
 import { readFile, writeFile } from 'fs/promises';
 import { PlaylistTooLargeError, videoCache, YtdlFallbackResponseInterface } from '../types/ytdlServiceTypes';
 import { join } from 'path';
-import { Player, QueryType, SearchResult, Track } from 'discord-player/dist';
+import { GuildQueue, Player, QueryType, SearchResult, Track } from 'discord-player/dist';
 import { User } from 'discord.js';
 import { NoTrackFoundError } from '../types/ytdlServiceTypes';
 import { playerLogger } from '../utils/loggerUtil';
@@ -212,6 +212,102 @@ export class YtdlFallbackService extends ServiceInterface {
         } catch (error) {
         throw new Error(`Failed to play playlist: ${error.message}`);
         }
+    }
+
+    public async playPlaylistWithBackground(url: string, player: Player, user?: User, guildQueue?: GuildQueue): Promise<{
+        firstTrack: Track<unknown> | null,
+        playlistInfo: ytpl.Result,
+        backgroundPromise: Promise<void>
+    }> {
+        try {
+            let playlist: ytpl.Result;
+            const cachedPlaylist = this.getCachedPlaylist(await ytpl.getPlaylistID(url));
+            
+            if (cachedPlaylist) {
+                playerLogger.debug(`Using cached playlist: ${cachedPlaylist}`);
+                const cachedData: ytpl.Result = JSON.parse(await readFile(cachedPlaylist, 'utf-8'));
+                playlist = cachedData;
+            } else {
+                playlist = await ytpl(url);
+                await this.cachePlaylistAsJson(playlist);
+            }
+
+            if (playlist.items.length > 32) {
+                throw new PlaylistTooLargeError('Playlist contains more than 32 items, which is currently not supported for my sanity...');
+            }
+
+            let firstTrack: Track<unknown> | null = null;
+            
+            // Process first track immediately
+            if (playlist.items.length > 0) {
+                const firstItem = playlist.items[0];
+                try {
+                    const video = await this.getVideo(firstItem.url);
+                    const searchResult = await this.searchFile(player, video.filePath, user);
+                    if (searchResult.tracks.length) {
+                        const track = searchResult.tracks[0];
+                        track.title = video.metadata.videoDetails.title;
+                        track.author = video.metadata.videoDetails.author.name;
+                        track.thumbnail = video.metadata.videoDetails.thumbnails[0]?.url;
+                        track.url = video.metadata.videoDetails.video_url || '#';
+                        firstTrack = track;
+                    }
+                } catch (error) {
+                    playerLogger.error(`Failed to process first track: ${error.message}`);
+                }
+            }
+
+            // Create background promise for remaining tracks
+            const backgroundPromise = this.processRemainingTracksAsync(
+                playlist.items.slice(1), 
+                player, 
+                user, 
+                guildQueue, 
+                playlist
+            );
+
+            return {
+                firstTrack,
+                playlistInfo: playlist,
+                backgroundPromise
+            };
+        } catch (error) {
+            throw new Error(`Failed to play playlist: ${error.message}`);
+        }
+    }
+
+    private async processRemainingTracksAsync(
+        items: ytpl.Item[], 
+        player: Player, 
+        user: User | undefined, 
+        guildQueue: GuildQueue | undefined, 
+        playlist: ytpl.Result
+    ): Promise<void> {
+        if (!guildQueue) return;
+        
+        playerLogger.debug(`Processing ${items.length} remaining tracks in background`);
+        
+        for (const item of items) {
+            try {
+                const video = await this.getVideo(item.url);
+                const searchResult = await this.searchFile(player, video.filePath, user);
+                
+                if (searchResult.tracks.length) {
+                    const track = searchResult.tracks[0];
+                    track.title = video.metadata.videoDetails.title;
+                    track.author = video.metadata.videoDetails.author.name;
+                    track.thumbnail = video.metadata.videoDetails.thumbnails[0]?.url;
+                    track.url = video.metadata.videoDetails.video_url || '#';
+                    
+                    guildQueue.addTrack(track);
+                    playerLogger.debug(`Added ${track.title} to queue`);
+                }
+            } catch (error) {
+                playerLogger.error(`Skipping ${item.title}: ${error.message}`);
+            }
+        }
+        
+        playerLogger.debug(`Finished processing remaining tracks for playlist: ${playlist.title}`);
     }
 
     private async searchFile(player: Player, filePath: string, requestedBy?: User): Promise<SearchResult> {

@@ -11,7 +11,7 @@ import axios from 'axios';
 import { MusicDto, ScoredAlbum, ScoredTrack, SearchResultsDto } from '../types/searchResultInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
-import { commandLogger, logError } from '../utils/loggerUtil';
+import { commandLogger, logError, playerLogger } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
 import { YtdlFallbackService } from '../services/ytdlFallback';
 import { NoTrackFoundError, PlaylistTooLargeError } from '../types/ytdlServiceTypes';
@@ -182,28 +182,38 @@ export default class PlayCommand extends CommandInterface {
                 
             case 'youtube_playlist':
                 commandLogger.debug(`YouTube playlist URL detected: ${argument}`);
-                //return interaction.followUp('Oops... sorry, the DRM shit hit the fan and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
-                //result = await player.search(argument, {
-                //    requestedBy: interaction.user,
-                //    searchEngine: QueryType.YOUTUBE_PLAYLIST
-                //});
                 
-                //if (!result.playlist) return interaction.followUp({content: 'No results found for the playlist.', flags: ['Ephemeral']});
-                
-                //await this.playTrack(result.tracks[0], guildQueue, interaction);
-
                 try {
-                    result = await ytdlFallback.playPlaylist(argument, player, interaction.user);
-                    result.tracks.forEach(async (track) => {
-                        await this.playTrack(track, guildQueue, interaction);
-                    })
-                    embed = createEmbedUtil(
-                    `**${result.tracks.length} songs from ${result.playlist!.title}** have been added to the queue`, 
-                    result.playlist!.thumbnail, 
-                    null
-                );
-                }
-                catch (error) {
+                    interaction.editReply("Loading playlist, this might take a moment...");
+                    
+                    const playlistResult = await ytdlFallback.playPlaylistWithBackground(argument, player, interaction.user, guildQueue);
+                    
+                    // Play the first track immediately if available
+                    if (playlistResult.firstTrack) {
+                        await this.playTrack(playlistResult.firstTrack, guildQueue, interaction);
+                        
+                        embed = createEmbedUtil(
+                            `**${playlistResult.playlistInfo.title}** - Started playing first track`, 
+                            playlistResult.playlistInfo.bestThumbnail?.url || '', 
+                            `Total tracks: ${playlistResult.playlistInfo.items.length} | Downloading remaining tracks in background...`
+                        );
+                    } else {
+                        embed = createEmbedUtil(
+                            `**${playlistResult.playlistInfo.title}** - Loading playlist...`, 
+                            playlistResult.playlistInfo.bestThumbnail?.url || '', 
+                            `Total tracks: ${playlistResult.playlistInfo.items.length} | Processing tracks in background...`
+                        );
+                    }
+                    
+                    // Handle the background promise
+                    playlistResult.backgroundPromise.then(() => {
+                        playerLogger.debug(`Finished processing all tracks for playlist: ${playlistResult.playlistInfo.title}`);
+                        interaction.followUp({ content: `Finished loading all tracks from **${playlistResult.playlistInfo.title}**`, flags: ['SuppressNotifications'] });
+                    }).catch((error) => {
+                        playerLogger.error(`Error processing background tracks: ${error.message}`);
+                    });
+                    
+                } catch (error) {
                     if (error instanceof PlaylistTooLargeError) {
                         return interaction.followUp({content: error.message, flags: ['Ephemeral']});
                     }
