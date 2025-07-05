@@ -1,8 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, TextChannel, Client } from 'discord.js';
 import CommandInterface from '../types/commandInterface';
-import { Player, GuildQueue, Track } from 'discord-player';
+import { Player, Track } from 'discord-player';
 import { commandLogger, logError } from '../utils/loggerUtil';
-import TrackMetadata from 'src/types/trackMetadata';
 
 export default class RecoverCommand implements CommandInterface {
     data = new SlashCommandBuilder()

@@ -1,6 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
-import { useQueue } from 'discord-player';
+import { ChatInputCommandInteraction } from 'discord.js';
 import CommandInterface from '../types/commandInterface';
 
 export default class ErrorCommand extends CommandInterface {

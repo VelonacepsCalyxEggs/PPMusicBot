@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, ChatInputCommandInteraction, Client } from 'discord.js';
-import { QueryType, useQueue } from 'discord-player';
+import { ChatInputCommandInteraction, Client } from 'discord.js';
+import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 
 export default class MoveCommand extends CommandInterface {

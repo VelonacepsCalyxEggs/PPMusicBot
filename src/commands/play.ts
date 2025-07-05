@@ -11,7 +11,7 @@ import axios from 'axios';
 import { MusicDto, ScoredAlbum, ScoredTrack, SearchResultsDto } from '../types/searchResultInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
-import { commandLogger, discordLogger, logError } from '../utils/loggerUtil';
+import { commandLogger, logError } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
 import { YtdlFallbackService } from '../services/ytdlFallback';
 import { NoTrackFoundError, PlaylistTooLargeError } from '../types/ytdlServiceTypes';

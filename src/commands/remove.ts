@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { EmbedBuilder, Client, ChatInputCommandInteraction } from 'discord.js';
-import { useQueue, GuildQueue } from 'discord-player';
+import { Client, ChatInputCommandInteraction } from 'discord.js';
+import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 
 export default class RemoveCommand extends CommandInterface {
