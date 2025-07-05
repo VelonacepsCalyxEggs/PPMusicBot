@@ -10,6 +10,13 @@ export interface YtdlFallbackResponseInterface {
     };
 }
 
+export interface videoCache {
+    [videoId: string]: {
+        filePath: string;
+        metadata: ytdl.videoInfo;
+    };
+}
+
 export class NoTrackFoundError extends Error {
     constructor(message: string) {
         super(message);

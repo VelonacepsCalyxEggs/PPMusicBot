@@ -1,14 +1,14 @@
-import ytdl from '@distube/ytdl-core';
+import ytdl, { videoInfo } from '@distube/ytdl-core';
 import ytpl from 'ytpl';
 import { ServiceInterface } from '../types/serviceInterface';
 import { readFile, writeFile } from 'fs/promises';
-import { PlaylistTooLargeError, YtdlFallbackResponseInterface } from '../types/ytdlServiceTypes';
+import { PlaylistTooLargeError, videoCache, YtdlFallbackResponseInterface } from '../types/ytdlServiceTypes';
 import { join } from 'path';
 import { Player, QueryType, SearchResult, Track } from 'discord-player/dist';
 import { User } from 'discord.js';
 import { NoTrackFoundError } from '../types/ytdlServiceTypes';
 import { playerLogger } from '../utils/loggerUtil';
-import { readdirSync, write } from 'fs';
+import { readdirSync } from 'fs';
 export class YtdlFallbackService extends ServiceInterface {
 
     public async init(): Promise<void> {
@@ -43,16 +43,22 @@ export class YtdlFallbackService extends ServiceInterface {
         }
     }
 
-    private async getCachedVideo(videoId: string): Promise<string | null> {
-        const files = readdirSync(process.env.CACHE_DIR || './cache')
-        for (const file of files) {
-            if (file == `${videoId}.mp3`) {
-                const filePath = join(process.env.CACHE_DIR || './cache', file);
-                playerLogger.debug(`Found cached video: ${filePath}`);
-                return filePath;
+    private async getCachedVideo(videoId: string): Promise<YtdlFallbackResponseInterface | null> {
+        playerLogger.debug(`Checking cache for video ID: ${videoId}`);
+        try {
+            const files = JSON.parse(await readFile(join(process.env.CACHE_DIR || './cache', 'cachedVideos.json'), 'utf-8')) as videoCache;
+            if (files[videoId]) {
+                playerLogger.debug(`Found cached video: ${files[videoId].filePath}`);
+                return files[videoId];
+            } else {
+                playerLogger.debug(`No cached video found for ID: ${videoId}`);
+                return null;
             }
         }
-        return null;
+        catch (error) {
+            playerLogger.error(`Error reading cache file: ${error.message}`);
+            return null;
+        }
     }
 
     private getCachedPlaylist(playlistId: string): string | null {
@@ -67,10 +73,11 @@ export class YtdlFallbackService extends ServiceInterface {
         return null;
     }
 
-    private async saveVideoToCache(url: string, videoId: string, buffer: Buffer): Promise<string> {
-        const fileName = `${videoId}.mp4`;
+    private async saveVideoToCache(videoData: videoInfo, buffer: Buffer): Promise<string> {
+        const fileName = `${videoData.videoDetails.videoId}.mp3`;
         const filePath = join(process.env.CACHE_DIR || './cache', fileName);
         try {
+            await this.cacheVideoAsJson(videoData);
             await writeFile(filePath, buffer);
             return filePath;
         } catch (error) {
@@ -78,20 +85,37 @@ export class YtdlFallbackService extends ServiceInterface {
         }
     }
 
+    private async cacheVideoAsJson(videoData: videoInfo): Promise<void> {
+        const filePath = join(process.env.CACHE_DIR || './cache', `cachedVideos.json`);
+        try {
+            let cachedVideos: videoCache = {};
+            try {
+                const data = await readFile(filePath, 'utf-8');
+                cachedVideos = JSON.parse(data);
+            } catch (error) {
+                playerLogger.debug(`No existing cache file found, creating new one.`);
+            }
+            cachedVideos[videoData.videoDetails.videoId] = { filePath: join(process.env.CACHE_DIR || './cache', videoData.videoDetails.videoId + '.mp3'), metadata: videoData };
+            await writeFile(filePath, JSON.stringify(cachedVideos, null, 2));
+            playerLogger.debug(`Video metadata cached successfully for video ID: ${videoData.videoDetails.videoId}`);
+        } catch (error) {
+            throw new Error(`Error caching video metadata: ${error.message}`);
+        }
+    }
+
     public async getVideo(url: string): Promise<YtdlFallbackResponseInterface> {
         try {
             playerLogger.debug(`Getting video from URL: ${url}`);
             const videoId = ytdl.getURLVideoID(url);
-            this.getCachedVideo(videoId).then(cachedFilePath => {
-                if (cachedFilePath) {
-                    playerLogger.debug(`Using cached video: ${cachedFilePath}`);
-                    return { filePath: cachedFilePath, metadata: this.extractMetadata(url) };
-                }
-            });
+            const cachedVideo = await this.getCachedVideo(videoId)
+            if (cachedVideo) {
+                playerLogger.debug(`Using cached video: ${cachedVideo.filePath}`);
+                return { filePath: cachedVideo.filePath, metadata: cachedVideo.metadata };
+            }
             const videoBuffer = await this.downloadVideo(url);
             const videoMetadata = await this.extractMetadata(url);
-            const cachedFilePath = await this.saveVideoToCache(url, videoMetadata.videoDetails.videoId, videoBuffer);
-            return { filePath: cachedFilePath, metadata: videoMetadata };
+            const filePath = await this.saveVideoToCache(videoMetadata, videoBuffer);
+            return { filePath: filePath, metadata: videoMetadata };
         } catch (error) {
             throw new Error(`Error in YtdlFallbackService: ${error.message}`);
         }
