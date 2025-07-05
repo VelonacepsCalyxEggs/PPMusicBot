@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { Client, ChatInputCommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
-import commandPreRunCheckUtil from 'src/utils/commandPreRunCheckUtil';
+import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class RemoveCommand extends CommandInterface {
     data = new SlashCommandBuilder()
