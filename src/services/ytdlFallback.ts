@@ -9,6 +9,7 @@ import { User } from 'discord.js';
 import { NoTrackFoundError } from '../types/ytdlServiceTypes';
 import { playerLogger } from '../utils/loggerUtil';
 import { readdirSync } from 'fs';
+import YouTube from 'youtube-sr/dist/mod';
 export class YtdlFallbackService extends ServiceInterface {
 
     public async init(): Promise<void> {
@@ -165,12 +166,67 @@ export class YtdlFallbackService extends ServiceInterface {
         }
     }
 
-    public async playVideo(url: string, player: Player, user?: User): Promise<Track<unknown>> {
+    private async getVideoBySearch(query: string): Promise<string> {
         try {
-            const videoData = await this.getVideo(url);
-            const searchResult = await this.searchFile(player, videoData.filePath, user);
-            if (!searchResult.tracks.length) {
-                throw new NoTrackFoundError('No tracks found for the downloaded video.',);
+            playerLogger.debug(`Searching YouTube for: ${query}`);
+            const results = await YouTube.search(query, { limit: 1, type: 'video' });
+            
+            if (results.length === 0) {
+                throw new Error('No search results found');
+            }
+            
+            const firstResult = results[0];
+            playerLogger.debug(`Found video: ${firstResult.title} by ${firstResult.channel?.name}`);
+            return firstResult.url;
+        } catch (error) {
+            throw new Error(`YouTube search failed: ${error.message}`);
+        }
+    }
+
+    // Enhanced method that returns more info
+    private async searchYouTube(query: string, limit: number = 5): Promise<{
+        title: string;
+        url: string;
+        author: string;
+        duration: string;
+        thumbnail: string;
+    }[]> {
+        try {
+            const results = await YouTube.search(query, { limit, type: 'video' });
+            
+            return results.map(video => ({
+                title: video.title || 'Unknown Title',
+                url: video.url,
+                author: video.channel?.name || 'Unknown Author',
+                duration: video.durationFormatted || '0:00',
+                thumbnail: video.thumbnail?.url || ''
+            }));
+        } catch (error) {
+            throw new Error(`YouTube search failed: ${error.message}`);
+        }
+    }
+
+    public async playVideo(player: Player, url?: string | null, query?: string | null, user?: User): Promise<Track<unknown>> {
+        try {
+            let searchResult: SearchResult; 
+            let videoData: YtdlFallbackResponseInterface;
+            if (url) {
+                videoData = await this.getVideo(url);
+                searchResult = await this.searchFile(player, videoData.filePath, user);
+                if (!searchResult.tracks.length) {
+                    throw new NoTrackFoundError('No tracks found for the downloaded video.',);
+                }
+            }
+            else {
+                if (!query) {
+                    throw new Error('No URL or query provided for video playback.');
+                }
+                const videoUrl = await this.getVideoBySearch(query);
+                videoData = await this.getVideo(videoUrl);
+                searchResult = await this.searchFile(player, videoData.filePath, user);
+                if (!searchResult.tracks.length) {
+                    throw new NoTrackFoundError('No tracks found for the searched video.',);
+                }
             }
             searchResult.tracks[0].title = videoData.metadata.videoDetails.title;
             searchResult.tracks[0].author = videoData.metadata.videoDetails.author.name;

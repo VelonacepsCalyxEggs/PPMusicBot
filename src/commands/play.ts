@@ -159,11 +159,7 @@ export default class PlayCommand extends CommandInterface {
                 //discordLogger.warn(`No tracks found for YouTube URL using fallback: ${argument}`);
                 try {
                     interaction.editReply("Downloading YouTube video, this might take a moment...");
-                    const videoData = await ytdlFallback.getVideo(cleanYoutubeUrl);
-                    if (!videoData) {
-                        return interaction.followUp({content: 'No video data found for the YouTube URL.', flags: ['Ephemeral']});
-                    }
-                    song = await ytdlFallback.playVideo(cleanYoutubeUrl, player, interaction.user);
+                    song = await ytdlFallback.playVideo(player, cleanYoutubeUrl, null, interaction.user);
                 }
                 catch (error) {
                     if (error instanceof NoTrackFoundError) {
@@ -231,13 +227,17 @@ export default class PlayCommand extends CommandInterface {
             default:
                 commandLogger.debug(`Search term detected: ${argument}`);
                 //return interaction.followUp('Oops... sorry, the fentanyl bag hit the turboprop and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
-                result = await this.searchYoutube(player, argument, interaction.user);
-                
-                if (!result.tracks.length) {
-                    return interaction.followUp({content: 'No results found for the search term.', flags: ['Ephemeral']});
+                //result = await this.searchYoutube(player, argument, interaction.user);
+                try {
+                    interaction.editReply("Downloading YouTube video, this might take a moment...");
+                    song = await ytdlFallback.playVideo(player, null, argument, interaction.user);
+                    embed = this.createTrackEmbed(song, guildQueue.tracks.size);
                 }
-                song = result.tracks[0];
-                embed = this.createTrackEmbed(song, guildQueue.tracks.size);
+                catch (error) {
+                    if (error instanceof NoTrackFoundError) {
+                        return interaction.followUp({content: error.message, flags: ['Ephemeral']});
+                    }
+                }
                 break;
         }
 
