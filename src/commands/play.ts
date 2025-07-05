@@ -13,7 +13,8 @@ import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
 import { commandLogger, discordLogger, logError } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
-import { YtdlFallbackService } from 'src/services/ytdlFallback';
+import { YtdlFallbackService } from '../services/ytdlFallback';
+import { NoTrackFoundError, PlaylistTooLargeError } from '../types/ytdlServiceTypes';
 
 export default class PlayCommand extends CommandInterface {
     constructor() {
@@ -113,8 +114,8 @@ export default class PlayCommand extends CommandInterface {
         const sourceType = this.detectSourceType(argument);
         let result: SearchResult;
         let song: Track<unknown> | null = null;
-        let embed: EmbedBuilder;
-        
+        let embed: EmbedBuilder | undefined = undefined;
+        const ytdlFallback = client.services.get('YtdlFallbackService') as YtdlFallbackService;
         switch (sourceType) {
             case 'spotify':
                 commandLogger.debug(`Spotify URL detected: ${argument}`);
@@ -155,34 +156,65 @@ export default class PlayCommand extends CommandInterface {
                 const cleanYoutubeUrl = this.cleanYoutubeUrl(argument);
                 //result = await this.searchTrack(player, cleanYoutubeUrl, interaction.user);
                 
-                discordLogger.warn(`No tracks found for YouTube URL using fallback: ${argument}`);
-                const ytdlFallback = client.services.get('YtdlFallbackService') as YtdlFallbackService;
-                const filePath = await ytdlFallback.getVideo(cleanYoutubeUrl);
-                result = await this.searchFile(player, filePath, interaction.user);
-
-                if (!result.tracks.length) {
-                    return interaction.followUp({content: 'No results found for the YouTube URL.', flags: ['Ephemeral']});
+                //discordLogger.warn(`No tracks found for YouTube URL using fallback: ${argument}`);
+                try {
+                    interaction.editReply("Downloading YouTube video, this might take a moment...");
+                    const videoData = await ytdlFallback.getVideo(cleanYoutubeUrl);
+                    if (!videoData) {
+                        return interaction.followUp({content: 'No video data found for the YouTube URL.', flags: ['Ephemeral']});
+                    }
+                    song = await ytdlFallback.playVideo(cleanYoutubeUrl, player, interaction.user);
                 }
-                song = result.tracks[0];
-                embed = this.createTrackEmbed(song, guildQueue.tracks.size);
+                catch (error) {
+                    if (error instanceof NoTrackFoundError) {
+                        return interaction.followUp({content: error.message, flags: ['Ephemeral']});
+                    }
+                }
+                //result = await this.searchFile(player, videoData.filePath, interaction.user);
+
+                //if (!result.tracks.length) {
+                //    return interaction.followUp({content: 'No results found for the YouTube URL.', flags: ['Ephemeral']});
+                //}
+
+                //song = result;
+                embed = this.createTrackEmbed(song!, guildQueue.tracks.size);
                 break;
                 
             case 'youtube_playlist':
                 commandLogger.debug(`YouTube playlist URL detected: ${argument}`);
                 //return interaction.followUp('Oops... sorry, the DRM shit hit the fan and I can no longer play YouTube videos. Please use the fromDB command instead. Contribute music to the database on my website!');
-                result = await player.search(argument, {
-                    requestedBy: interaction.user,
-                    searchEngine: QueryType.YOUTUBE_PLAYLIST
-                });
+                //result = await player.search(argument, {
+                //    requestedBy: interaction.user,
+                //    searchEngine: QueryType.YOUTUBE_PLAYLIST
+                //});
                 
-                if (!result.playlist) return interaction.followUp({content: 'No results found for the playlist.', flags: ['Ephemeral']});
+                //if (!result.playlist) return interaction.followUp({content: 'No results found for the playlist.', flags: ['Ephemeral']});
                 
-                await this.playTrack(result.tracks[0], guildQueue, interaction);
-                embed = createEmbedUtil(
-                    `**${result.tracks.length} songs from ${result.playlist.title}** have been added to the queue`, 
-                    result.playlist.thumbnail, 
+                //await this.playTrack(result.tracks[0], guildQueue, interaction);
+
+                try {
+                    result = await ytdlFallback.playPlaylist(argument, player, interaction.user);
+                    result.tracks.forEach(async (track) => {
+                        await this.playTrack(track, guildQueue, interaction);
+                    })
+                    embed = createEmbedUtil(
+                    `**${result.tracks.length} songs from ${result.playlist!.title}** have been added to the queue`, 
+                    result.playlist!.thumbnail, 
                     null
                 );
+                }
+                catch (error) {
+                    if (error instanceof PlaylistTooLargeError) {
+                        return interaction.followUp({content: error.message, flags: ['Ephemeral']});
+                    }
+                    else if (error instanceof NoTrackFoundError) {
+                        return interaction.followUp({content: error.message, flags: ['Ephemeral']});
+                    }
+                    else {
+                        logError(error, `Error while processing YouTube playlist: ${argument}`);
+                        return interaction.followUp({content: 'An error occurred while processing the YouTube playlist.', flags: ['Ephemeral']});
+                    }
+                }
                 break;
                 
             case 'search_term':
@@ -203,7 +235,11 @@ export default class PlayCommand extends CommandInterface {
             await this.playTrack(song, guildQueue, interaction);
         }
 
-        return await interaction.followUp({embeds: [embed] });
+        if (embed) {
+            return await interaction.followUp({ embeds: [embed] });
+        } else {
+            return await interaction.followUp({ content: 'No track information available.', ephemeral: true });
+        }
     };
 
     // Helper method to detect source type
