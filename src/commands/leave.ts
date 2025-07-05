@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
+import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class LeaveCommand extends CommandInterface {
     data = new SlashCommandBuilder()
@@ -15,12 +16,9 @@ export default class LeaveCommand extends CommandInterface {
         }
         const queue = useQueue(interaction.guild);
 
-        // If there is no queue, return
-        if (!queue) {
-            return interaction.reply({ content: 'There is no queue!', flags: ['SuppressNotifications']});
-        }
+        if (!commandPreRunCheckUtil(interaction, queue)) return;
 
-        queue.delete();
+        queue!.delete();
         console.log('Managed to delete a queue like a normal person.');
         
         // Create an embed to inform the user

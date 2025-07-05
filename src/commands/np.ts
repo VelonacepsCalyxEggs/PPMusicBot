@@ -4,6 +4,7 @@ import { Track, useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
+import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class NowPlayingCommand extends CommandInterface {
     data = new SlashCommandBuilder()
@@ -15,18 +16,9 @@ export default class NowPlayingCommand extends CommandInterface {
         if (!interaction.guild || !interaction.guildId) return interaction.followUp('You need to be in a guild.');
         const queue = useQueue(interaction.guild);
 
-        // If there is no queue, return
-        if (!queue) {
-            await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
-            return;
-        }
+        if (!commandPreRunCheckUtil(interaction, queue)) return;
 
-        if (!queue.currentTrack) {
-            await interaction.reply({ content: 'There are no songs playing.', flags: ['Ephemeral'] });
-            return;
-        }
-
-        const currentTrack = queue.currentTrack as Track<TrackMetadata>;
+        const currentTrack = queue!.currentTrack as Track<TrackMetadata>;
         const metadata = currentTrack.metadata;
 
         if (!metadata) {

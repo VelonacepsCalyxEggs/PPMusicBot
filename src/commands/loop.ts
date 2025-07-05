@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { useQueue, QueueRepeatMode } from 'discord-player';
 import { Client, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import CommandInterface from '../types/commandInterface';
+import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class LoopCommand extends CommandInterface {
     data = new SlashCommandBuilder()
@@ -26,28 +27,20 @@ export default class LoopCommand extends CommandInterface {
             2: 'Queue',
         };
         // If there is no queue, return
-        if (!queue) {
-            await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
-            return;
-        }
-
-        if (!queue.currentTrack) {
-            await interaction.reply({ content: 'There is no current track to loop!', flags: ['Ephemeral'] });
-            return;
-        }
+        if (!commandPreRunCheckUtil(interaction, queue)) return;
         let repeatModeString = '';
         const repeatModeUser = interaction.options.get('mode')?.value
         if (repeatModeUser === '1') {
-            queue.setRepeatMode(QueueRepeatMode.QUEUE);
+            queue!.setRepeatMode(QueueRepeatMode.QUEUE);
             repeatModeString = 'QUEUE';
         } else if (repeatModeUser === '2') {
-            queue.setRepeatMode(QueueRepeatMode.TRACK);
+            queue!.setRepeatMode(QueueRepeatMode.TRACK);
             repeatModeString = 'TRACK';
         } else if (repeatModeUser === '3') {
-            queue.setRepeatMode(QueueRepeatMode.OFF);
+            queue!.setRepeatMode(QueueRepeatMode.OFF);
             repeatModeString = 'OFF';
         } else {
-            return interaction.reply({ content: `Current looping mode is ${repeatDict[queue.repeatMode]}.`, flags: ['Ephemeral'] });
+            return interaction.reply({ content: `Current looping mode is ${repeatDict[queue!.repeatMode]}.`, flags: ['Ephemeral'] });
         }
 
         // Create the embed

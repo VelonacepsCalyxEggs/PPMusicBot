@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
+import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
  
 export default class PauseCommand extends CommandInterface {
     data = new SlashCommandBuilder()
@@ -14,20 +15,16 @@ export default class PauseCommand extends CommandInterface {
         if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
 
-        // If there is no queue, return
-        if (!queue) {
-            await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
-            return;
-        }
+        if (!commandPreRunCheckUtil(interaction, queue)) return;
         // Create an embed to inform the user
         const embed = new EmbedBuilder()
 
         // Add the current song
-        if (queue.node.isPaused()) {
-            queue.node.resume();
+        if (queue!.node.isPaused()) {
+            queue!.node.resume();
             embed.setDescription(`You have unpaused the queue!`);
         } else {
-            queue.node.pause();
+            queue!.node.pause();
             embed.setDescription(`You have paused the queue!`);
         }
 

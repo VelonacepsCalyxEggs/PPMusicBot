@@ -4,6 +4,7 @@ import { useQueue, Track } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
+import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class QueueCommand extends CommandInterface {
     data = new SlashCommandBuilder()
@@ -19,27 +20,22 @@ export default class QueueCommand extends CommandInterface {
             return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         }
         const queue = useQueue(interaction.guild);
-        if (!queue) {
-            return interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
-        }
-        if (queue.size === 0) {
-            return interaction.reply({ content: 'There are no tracks in the queue!', flags: ['Ephemeral'] });
-        }
+        if (!commandPreRunCheckUtil(interaction, queue)) return;
 
         let page = Number(interaction.options.get('page', false)?.value) ?? 1;
         if (isNaN(page)) {
             page = 1;
         }
         const multiple = 10;
-        const maxPages = Math.ceil(queue.size / multiple);
+        const maxPages = Math.ceil(queue!.size / multiple);
 
         if (page < 1 || page > maxPages) page = 1;
 
         const end = page * multiple;
         const start = end - multiple;
 
-        const tracks = queue.tracks.toArray().slice(start, end) as Track<TrackMetadata>[];
-        const allTracks = queue.tracks.toArray() as Track<TrackMetadata>[];
+        const tracks = queue!.tracks.toArray().slice(start, end) as Track<TrackMetadata>[];
+        const allTracks = queue!.tracks.toArray() as Track<TrackMetadata>[];
         let totalDurationMs = 0;
 
         for (const track of allTracks) {
@@ -102,8 +98,8 @@ export default class QueueCommand extends CommandInterface {
             .setDescription(description || 'No tracks found in the current queue.')
             .setFooter({
                 text: `Page ${page} of ${maxPages} | track ${start + 1} to ${
-                    end > queue.size ? `${queue.size}` : `${end}`
-                } of ${queue.size}. Total Duration: ${totalDurationFormatted}.`,
+                    end > queue!.size ? `${queue!.size}` : `${end}`
+                } of ${queue!.size}. Total Duration: ${totalDurationFormatted}.`,
                 iconURL: interaction.user.displayAvatarURL(),
             });
 
@@ -153,7 +149,7 @@ export default class QueueCommand extends CommandInterface {
             const end = page * multiple;
             const start = end - multiple;
 
-            const tracks = queue.tracks.toArray().slice(start, end) as Track<TrackMetadata>[];
+            const tracks = queue!.tracks.toArray().slice(start, end) as Track<TrackMetadata>[];
             const description = tracks
                 .map(
                     (track, i) => {
@@ -187,8 +183,8 @@ export default class QueueCommand extends CommandInterface {
                 .setDescription(description || 'No tracks found in the current queue.')
                 .setFooter({
                     text: `Page ${page} of ${maxPages} | track ${start + 1} to ${
-                        end > queue.size ? `${queue.size}` : `${end}`
-                    } of ${queue.size}. Total Duration: ${totalDurationFormatted}.`,
+                        end > queue!.size ? `${queue!.size}` : `${end}`
+                    } of ${queue!.size}. Total Duration: ${totalDurationFormatted}.`,
                     iconURL: interaction.user.displayAvatarURL(),
                 });
 

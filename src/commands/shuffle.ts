@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { ChatInputCommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
+import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class ShuffleCommand extends CommandInterface {
     data = new SlashCommandBuilder()
@@ -19,15 +20,10 @@ export default class ShuffleCommand extends CommandInterface {
     execute = async ({ interaction }: { interaction: ChatInputCommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
-        if (!queue) {
-            return interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
-        }
-        if (!queue.size) {
-            return interaction.reply({ content: 'There are no tracks in the queue to shuffle!', flags: ['Ephemeral'] });
-        }
+        if (!commandPreRunCheckUtil(interaction, queue)) return;
 
         const shuffleAlgorithm = interaction.options.get('algorithm')?.value || 'fy';
-        const tracks = queue.tracks.toArray();
+        const tracks = queue!.tracks.toArray();
 
         // Shuffle based on the selected algorithm
         switch (shuffleAlgorithm) {
@@ -60,8 +56,8 @@ export default class ShuffleCommand extends CommandInterface {
                 }
         }
 
-        queue.clear();
-        tracks.forEach(track => queue.addTrack(track));
+        queue!.clear();
+        tracks.forEach(track => queue!.addTrack(track));
         return interaction.reply({
             content: `The queue has been shuffled using ${shuffleAlgorithm} algorithm!`,
             flags: ['SuppressNotifications']

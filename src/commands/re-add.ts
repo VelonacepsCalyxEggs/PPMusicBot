@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { EmbedBuilder, ChatInputCommandInteraction, Client } from 'discord.js';
 import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
+import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class ReaddCommand extends CommandInterface {
     data = new SlashCommandBuilder()
@@ -18,18 +19,15 @@ export default class ReaddCommand extends CommandInterface {
         const queue = useQueue(interaction.guild);
 
         // If there is no queue, return
-        if (!queue) {
-            await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
-            return;
-        }
+        if (!commandPreRunCheckUtil(interaction, queue)) return;
         
-        const currentSong = queue.currentTrack;
+        const currentSong = queue!.currentTrack;
         if (!currentSong) return interaction.reply({ content: 'There is no current song to re-add!', flags: ['Ephemeral'] });
 
         // Add the current song
-        queue.addTrack(currentSong);
+        queue!.addTrack(currentSong);
         if (Boolean(interaction.options.get('now')?.value)) {
-            queue.moveTrack(queue.size - 1, 0)
+            queue!.moveTrack(queue!.size - 1, 0)
         }
 
         // Create an embed to inform the user
