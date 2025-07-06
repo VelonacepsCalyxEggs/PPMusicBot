@@ -41,6 +41,7 @@ import RecoverCommand from './commands/recover';
 import { ServiceInterface } from './types/serviceInterface';
 import { AtGrokIsThisTrueService } from './services/atGrokIsThisTrueService';
 import { YtdlFallbackService } from './services/ytdlFallback';
+import { NetworkFileService } from './services/networkFileService';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
@@ -484,8 +485,14 @@ class BotApplication {
         const youtubeFallbackService = new YtdlFallbackService();
         await youtubeFallbackService.init()
             .then(() => discordLogger.info('YtdlFallbackService initialized successfully'))
+
+        const networkFileService = new NetworkFileService();
+        await networkFileService.init()
+            .then(() => discordLogger.info('NetworkFileService initialized successfully'));
+        
         this.client.services.set('AtGrokIsThisTrueService', grokService);
         this.client.services.set('YtdlFallbackService', youtubeFallbackService);
+        this.client.services.set('NetworkFileService', networkFileService);
     }
 
     private updateBotStatusMessage(forced=false) {

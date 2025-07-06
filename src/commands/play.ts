@@ -15,6 +15,7 @@ import { commandLogger, logError, playerLogger } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
 import { YtdlFallbackService } from '../services/ytdlFallback';
 import { NoTrackFoundError, PlaylistTooLargeError } from '../types/ytdlServiceTypes';
+import { NetworkFileService } from '../services/networkFileService';
 
 export default class PlayCommand extends CommandInterface {
     constructor() {
@@ -98,7 +99,7 @@ export default class PlayCommand extends CommandInterface {
                 await this.handleFileCommand(player, interaction, guildQueue);
                 break;
             case 'fromdb':
-                await this.handleFromDbCommand(player, interaction, guildQueue);
+                await this.handleFromDbCommand(client, player, interaction, guildQueue);
                 break;
         }
     }
@@ -391,9 +392,30 @@ export default class PlayCommand extends CommandInterface {
         await interaction.followUp({ embeds: [embed] });
     };
 
-    private handleFromDbCommand = async (player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue) => {
+    private handleFromDbCommand = async (client: Client, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue) => {
         if (!process.env.API_URL) {
             return interaction.followUp('API URL is not set. Please contact the bot owner.');
+        }
+
+        const networkFileService = client.services.get('NetworkFileService') as NetworkFileService;
+        
+        // Test connection if using webserver
+        if (process.env.USE_WEBSERVER === 'true') {
+            try {
+                const isConnected = await networkFileService.testConnection();
+                if (!isConnected) {
+                    return interaction.followUp({
+                        content: 'Music server is not accessible. Please try again later.',
+                        flags: ['Ephemeral']
+                    });
+                }
+            } catch (error) {
+                commandLogger.error(`Error testing network connection: ${error.message}`);
+                return interaction.followUp({
+                    content: 'Error connecting to music server. Please try again later.',
+                    flags: ['Ephemeral']
+                });
+            }
         }
         
         try {
@@ -461,175 +483,13 @@ export default class PlayCommand extends CommandInterface {
 
             // Otherwise, proceed with the normal flow - play track or album based on which has higher score
             if (response.data.albums.length === 0 || highestTrackScore > highestAlbumScore) {
-                // Play track logic - unchanged from your existing code
-                commandLogger.debug(`Found track: ${response.data.tracks[0].title}`);
-                
-                // Use the file path directly, but convert it to a proper file:// URI
-                const filePath = response.data.tracks[0].MusicFile[0].filePath;
-                
-                commandLogger.debug(`Searching for file: ${filePath}`);
-                
-                const result = await player.search(filePath, {
-                    requestedBy: interaction.user,
-                    searchEngine: QueryType.FILE,
-                });
-
-                if (!result || !result.tracks || result.tracks.length === 0) {
-                    // Show suggestions if there are other tracks
-                    if (response.data.tracks[0].score <= 25 && response.data.tracks.length > 1) {
-                        commandLogger.debug('Unconfident track match found, showing suggestions');
-                        const suggestions = response.data.tracks
-                            .slice(0, 5)
-                            .map(track => track.title)
-                            .join('\n- ');
-                            
-                        return interaction.followUp({ 
-                            flags: ['SuppressNotifications'],
-                            embeds: [createEmbedUtil(
-                                `No results found.\n\nMaybe you meant:\n- ${suggestions}`, 
-                                `https://www.funckenobi42.space/images/`, // Default thumbnail
-                                'Please try a different query.'
-                            )]
-                        });
-                    }
-                    
-                    return interaction.followUp({ 
-                        flags: ['SuppressNotifications'],
-                        embeds: [createEmbedUtil(
-                            'No results found.',
-                            `https://www.funckenobi42.space/images/`, // Default thumbnail
-                            'Please try a different query.'
-                        )]
-                    });
-                }
-                
-                // If we get here, we have a valid track to play
-                const song = result.tracks[0];
-                this.playTrack(song, guildQueue, interaction, response.data.tracks[0]);
-                return interaction.followUp({ 
-                    flags: ['SuppressNotifications'],
-                    embeds: [createEmbedUtil(
-                        `**${(song.metadata as TrackMetadata).scoredTrack!.title}** has been added to the queue`, 
-                        `https://www.funckenobi42.space/images/AlbumCoverArt/${response.data.tracks[0].album.pathToCoverArt}`, // Use the cover from the first track if available
-                        `Duration: ${(formatDuration((song.metadata as TrackMetadata).scoredTrack!.duration * 1000))} Position: ${guildQueue.tracks.size}`
-                    )]
-                });
+                // Play single track
+                return await this.handleSingleTrack(networkFileService, player, interaction, guildQueue, response.data.tracks[0], response.data.tracks);
             } else if (response.data.albums.length > 0) {
-                commandLogger.debug(`Found album: ${response.data.albums[0].name}`);
-                    if (response.data.albums[0].score <= 300 && response.data.albums.length > 1) {
-                        commandLogger.debug('Unconfident album match found, showing suggestions');
-                        const suggestions = response.data.albums
-                            .slice(0, 5)
-                            .map(track => track.name)
-                            .join('\n- ');
-                            
-                        return interaction.followUp({ flags: ['SuppressNotifications'],
-                            embeds: [createEmbedUtil(
-                                `No results found.\n\nMaybe you meant:\n- ${suggestions}`, 
-                                `https://www.funckenobi42.space/images/`, // Default thumbnail
-                                'Please try a different query.'
-                            )]
-                        });
-                    }
-                const albumResponse = await axios.request<any>({
-                    method: 'GET',
-                    url: `${process.env.API_URL}/music`,
-                    params: { albumId: response.data.albums[0].id, sortBy:"trackNumber", limit: 512, sortOrder: "asc" }
-                });
-                const foundAlbum = albumResponse.data.data as MusicDto[];
-                if (!foundAlbum || foundAlbum.length === 0) {
-                    commandLogger.debug('No tracks found in the album');
-                    return interaction.followUp({ 
-                        flags: ['SuppressNotifications'],
-                        embeds: [createEmbedUtil(
-                            'No tracks found in the album.',
-                            `https://www.funckenobi42.space/images/`, // Default thumbnail
-                            'Please try a different query.'
-                        )]
-                    });
-                }
-
-
-                // Sort tracks by disc number before playing
-                const sortedAlbumTracks = (() => {
-                    // Skip sorting if there's no data
-                    if (!foundAlbum || foundAlbum.length === 0) return foundAlbum;
-                    
-                    // Group tracks by disc number
-                    const discGroups = new Map<string | number | undefined, MusicDto[]>();
-                    
-                    // Create groups based on disc number
-                    for (const track of foundAlbum) {
-                        const discNumber = track.MusicMetadata?.discNumber;
-                        if (!discGroups.has(discNumber)) {
-                            discGroups.set(discNumber, []);
-                        }
-                        discGroups.get(discNumber)!.push(track);
-                    }
-                    
-                    // Sort disc groups: numbers first (in numerical order), then strings (alphabetically)
-                    const sortedGroups = Array.from(discGroups.entries()).sort((a, b) => {
-                        const [discA, _] = a;
-                        const [discB, __] = b;
-                        
-                        // Handle undefined disc numbers
-                        if (discA === undefined) return -1;
-                        if (discB === undefined) return 1;
-                        
-                        // Check if both values can be treated as numbers
-                        const numA = typeof discA === 'number' ? discA : Number(discA);
-                        const numB = typeof discB === 'number' ? discB : Number(discB);
-                        const aIsNumber = !isNaN(numA);
-                        const bIsNumber = !isNaN(numB);
-                        
-                        // Numbers before strings
-                        if (aIsNumber && !bIsNumber) return -1;
-                        if (!aIsNumber && bIsNumber) return 1;
-                        
-                        // Both numbers - sort numerically
-                        if (aIsNumber && bIsNumber) return numA - numB;
-                        
-                        // Both strings - sort alphabetically
-                        return String(discA).localeCompare(String(discB));
-                    });
-                    
-                    // Flatten back into a single array
-                    return sortedGroups.flatMap(([_, tracks]) => tracks);
-                })();
-
-                // Use sortedAlbumTracks instead of foundAlbum
-                for (const track of sortedAlbumTracks) {
-                    const result = await player.search(track.MusicFile[0].filePath, {
-                        requestedBy: interaction.user,
-                        searchEngine: QueryType.FILE,
-                    });
-                    
-                    if (!result || !result.tracks || result.tracks.length === 0) {
-                        commandLogger.debug(`No results found for track: ${track.title}`);
-                        return interaction.followUp({ 
-                            flags: ['SuppressNotifications'],
-                            embeds: [createEmbedUtil(
-                                'No results found for the album.',
-                                `https://www.funckenobi42.space/images/`, // Default thumbnail
-                                'Please try a different query.'
-                            )]
-                        });
-                    }
-                    
-                    // If we get here, we have a valid track to play
-                    const song = result.tracks[0];
-                    this.playTrack(song, guildQueue, interaction, track as ScoredTrack);
-                }
-                
-                return interaction.followUp({ 
-                    flags: ['SuppressNotifications'],
-                    embeds: [createEmbedUtil(
-                        `**${(response.data.albums[0] as ScoredAlbum).name}** has been added to the queue`, 
-                        `https://www.funckenobi42.space/images/AlbumCoverArt/${(response.data.albums[0] as ScoredAlbum).pathToCoverArt}`, // Use the cover from the album
-                        `Tracks: ${foundAlbum.length} | Starting from position: ${(guildQueue.tracks.size - sortedAlbumTracks.length) + 2}` // Add 2 as to account for 2 lists.
-                    )]
-                });
+                // Play album
+                return await this.handleAlbum(networkFileService, player, interaction, guildQueue, response.data.albums[0], response.data.albums);
             }
+            
         } catch (error) {
             logError(error as Error, 'playCommand.handleFromDbCommand', { interaction });
             return interaction.followUp({ 
@@ -637,12 +497,241 @@ export default class PlayCommand extends CommandInterface {
                 embeds: [createEmbedUtil(
                     "An error occurred while playing from database", 
                     'https://www.funckenobi42.space/images/',
-                    `Error: ${error.message}`
+                    `Error: ${(error as Error).message}`
                 )]
             });
         }
     };    
 
+    // Helper method for handling single track
+    private async handleSingleTrack(
+        networkFileService: NetworkFileService,
+        player: Player,
+        interaction: ChatInputCommandInteraction,
+        guildQueue: GuildQueue,
+        track: ScoredTrack,
+        allTracks: ScoredTrack[]
+    ): Promise<Message<boolean>> {
+        try {
+            commandLogger.debug(`Found track: ${track.title}`);
+            
+            // Use NetworkFileService to get the appropriate file URL/path
+            const result = await networkFileService.searchTrack(
+                player,
+                track.MusicFile[0].id, // File ID from database
+                track.MusicFile[0].filePath, // Local path as fallback
+                interaction.user
+            );
+
+            if (!result || !result.tracks || result.tracks.length === 0) {
+                // Show suggestions if there are other tracks
+                if (track.score <= 25 && allTracks.length > 1) {
+                    commandLogger.debug('Unconfident track match found, showing suggestions');
+                    const suggestions = allTracks
+                        .slice(0, 5)
+                        .map(t => t.title)
+                        .join('\n- ');
+                        
+                    return interaction.followUp({ 
+                        flags: ['SuppressNotifications'],
+                        embeds: [createEmbedUtil(
+                            `No results found.\n\nMaybe you meant:\n- ${suggestions}`, 
+                            `https://www.funckenobi42.space/images/`, // Default thumbnail
+                            'Please try a different query.'
+                        )]
+                    });
+                }
+                
+                return interaction.followUp({ 
+                    flags: ['SuppressNotifications'],
+                    embeds: [createEmbedUtil(
+                        'Track found in database but file is not accessible.',
+                        `https://www.funckenobi42.space/images/`, // Default thumbnail
+                        'Please try a different query.'
+                    )]
+                });
+            }
+            
+            // If we get here, we have a valid track to play
+            const song = result.tracks[0];
+            await this.playTrack(song, guildQueue, interaction, track);
+            return interaction.followUp({ 
+                flags: ['SuppressNotifications'],
+                embeds: [createEmbedUtil(
+                    `**${(song.metadata as TrackMetadata).scoredTrack!.title}** has been added to the queue`, 
+                    `https://www.funckenobi42.space/images/AlbumCoverArt/${track.album.pathToCoverArt}`, // Use the cover from the first track if available
+                    `Duration: ${(formatDuration((song.metadata as TrackMetadata).scoredTrack!.duration * 1000))} Position: ${guildQueue.tracks.size}`
+                )]
+            });
+        } catch (error) {
+            commandLogger.error(`Error processing single track: ${(error as Error).message}`);
+            return interaction.followUp({ 
+                flags: ['SuppressNotifications'],
+                embeds: [createEmbedUtil(
+                    'Error processing track.',
+                    `https://www.funckenobi42.space/images/`, // Default thumbnail
+                    'Please try a different query.'
+                )]
+            });
+        }
+    }
+
+    // Helper method for handling album
+    private async handleAlbum(
+        networkFileService: NetworkFileService,
+        player: Player,
+        interaction: ChatInputCommandInteraction,
+        guildQueue: GuildQueue,
+        album: ScoredAlbum,
+        allAlbums: ScoredAlbum[]
+    ): Promise<Message<boolean>> {
+        try {
+            commandLogger.debug(`Found album: ${album.name}`);
+            
+            if (album.score <= 300 && allAlbums.length > 1) {
+                commandLogger.debug('Unconfident album match found, showing suggestions');
+                const suggestions = allAlbums
+                    .slice(0, 5)
+                    .map(a => a.name)
+                    .join('\n- ');
+                    
+                return interaction.followUp({ 
+                    flags: ['SuppressNotifications'],
+                    embeds: [createEmbedUtil(
+                        `No results found.\n\nMaybe you meant:\n- ${suggestions}`, 
+                        `https://www.funckenobi42.space/images/`, // Default thumbnail
+                        'Please try a different query.'
+                    )]
+                });
+            }
+            
+            const albumResponse = await axios.request<any>({
+                method: 'GET',
+                url: `${process.env.API_URL}/music`,
+                params: { albumId: album.id, sortBy:"trackNumber", limit: 512, sortOrder: "asc" }
+            });
+            
+            const foundAlbum = albumResponse.data.data as MusicDto[];
+            if (!foundAlbum || foundAlbum.length === 0) {
+                commandLogger.debug('No tracks found in the album');
+                return interaction.followUp({ 
+                    flags: ['SuppressNotifications'],
+                    embeds: [createEmbedUtil(
+                        'No tracks found in the album.',
+                        `https://www.funckenobi42.space/images/`, // Default thumbnail
+                        'Please try a different query.'
+                    )]
+                });
+            }
+
+            // Sort tracks by disc number before playing
+            const sortedAlbumTracks = this.sortAlbumTracks(foundAlbum);
+
+            // Process each track in the album using NetworkFileService
+            let successfulTracks = 0;
+            for (const track of sortedAlbumTracks) {
+                try {
+                    const result = await networkFileService.searchTrack(
+                        player,
+                        track.MusicFile[0].id, // File ID from database
+                        track.MusicFile[0].filePath, // Local path as fallback
+                        interaction.user
+                    );
+                    
+                    if (!result || !result.tracks || result.tracks.length === 0) {
+                        commandLogger.debug(`No results found for track: ${track.title}`);
+                        continue; // Skip this track and continue with the album
+                    }
+                    
+                    // If we get here, we have a valid track to play
+                    const song = result.tracks[0];
+                    await this.playTrack(song, guildQueue, interaction, track as ScoredTrack);
+                    successfulTracks++;
+                } catch (error) {
+                    commandLogger.error(`Error processing track ${track.title}: ${(error as Error).message}`);
+                    continue; // Skip this track and continue with the album
+                }
+            }
+            
+            if (successfulTracks === 0) {
+                return interaction.followUp({ 
+                    flags: ['SuppressNotifications'],
+                    embeds: [createEmbedUtil(
+                        'No tracks from the album could be loaded.',
+                        `https://www.funckenobi42.space/images/`, // Default thumbnail
+                        'The files may not be accessible on the server.'
+                    )]
+                });
+            }
+            
+            return interaction.followUp({ 
+                flags: ['SuppressNotifications'],
+                embeds: [createEmbedUtil(
+                    `**${album.name}** has been added to the queue`, 
+                    `https://www.funckenobi42.space/images/AlbumCoverArt/${album.pathToCoverArt}`, // Use the cover from the album
+                    `Tracks: ${successfulTracks}/${foundAlbum.length} loaded | Starting from position: ${(guildQueue.tracks.size - successfulTracks) + 1}`
+                )]
+            });
+        } catch (error) {
+            commandLogger.error(`Error processing album: ${(error as Error).message}`);
+            return interaction.followUp({ 
+                flags: ['SuppressNotifications'],
+                embeds: [createEmbedUtil(
+                    'Error processing album.',
+                    `https://www.funckenobi42.space/images/`, // Default thumbnail
+                    'Please try a different query.'
+                )]
+            });
+        }
+    }
+
+    // Helper method for sorting album tracks
+    private sortAlbumTracks(foundAlbum: MusicDto[]): MusicDto[] {
+        // Skip sorting if there's no data
+        if (!foundAlbum || foundAlbum.length === 0) return foundAlbum;
+        
+        // Group tracks by disc number
+        const discGroups = new Map<string | number | undefined, MusicDto[]>();
+        
+        // Create groups based on disc number
+        for (const track of foundAlbum) {
+            const discNumber = track.MusicMetadata?.discNumber;
+            if (!discGroups.has(discNumber)) {
+                discGroups.set(discNumber, []);
+            }
+            discGroups.get(discNumber)!.push(track);
+        }
+        
+        // Sort disc groups: numbers first (in numerical order), then strings (alphabetically)
+        const sortedGroups = Array.from(discGroups.entries()).sort((a, b) => {
+            const [discA, _] = a;
+            const [discB, __] = b;
+            
+            // Handle undefined disc numbers
+            if (discA === undefined) return -1;
+            if (discB === undefined) return 1;
+            
+            // Check if both values can be treated as numbers
+            const numA = typeof discA === 'number' ? discA : Number(discA);
+            const numB = typeof discB === 'number' ? discB : Number(discB);
+            const aIsNumber = !isNaN(numA);
+            const bIsNumber = !isNaN(numB);
+            
+            // Numbers before strings
+            if (aIsNumber && !bIsNumber) return -1;
+            if (!aIsNumber && bIsNumber) return 1;
+            
+            // Both numbers - sort numerically
+            if (aIsNumber && bIsNumber) return numA - numB;
+            
+            // Both strings - sort alphabetically
+            return String(discA).localeCompare(String(discB));
+        });
+        
+        // Flatten back into a single array
+        return sortedGroups.flatMap(([_, tracks]) => tracks);
+    }
+    
     private async getfileMD5(filePath: string): Promise<string> {
         return new Promise((resolve, reject) => {
             const hash = createHash('md5');
