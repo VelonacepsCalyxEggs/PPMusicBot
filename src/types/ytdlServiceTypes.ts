@@ -30,3 +30,10 @@ export class PlaylistTooLargeError extends Error {
         this.name = "PlaylistTooLargeError";
     }
 }
+
+export class YoutubeDownloadFailedError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "YoutubeDownloadFailedError";
+    }
+}

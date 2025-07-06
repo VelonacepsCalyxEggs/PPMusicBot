@@ -14,7 +14,7 @@ import TrackMetadata from '../types/trackMetadata';
 import { commandLogger, logError, playerLogger } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
 import { YtdlFallbackService } from '../services/ytdlFallback';
-import { NoTrackFoundError, PlaylistTooLargeError } from '../types/ytdlServiceTypes';
+import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } from '../types/ytdlServiceTypes';
 import { NetworkFileService } from '../services/networkFileService';
 
 export default class PlayCommand extends CommandInterface {
@@ -166,6 +166,10 @@ export default class PlayCommand extends CommandInterface {
                     if (error instanceof NoTrackFoundError) {
                         return interaction.followUp({content: error.message, flags: ['Ephemeral']});
                     }
+                    else if (error instanceof YoutubeDownloadFailedError) {
+                        return interaction.followUp({content: error.message, flags: ['Ephemeral']});
+                        
+                    }
                 }
                 //result = await this.searchFile(player, videoData.filePath, interaction.user);
 
@@ -208,6 +212,7 @@ export default class PlayCommand extends CommandInterface {
                         interaction.followUp({ content: `Finished loading all tracks from **${playlistResult.playlistInfo.title}**`, flags: ['SuppressNotifications'] });
                     }).catch((error) => {
                         playerLogger.error(`Error processing background tracks: ${error.message}`);
+                        interaction.followUp({ content: `Error processing playlist tracks: ${error.message}`, flags: ['Ephemeral'] });
                     });
                     
                 } catch (error) {

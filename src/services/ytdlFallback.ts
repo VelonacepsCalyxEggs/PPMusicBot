@@ -2,7 +2,7 @@ import ytdl, { videoInfo } from '@distube/ytdl-core';
 import ytpl from 'ytpl';
 import { ServiceInterface } from '../types/serviceInterface';
 import { readFile, writeFile } from 'fs/promises';
-import { PlaylistTooLargeError, videoCache, YtdlFallbackResponseInterface } from '../types/ytdlServiceTypes';
+import { PlaylistTooLargeError, videoCache, YoutubeDownloadFailedError, YtdlFallbackResponseInterface } from '../types/ytdlServiceTypes';
 import { join } from 'path';
 import { GuildQueue, Player, QueryType, SearchResult, Track } from 'discord-player/dist';
 import { User } from 'discord.js';
@@ -10,6 +10,7 @@ import { NoTrackFoundError } from '../types/ytdlServiceTypes';
 import { playerLogger } from '../utils/loggerUtil';
 import { readdirSync } from 'fs';
 import YouTube from 'youtube-sr/dist/mod';
+import Stream from 'stream';
 export class YtdlFallbackService extends ServiceInterface {
 
     public async init(): Promise<void> {
@@ -17,27 +18,78 @@ export class YtdlFallbackService extends ServiceInterface {
         this.serviceDescription = 'Service to handle YouTube video downloads using ytdl-core methods.';
     }
 
+
+    private async cleanVideoUrl(url: string): Promise<string> {
+        playerLogger.debug(`Cleaning URL: ${url}`);
+        const cleanUrl: string = '';
+        try {
+            const urlSplit = url.split('&');
+            return urlSplit[0]
+        }
+        catch (error) {
+            playerLogger.error(`Error cleaning URL: ${error.message}`);
+            throw new Error(`Failed to clean URL: ${error.message}`);
+        }
+    }
+
+
     private async downloadVideo(url: string): Promise<Buffer> {
         playerLogger.debug(`Downloading video from URL: ${url}`);
-        try {
-            const videoStream = await ytdl(url, {
-                quality: 'highest',
-                filter: 'audioonly',
-                highWaterMark: 1 << 25 // 32MB buffer
-            });
+        let videoStream: Stream.Readable;
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                videoStream.destroy();
+                reject(new YoutubeDownloadFailedError(`Download timeout after 60 seconds for ${url}`));
+            }, 60000); // 60 second timeout
 
-            const chunks: Buffer[] = [];
-            for await (const chunk of videoStream) {
-                chunks.push(chunk);
+            try {
+                playerLogger.debug(`Starting download via ytdl.`);
+                videoStream = ytdl(url, {
+                    quality: 'highest',
+                    filter: 'audioonly',
+                    highWaterMark: 1 << 25, // 32MB buffer
+                    requestOptions: {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        }
+                    }
+                });
+                
+                playerLogger.debug(`ytdl download stream created for ${url}.`);
+                const chunks: Buffer[] = [];
+                
+                videoStream.on('data', (chunk) => {
+                    if (Buffer.isBuffer(chunk)) {
+                        playerLogger.debug(`Received chunk of size: ${chunk.length}`);
+                        chunks.push(chunk);
+                    } else {
+                        playerLogger.debug(`Received non-buffer chunk: ${typeof chunk}`);
+                        chunks.push(Buffer.from(chunk));
+                    }
+                });
+
+                videoStream.on('end', () => {
+                    clearTimeout(timeout);
+                    playerLogger.debug(`Downloaded video from ${url} successfully.`);
+                    resolve(Buffer.concat(chunks));
+                });
+
+                videoStream.on('error', (error) => {
+                    clearTimeout(timeout);
+                    playerLogger.error(`Stream error for ${url}: ${error.message}`);
+                    reject(new Error(`Failed to download video from ${url}: ${error.message}`));
+                });
+
+            } catch (error) {
+                clearTimeout(timeout);
+                reject(new Error(`Failed to download video from ${url}: ${error.message}`));
             }
-            return Buffer.concat(chunks);
-        } catch (error) {
-            throw new Error(`Failed to download video from ${url}: ${error.message}`);
-        }
+        });
     }   
 
     private async extractMetadata(url: string): Promise<ytdl.videoInfo> {
         try {
+            playerLogger.debug(`Extracting metadata from URL: ${url}`);
             return await ytdl.getInfo(url);
         } catch (error) {
             throw new Error(`Failed to extract metadata from ${url}: ${error.message}`);
@@ -105,21 +157,18 @@ export class YtdlFallbackService extends ServiceInterface {
     }
 
     public async getVideo(url: string): Promise<YtdlFallbackResponseInterface> {
-        try {
-            playerLogger.debug(`Getting video from URL: ${url}`);
-            const videoId = ytdl.getURLVideoID(url);
-            const cachedVideo = await this.getCachedVideo(videoId)
-            if (cachedVideo) {
-                playerLogger.debug(`Using cached video: ${cachedVideo.filePath}`);
-                return { filePath: cachedVideo.filePath, metadata: cachedVideo.metadata };
-            }
-            const videoBuffer = await this.downloadVideo(url);
-            const videoMetadata = await this.extractMetadata(url);
-            const filePath = await this.saveVideoToCache(videoMetadata, videoBuffer);
-            return { filePath: filePath, metadata: videoMetadata };
-        } catch (error) {
-            throw new Error(`Error in YtdlFallbackService: ${error.message}`);
+        playerLogger.debug(`Getting video from URL: ${url}`);
+        const videoId = ytdl.getURLVideoID(url);
+        const cachedVideo = await this.getCachedVideo(videoId)
+        if (cachedVideo) {
+            playerLogger.debug(`Using cached video: ${cachedVideo.filePath}`);
+            return { filePath: cachedVideo.filePath, metadata: cachedVideo.metadata };
         }
+        const cleanedUrl = await this.cleanVideoUrl(url);
+        const videoBuffer = await this.downloadVideo(cleanedUrl);
+        const videoMetadata = await this.extractMetadata(cleanedUrl);
+        const filePath = await this.saveVideoToCache(videoMetadata, videoBuffer);
+        return { filePath: filePath, metadata: videoMetadata };
     }
 
     public async getPlaylist(url: string): Promise<YtdlFallbackResponseInterface[]> {
@@ -183,59 +232,32 @@ export class YtdlFallbackService extends ServiceInterface {
         }
     }
 
-    // Enhanced method that returns more info
-    private async searchYouTube(query: string, limit: number = 5): Promise<{
-        title: string;
-        url: string;
-        author: string;
-        duration: string;
-        thumbnail: string;
-    }[]> {
-        try {
-            const results = await YouTube.search(query, { limit, type: 'video' });
-            
-            return results.map(video => ({
-                title: video.title || 'Unknown Title',
-                url: video.url,
-                author: video.channel?.name || 'Unknown Author',
-                duration: video.durationFormatted || '0:00',
-                thumbnail: video.thumbnail?.url || ''
-            }));
-        } catch (error) {
-            throw new Error(`YouTube search failed: ${error.message}`);
-        }
-    }
-
     public async playVideo(player: Player, url?: string | null, query?: string | null, user?: User): Promise<Track<unknown>> {
-        try {
-            let searchResult: SearchResult; 
-            let videoData: YtdlFallbackResponseInterface;
-            if (url) {
-                videoData = await this.getVideo(url);
-                searchResult = await this.searchFile(player, videoData.filePath, user);
-                if (!searchResult.tracks.length) {
-                    throw new NoTrackFoundError('No tracks found for the downloaded video.',);
-                }
+        let searchResult: SearchResult; 
+        let videoData: YtdlFallbackResponseInterface;
+        if (url) {
+            videoData = await this.getVideo(url);
+            searchResult = await this.searchFile(player, videoData.filePath, user);
+            if (!searchResult.tracks.length) {
+                throw new NoTrackFoundError('No tracks found for the downloaded video.',);
             }
-            else {
-                if (!query) {
-                    throw new Error('No URL or query provided for video playback.');
-                }
-                const videoUrl = await this.getVideoBySearch(query);
-                videoData = await this.getVideo(videoUrl);
-                searchResult = await this.searchFile(player, videoData.filePath, user);
-                if (!searchResult.tracks.length) {
-                    throw new NoTrackFoundError('No tracks found for the searched video.',);
-                }
-            }
-            searchResult.tracks[0].title = videoData.metadata.videoDetails.title;
-            searchResult.tracks[0].author = videoData.metadata.videoDetails.author.name;
-            searchResult.tracks[0].thumbnail = videoData.metadata.videoDetails.thumbnails[0].url;
-            searchResult.tracks[0].url = videoData.metadata.videoDetails.video_url || '#';
-            return searchResult.tracks[0];
-        } catch (error) {
-            throw new Error(`Failed to play video: ${error.message}`);
         }
+        else {
+            if (!query) {
+                throw new Error('No URL or query provided for video playback.');
+            }
+            const videoUrl = await this.getVideoBySearch(query);
+            videoData = await this.getVideo(videoUrl);
+            searchResult = await this.searchFile(player, videoData.filePath, user);
+            if (!searchResult.tracks.length) {
+                throw new NoTrackFoundError('No tracks found for the searched video.',);
+            }
+        }
+        searchResult.tracks[0].title = videoData.metadata.videoDetails.title;
+        searchResult.tracks[0].author = videoData.metadata.videoDetails.author.name;
+        searchResult.tracks[0].thumbnail = videoData.metadata.videoDetails.thumbnails[0].url;
+        searchResult.tracks[0].url = videoData.metadata.videoDetails.video_url || '#';
+        return searchResult.tracks[0];
     }
     
     
@@ -275,61 +297,53 @@ export class YtdlFallbackService extends ServiceInterface {
         playlistInfo: ytpl.Result,
         backgroundPromise: Promise<void>
     }> {
-        try {
-            let playlist: ytpl.Result;
-            const cachedPlaylist = this.getCachedPlaylist(await ytpl.getPlaylistID(url));
-            
-            if (cachedPlaylist) {
-                playerLogger.debug(`Using cached playlist: ${cachedPlaylist}`);
-                const cachedData: ytpl.Result = JSON.parse(await readFile(cachedPlaylist, 'utf-8'));
-                playlist = cachedData;
-            } else {
-                playlist = await ytpl(url);
-                await this.cachePlaylistAsJson(playlist);
-            }
-
-            if (playlist.items.length > 32) {
-                throw new PlaylistTooLargeError('Playlist contains more than 32 items, which is currently not supported for my sanity...');
-            }
-
-            let firstTrack: Track<unknown> | null = null;
-            
-            // Process first track immediately
-            if (playlist.items.length > 0) {
-                const firstItem = playlist.items[0];
-                try {
-                    const video = await this.getVideo(firstItem.url);
-                    const searchResult = await this.searchFile(player, video.filePath, user);
-                    if (searchResult.tracks.length) {
-                        const track = searchResult.tracks[0];
-                        track.title = video.metadata.videoDetails.title;
-                        track.author = video.metadata.videoDetails.author.name;
-                        track.thumbnail = video.metadata.videoDetails.thumbnails[0]?.url;
-                        track.url = video.metadata.videoDetails.video_url || '#';
-                        firstTrack = track;
-                    }
-                } catch (error) {
-                    playerLogger.error(`Failed to process first track: ${error.message}`);
-                }
-            }
-
-            // Create background promise for remaining tracks
-            const backgroundPromise = this.processRemainingTracksAsync(
-                playlist.items.slice(1), 
-                player, 
-                user, 
-                guildQueue, 
-                playlist
-            );
-
-            return {
-                firstTrack,
-                playlistInfo: playlist,
-                backgroundPromise
-            };
-        } catch (error) {
-            throw new Error(`Failed to play playlist: ${error.message}`);
+        let playlist: ytpl.Result;
+        const cachedPlaylist = this.getCachedPlaylist(await ytpl.getPlaylistID(url));
+        
+        if (cachedPlaylist) {
+            playerLogger.debug(`Using cached playlist: ${cachedPlaylist}`);
+            const cachedData: ytpl.Result = JSON.parse(await readFile(cachedPlaylist, 'utf-8'));
+            playlist = cachedData;
+        } else {
+            playlist = await ytpl(url);
+            await this.cachePlaylistAsJson(playlist);
         }
+
+        if (playlist.items.length > 32) {
+            throw new PlaylistTooLargeError('Playlist contains more than 32 items, which is currently not supported for my sanity...');
+        }
+
+        let firstTrack: Track<unknown> | null = null;
+        
+        // Process first track immediately
+        if (playlist.items.length > 0) {
+            const firstItem = playlist.items[0];
+                const video = await this.getVideo(firstItem.url);
+                const searchResult = await this.searchFile(player, video.filePath, user);
+                if (searchResult.tracks.length) {
+                    const track = searchResult.tracks[0];
+                    track.title = video.metadata.videoDetails.title;
+                    track.author = video.metadata.videoDetails.author.name;
+                    track.thumbnail = video.metadata.videoDetails.thumbnails[0]?.url;
+                    track.url = video.metadata.videoDetails.video_url || '#';
+                    firstTrack = track;
+                }
+        }
+        playerLogger.info(`Processing playlist: ${playlist.title} with ${playlist.items.length} items asynchronously.`);
+        // Create background promise for remaining tracks
+        const backgroundPromise = this.processRemainingTracksAsync(
+            playlist.items.slice(1), 
+            player, 
+            user, 
+            guildQueue, 
+            playlist
+        );
+
+        return {
+            firstTrack,
+            playlistInfo: playlist,
+            backgroundPromise
+        };
     }
 
     private async processRemainingTracksAsync(
@@ -360,6 +374,7 @@ export class YtdlFallbackService extends ServiceInterface {
                 }
             } catch (error) {
                 playerLogger.error(`Skipping ${item.title}: ${error.message}`);
+                throw new YoutubeDownloadFailedError(`Failed to process playlist item ${item.title}: ${error.message}, aborting download.`);
             }
         }
         
