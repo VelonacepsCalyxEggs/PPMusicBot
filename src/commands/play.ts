@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { ChatInputCommandInteraction, Client, CommandInteractionOptionResolver, EmbedBuilder, GuildMember, Message, User } from 'discord.js';
 import { QueryType, useQueue, GuildQueue, Player, useMainPlayer, Track, SearchResult } from 'discord-player';
 import https from 'https';
-import http from 'http';
+import http, { RequestOptions } from 'http';
 import fs from 'fs';
 import path from 'path';
 import CommandInterface from '../types/commandInterface';
@@ -333,8 +333,20 @@ export default class PlayCommand extends CommandInterface {
 
     // Helper to play a track
     // To optimize, it's probably best to pass a list of tracks.
-    private async playTrack(track: Track, queue: GuildQueue, interaction: ChatInputCommandInteraction, scoredTrack?: ScoredTrack): Promise<void> {
-        const metadata = track.metadata as TrackMetadata;
+    private async playTrack(result: SearchResult | Track, queue: GuildQueue, interaction: ChatInputCommandInteraction, scoredTrack?: ScoredTrack ): Promise<void> {
+        let metadata: TrackMetadata | undefined;
+        if (result instanceof SearchResult) {
+            metadata = result.tracks[0].metadata as TrackMetadata
+        }
+        else if (result instanceof Track) {
+            metadata = result.metadata as TrackMetadata;
+        }
+        else {
+            metadata = undefined;
+        }
+        if (!metadata) {
+            throw new Error('Track metadata is missing');
+        }
         const newMetadata: TrackMetadata = {
             interaction,
             startedPlaying: new Date(),
@@ -343,21 +355,20 @@ export default class PlayCommand extends CommandInterface {
             live: metadata.live || false,
             duration: metadata.duration || '0:00',
         };
-        track.setMetadata(newMetadata);
-        if (queue.isPlaying()) {
-            queue.addTrack(track);
+        if (result instanceof SearchResult) {
+            result.tracks[0].setMetadata(newMetadata);
+        } else if (result instanceof Track) {
+            result.setMetadata(newMetadata);
         }
-        else {
-            await queue.play(track, {
-            nodeOptions: {
-                metadata: interaction,
-                noEmitInsert: true,
-                leaveOnEnd: false,
-                leaveOnEmpty: false,
-                leaveOnStop: false,
-            }
-        });
-        }
+        await queue.play(result, {
+                nodeOptions: {
+                    metadata: interaction,
+                    noEmitInsert: true,
+                    leaveOnEnd: false,
+                    leaveOnEmpty: false,
+                    leaveOnStop: false,
+                },
+            });
     }
 
     // Helper to create a track embed
@@ -392,7 +403,7 @@ export default class PlayCommand extends CommandInterface {
                 iconURL: interaction.user.displayAvatarURL(),
             });
 
-        await this.playTrack(song, guildQueue, interaction);
+        await this.playTrack(result, guildQueue, interaction);
 
         await interaction.followUp({ embeds: [embed] });
     };
@@ -556,10 +567,9 @@ export default class PlayCommand extends CommandInterface {
                     )]
                 });
             }
-            
-            // If we get here, we have a valid track to play
             const song = result.tracks[0];
-            await this.playTrack(song, guildQueue, interaction, track);
+            // If we get here, we have a valid track to play
+            await this.playTrack(result, guildQueue, interaction, track);
             return interaction.followUp({ 
                 flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
@@ -649,8 +659,7 @@ export default class PlayCommand extends CommandInterface {
                     }
                     
                     // If we get here, we have a valid track to play
-                    const song = result.tracks[0];
-                    await this.playTrack(song, guildQueue, interaction, track as ScoredTrack);
+                    await this.playTrack(result, guildQueue, interaction, track as ScoredTrack);
                     successfulTracks++;
                 } catch (error) {
                     commandLogger.error(`Error processing track ${track.title}: ${(error as Error).message}`);
