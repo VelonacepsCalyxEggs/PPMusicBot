@@ -74,7 +74,7 @@ export class NetworkFileService extends ServiceInterface {
         }
 
         try {
-            const response = await axios.get(`${this.baseUrl}/health/temp?token=${encodeURIComponent(this.token)}`, {
+            const response = await axios.get(`${this.baseUrl}/health/temp/OBIWANSERVER`, {
                 timeout: 5000,
             });
             return response.status === 200;
