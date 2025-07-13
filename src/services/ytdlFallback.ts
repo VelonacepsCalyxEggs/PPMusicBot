@@ -19,7 +19,7 @@ export class YtdlFallbackService extends ServiceInterface {
     }
 
 
-    private async cleanVideoUrl(url: string): Promise<string> {
+    private static async cleanVideoUrl(url: string): Promise<string> {
         playerLogger.debug(`Cleaning URL: ${url}`);
         const cleanUrl: string = '';
         try {
@@ -33,7 +33,7 @@ export class YtdlFallbackService extends ServiceInterface {
     }
 
 
-    private async downloadVideo(url: string): Promise<Buffer> {
+    private static async downloadVideo(url: string): Promise<Buffer> {
         playerLogger.debug(`Downloading video from URL: ${url}`);
         let videoStream: Stream.Readable;
         return new Promise((resolve, reject) => {
@@ -87,7 +87,7 @@ export class YtdlFallbackService extends ServiceInterface {
         });
     }   
 
-    private async extractMetadata(url: string): Promise<ytdl.videoInfo> {
+    private static async extractMetadata(url: string): Promise<ytdl.videoInfo> {
         try {
             playerLogger.debug(`Extracting metadata from URL: ${url}`);
             return await ytdl.getInfo(url);
@@ -96,7 +96,7 @@ export class YtdlFallbackService extends ServiceInterface {
         }
     }
 
-    private async getCachedVideo(videoId: string): Promise<YtdlFallbackResponseInterface | null> {
+    private static async getCachedVideo(videoId: string): Promise<YtdlFallbackResponseInterface | null> {
         playerLogger.debug(`Checking cache for video ID: ${videoId}`);
         try {
             const files = JSON.parse(await readFile(join(process.env.CACHE_DIR || './cache', 'cachedVideos.json'), 'utf-8')) as videoCache;
@@ -114,7 +114,7 @@ export class YtdlFallbackService extends ServiceInterface {
         }
     }
 
-    private getCachedPlaylist(playlistId: string): string | null {
+    private static getCachedPlaylist(playlistId: string): string | null {
         const files = readdirSync(process.env.CACHE_DIR || './cache');
         for (const file of files) {
             if (file === `${playlistId}.json`) {
@@ -126,7 +126,7 @@ export class YtdlFallbackService extends ServiceInterface {
         return null;
     }
 
-    private async saveVideoToCache(videoData: videoInfo, buffer: Buffer): Promise<string> {
+    private static async saveVideoToCache(videoData: videoInfo, buffer: Buffer): Promise<string> {
         const fileName = `${videoData.videoDetails.videoId}.mp3`;
         const filePath = join(process.env.CACHE_DIR || './cache', fileName);
         try {
@@ -138,7 +138,7 @@ export class YtdlFallbackService extends ServiceInterface {
         }
     }
 
-    private async cacheVideoAsJson(videoData: videoInfo): Promise<void> {
+    private static async cacheVideoAsJson(videoData: videoInfo): Promise<void> {
         const filePath = join(process.env.CACHE_DIR || './cache', `cachedVideos.json`);
         try {
             let cachedVideos: videoCache = {};
@@ -156,7 +156,7 @@ export class YtdlFallbackService extends ServiceInterface {
         }
     }
 
-    public async getVideo(url: string): Promise<YtdlFallbackResponseInterface> {
+    public static async getVideo(url: string): Promise<YtdlFallbackResponseInterface> {
         playerLogger.debug(`Getting video from URL: ${url}`);
         const videoId = ytdl.getURLVideoID(url);
         const cachedVideo = await this.getCachedVideo(videoId)
@@ -171,7 +171,7 @@ export class YtdlFallbackService extends ServiceInterface {
         return { filePath: filePath, metadata: videoMetadata };
     }
 
-    public async getPlaylist(url: string): Promise<YtdlFallbackResponseInterface[]> {
+    public static async getPlaylist(url: string): Promise<YtdlFallbackResponseInterface[]> {
         try {
             let playlist: ytpl.Result;
             const playlistItems: YtdlFallbackResponseInterface[] = [];
@@ -215,7 +215,7 @@ export class YtdlFallbackService extends ServiceInterface {
         }
     }
 
-    private async getVideoBySearch(query: string): Promise<string> {
+    private static async getVideoBySearch(query: string): Promise<string> {
         try {
             playerLogger.debug(`Searching YouTube for: ${query}`);
             const results = await YouTube.search(query, { limit: 1, type: 'video' });
@@ -232,7 +232,7 @@ export class YtdlFallbackService extends ServiceInterface {
         }
     }
 
-    public async playVideo(player: Player, url?: string | null, query?: string | null, user?: User): Promise<Track<unknown>> {
+    public static async playVideo(player: Player, url?: string | null, query?: string | null, user?: User): Promise<Track<unknown>> {
         let searchResult: SearchResult; 
         let videoData: YtdlFallbackResponseInterface;
         if (url) {
@@ -261,7 +261,7 @@ export class YtdlFallbackService extends ServiceInterface {
     }
     
     
-    public async playPlaylist(url: string, player: Player, user?: User): Promise<SearchResult> {
+    public static async playPlaylist(url: string, player: Player, user?: User): Promise<SearchResult> {
         try {
         const playlistData = await this.getPlaylist(url);
         const tracks: Track<unknown>[] = [];
@@ -292,7 +292,7 @@ export class YtdlFallbackService extends ServiceInterface {
         }
     }
 
-    public async playPlaylistWithBackground(url: string, player: Player, user?: User, guildQueue?: GuildQueue): Promise<{
+    public static async playPlaylistWithBackground(url: string, player: Player, user?: User, guildQueue?: GuildQueue): Promise<{
         firstTrack: Track<unknown> | null,
         playlistInfo: ytpl.Result,
         backgroundPromise: Promise<void>
@@ -346,7 +346,7 @@ export class YtdlFallbackService extends ServiceInterface {
         };
     }
 
-    private async processRemainingTracksAsync(
+    private static async processRemainingTracksAsync(
         items: ytpl.Item[], 
         player: Player, 
         user: User | undefined, 
@@ -381,14 +381,14 @@ export class YtdlFallbackService extends ServiceInterface {
         playerLogger.debug(`Finished processing remaining tracks for playlist: ${playlist.title}`);
     }
 
-    private async searchFile(player: Player, filePath: string, requestedBy?: User): Promise<SearchResult> {
+    private static async searchFile(player: Player, filePath: string, requestedBy?: User): Promise<SearchResult> {
         return await player.search(filePath, {
             requestedBy,
             searchEngine: QueryType.FILE
         });
     }
 
-    public async cachePlaylistAsJson(playlist: ytpl.Result): Promise<void> {
+    public static async cachePlaylistAsJson(playlist: ytpl.Result): Promise<void> {
         JSON.stringify(playlist, null, 2);
         const fileName = `${playlist.id.trim()}.json`;
         const filePath = join(process.env.CACHE_DIR || './cache', fileName);

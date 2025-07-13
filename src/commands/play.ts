@@ -116,7 +116,6 @@ export default class PlayCommand extends CommandInterface {
         let result: SearchResult;
         let song: Track<unknown> | null = null;
         let embed: EmbedBuilder | undefined = undefined;
-        const ytdlFallback = client.services.get('YtdlFallbackService') as YtdlFallbackService;
         switch (sourceType) {
             case 'spotify':
                 commandLogger.debug(`Spotify URL detected: ${argument}`);
@@ -160,7 +159,7 @@ export default class PlayCommand extends CommandInterface {
                 //discordLogger.warn(`No tracks found for YouTube URL using fallback: ${argument}`);
                 try {
                     interaction.editReply("Downloading YouTube video, this might take a moment...");
-                    song = await ytdlFallback.playVideo(player, cleanYoutubeUrl, null, interaction.user);
+                    song = await YtdlFallbackService.playVideo(player, cleanYoutubeUrl, null, interaction.user);
                 }
                 catch (error) {
                     if (error instanceof NoTrackFoundError) {
@@ -187,7 +186,7 @@ export default class PlayCommand extends CommandInterface {
                 try {
                     interaction.editReply("Loading playlist, this might take a moment...");
                     
-                    const playlistResult = await ytdlFallback.playPlaylistWithBackground(argument, player, interaction.user, guildQueue);
+                    const playlistResult = await YtdlFallbackService.playPlaylistWithBackground(argument, player, interaction.user, guildQueue);
                     
                     // Play the first track immediately if available
                     if (playlistResult.firstTrack) {
@@ -236,7 +235,7 @@ export default class PlayCommand extends CommandInterface {
                 //result = await this.searchYoutube(player, argument, interaction.user);
                 try {
                     interaction.editReply("Downloading YouTube video, this might take a moment...");
-                    song = await ytdlFallback.playVideo(player, null, argument, interaction.user);
+                    song = await YtdlFallbackService.playVideo(player, null, argument, interaction.user);
                     embed = this.createTrackEmbed(song, guildQueue.tracks.size);
                 }
                 catch (error) {

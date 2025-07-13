@@ -482,16 +482,16 @@ class BotApplication {
         await grokService.init()
             .then(() => discordLogger.info('AtGrokIsThisTrueService initialized successfully'))
 
-        const youtubeFallbackService = new YtdlFallbackService();
-        await youtubeFallbackService.init()
-            .then(() => discordLogger.info('YtdlFallbackService initialized successfully'))
+        //const youtubeFallbackService = new YtdlFallbackService();
+        //await youtubeFallbackService.init()
+        //    .then(() => discordLogger.info('YtdlFallbackService initialized successfully'))
 
         const networkFileService = new NetworkFileService();
         await networkFileService.init()
             .then(() => discordLogger.info('NetworkFileService initialized successfully'));
         
         this.client.services.set('AtGrokIsThisTrueService', grokService);
-        this.client.services.set('YtdlFallbackService', youtubeFallbackService);
+        //this.client.services.set('YtdlFallbackService', youtubeFallbackService);
         this.client.services.set('NetworkFileService', networkFileService);
     }
 
