@@ -1,7 +1,7 @@
 import { GuildQueue } from "discord-player/dist";
 import { ChatInputCommandInteraction } from "discord.js";
 
-export default function commandPreRunCheckUtil(interaction: ChatInputCommandInteraction, queue?: GuildQueue | null): boolean {
+export default function commandPreRunCheckUtil(interaction: ChatInputCommandInteraction, queue?: GuildQueue | null, doQueueSizeCheck: boolean = true): boolean {
 
     // Check if the user is in a guild
     if (!interaction.guild) {
@@ -14,7 +14,7 @@ export default function commandPreRunCheckUtil(interaction: ChatInputCommandInte
         return false;
     }
     
-    if (queue && queue.size === 0) {
+    if (queue && queue.size === 0 && doQueueSizeCheck) {
         interaction.reply({ content: 'The queue is empty.', flags: ['Ephemeral'] });
         return false;
     }

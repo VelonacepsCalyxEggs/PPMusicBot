@@ -16,7 +16,7 @@ export default class NowPlayingCommand extends CommandInterface {
         if (!interaction.guild || !interaction.guildId) return interaction.followUp('You need to be in a guild.');
         const queue = useQueue(interaction.guild);
 
-        if (!commandPreRunCheckUtil(interaction, queue)) return;
+        if (!commandPreRunCheckUtil(interaction, queue, false)) return;
 
         const currentTrack = queue!.currentTrack as Track<TrackMetadata>;
         const metadata = currentTrack.metadata;
