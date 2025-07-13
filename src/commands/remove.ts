@@ -23,21 +23,21 @@ export default class RemoveCommand extends CommandInterface {
         const queue = useQueue(interaction.guild);
         if (!commandPreRunCheckUtil(interaction, queue)) return;
         const tracks = queue!.tracks.toArray();
-        const position = interaction.options.get('position')?.value;
-        const position2 = interaction.options.get('position2')?.value;
+        const position = interaction.options.getNumber('position') as number;
+        const position2 = interaction.options.getNumber('position2');
         
         if (!position2) {
-            tracks.splice(Number(position), 1);
+            tracks.splice(position, 1);
             queue!.clear();
-            for (let i = 0; i < tracks.length; i++) {
-                queue!.addTrack(tracks[i]);
+            for (let track of tracks) {
+                queue!.addTrack(track);
             }
             return interaction.reply({ content: `The track at position ${position} has been removed!`, flags: ['SuppressNotifications'] });
         } else {
-            tracks.splice(Number(position), Number(position2));
+            tracks.splice(position, position2);
             queue!.clear();
-            for (let i = 0; i < tracks.length; i++) {
-                queue!.addTrack(tracks[i]);
+            for (let track of tracks) {
+                queue!.addTrack(track);
             }
             return interaction.reply({ content: `The tracks from position ${position} to ${position2} have been removed!`, flags: ['SuppressNotifications'] });
         }
