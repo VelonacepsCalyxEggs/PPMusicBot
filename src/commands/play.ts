@@ -770,7 +770,7 @@ export default class PlayCommand extends CommandInterface {
     };
 
     private async downloadFile (file: string, url: string): Promise<string> {
-        return new Promise(async (resolve, reject) => {
+        return new Promise((resolve, reject) => {
             try {
                 // Extract the original filename from the URL
                 const originalFilename = path.basename(file);
