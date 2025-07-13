@@ -26,7 +26,7 @@ export default class ReaddCommand extends CommandInterface {
 
         // Add the current song
         queue!.addTrack(currentSong);
-        if (Boolean(interaction.options.get('now')?.value)) {
+        if (interaction.options.getBoolean('now')) {
             queue!.moveTrack(queue!.size - 1, 0)
         }
 
