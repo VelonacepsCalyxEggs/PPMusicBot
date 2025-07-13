@@ -9,13 +9,10 @@
         if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
             return "∞";
         }
-
-        let result = `${minutes}:${secondsFormatted}`;
         if (hours > 0) {
-            result = `${hours}:${minutesFormatted}:${secondsFormatted}`;
+            return `${hours}:${minutesFormatted}:${secondsFormatted}`;
         }
         else {
-            result = `${minutes}:${secondsFormatted}`;
+            return `${minutes}:${secondsFormatted}`;
         }
-        return result;
     }
