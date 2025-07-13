@@ -42,6 +42,7 @@ import { ServiceInterface } from './types/serviceInterface';
 import { AtGrokIsThisTrueService } from './services/atGrokIsThisTrueService';
 import { YtdlFallbackService } from './services/ytdlFallback';
 import { NetworkFileService } from './services/networkFileService';
+import GetQuouteCommand from './commands/getQuote';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
@@ -451,6 +452,7 @@ class BotApplication {
         this.commands.set('whereami', new WhereAmICommand());
         this.commands.set('error', new ErrorCommand());
         this.commands.set('recover', new RecoverCommand());
+        this.commands.set('getQuote', new GetQuouteCommand());
         // Get all ids of the servers
         const guild_ids = this.client.guilds.cache.map(guild => guild.id);
 
