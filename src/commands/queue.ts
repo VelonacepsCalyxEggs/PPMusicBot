@@ -14,6 +14,7 @@ export default class QueueCommand extends CommandInterface {
             option.setName('page')
                 .setDescription('page number')
                 .setRequired(false)
+                .setMinValue(1)
         )
     execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId) {
@@ -22,10 +23,12 @@ export default class QueueCommand extends CommandInterface {
         const queue = useQueue(interaction.guild);
         if (!commandPreRunCheckUtil(interaction, queue)) return;
 
-        let page = Number(interaction.options.get('page', false)?.value) ?? 1;
-        if (isNaN(page)) {
+        let page: number = interaction.options.getNumber('page') || 1;
+
+        if (page < 1) {
             page = 1;
         }
+        
         const multiple = 10;
         const maxPages = Math.ceil(queue!.size / multiple);
 
