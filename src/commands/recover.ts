@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, TextChannel, Client } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, Client } from 'discord.js';
 import CommandInterface from '../types/commandInterface';
 import { Player, Track } from 'discord-player';
 import { commandLogger, logError } from '../utils/loggerUtil';
