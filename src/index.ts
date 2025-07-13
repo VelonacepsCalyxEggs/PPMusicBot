@@ -1,10 +1,10 @@
-import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, VoiceState, Interaction, TextChannel, ChatInputCommandInteraction, ClientUser, NewsChannel } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, REST, Routes, ActivityType, VoiceState, Interaction, TextChannel, ChatInputCommandInteraction, ClientUser } from 'discord.js';
 import { Player, GuildQueue, Track } from 'discord-player';
 import { DefaultExtractors } from '@discord-player/extractor';
 import { YoutubeiExtractor } from 'discord-player-youtubei';
 import { Pool } from 'pg';
 import axios from 'axios';
-import { accessSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import CommandInterface from './types/commandInterface';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -20,7 +20,6 @@ import {
     databaseLogger,
     closeLogger, // Add this import
 } from './utils/loggerUtil';
-import errorCommand from './commands/error';
 import { join } from 'path';
 import ErrorCommand from './commands/error';
 import LeaveCommand from './commands/leave';
@@ -40,7 +39,6 @@ import WhereAmICommand from './commands/whereami';
 import RecoverCommand from './commands/recover';
 import { ServiceInterface } from './types/serviceInterface';
 import { AtGrokIsThisTrueService } from './services/atGrokIsThisTrueService';
-import { YtdlFallbackService } from './services/ytdlFallback';
 import { NetworkFileService } from './services/networkFileService';
 import GetQuouteCommand from './commands/getQuote';
 
