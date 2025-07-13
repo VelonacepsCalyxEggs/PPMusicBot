@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { ChatInputCommandInteraction } from 'discord.js';
-import { useQueue } from 'discord-player';
+import { Track, useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
@@ -28,33 +28,20 @@ export default class ShuffleCommand extends CommandInterface {
         // Shuffle based on the selected algorithm
         switch (shuffleAlgorithm) {
             case 'fy': // Fisher-Yates (Knuth) shuffle
-                for (let i = tracks.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [tracks[i], tracks[j]] = [tracks[j], tracks[i]];
-                }
+                this.fisherYatesShuffle(tracks);
                 break;
             case 'df': // Durstenfeld shuffle
-                for (let i = tracks.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    const temp = tracks[i];
-                    tracks[i] = tracks[j];
-                    tracks[j] = temp;
-                }
-                break;
+                this.durstenfeldShuffle(tracks);
+                break;  
             case 'st': // Sattolo's algorithm
-                for (let i = tracks.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * i);
-                    const temp = tracks[i];
-                    tracks[i] = tracks[j];
-                    tracks[j] = temp;
-                }
+                this.sattoloShuffle(tracks);
                 break;
             default:
-                for (let i = tracks.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [tracks[i], tracks[j]] = [tracks[j], tracks[i]];
-                }
+                this.fisherYatesShuffle(tracks);
+                break;
         }
+
+        
 
         queue!.clear();
         tracks.forEach(track => queue!.addTrack(track));
@@ -62,5 +49,30 @@ export default class ShuffleCommand extends CommandInterface {
             content: `The queue has been shuffled using ${shuffleAlgorithm} algorithm!`,
             flags: ['SuppressNotifications']
         });
+    }
+
+    private fisherYatesShuffle(tracks: Track<unknown>[]) {
+            for (let i = tracks.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [tracks[i], tracks[j]] = [tracks[j], tracks[i]];
+                }
+    }
+
+    private durstenfeldShuffle(tracks: Track<unknown>[]) {
+            for (let i = tracks.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    const temp = tracks[i];
+                    tracks[i] = tracks[j];
+                    tracks[j] = temp;
+                }
+    }
+
+    private sattoloShuffle(tracks: Track<unknown>[]) {
+            for (let i = tracks.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * i);
+                    const temp = tracks[i];
+                    tracks[i] = tracks[j];
+                    tracks[j] = temp;
+                }
     }
 };
