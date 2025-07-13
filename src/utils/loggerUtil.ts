@@ -60,27 +60,14 @@ const fileFormat = winston.format.combine(
 // Create transports array
 const transports: winston.transport[] = [];
 
-// Add console transport if not in production or if explicitly enabled
-if (process.env.NODE_ENV !== 'production' || process.env.LOG_CONSOLE === 'true') {
-    transports.push(
-        new winston.transports.Console({
-            format: consoleFormat,
-            level: getLogLevel(),
-            handleExceptions: false,
-            handleRejections: false
-        })
-    );
-} else {
-    // In production, show the same level as files (error, warn, info, http)
-    transports.push(
-        new winston.transports.Console({
-            format: consoleFormat,
-            level: getLogLevel(),
-            handleExceptions: false,
-            handleRejections: false
-        })
-    );
-}
+transports.push(
+    new winston.transports.Console({
+        format: consoleFormat,
+        level: getLogLevel(),
+        handleExceptions: false,
+        handleRejections: false
+    })
+);
 
 // Add file transports
 const logsDir = path.join(process.cwd(), 'logs');
