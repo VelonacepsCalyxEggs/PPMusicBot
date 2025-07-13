@@ -28,6 +28,9 @@ export class NetworkFileService extends ServiceInterface {
         if (!process.env.ECRYPTION_ALGORITHM) {
             this.cipherAlgorithm = 'aes-256-cbc'; // Default to AES-256-CBC
         }
+        else {
+            this.cipherAlgorithm = process.env.ECRYPTION_ALGORITHM;
+        }
         
         if (this.cipherAlgorithm.includes('aes-256')) {
             // Use AES-256-CBC which requires a 32-byte key
