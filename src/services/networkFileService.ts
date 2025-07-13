@@ -130,7 +130,7 @@ export class NetworkFileService extends ServiceInterface {
             return await player.search(localPath, {
                     requestedBy,
                     searchEngine: QueryType.FILE,
-                })
+            })
         }
         // Use authenticated URL with token
         const streamUrl = await this.getUrl(fileId);
