@@ -331,7 +331,7 @@ class BotApplication {
             this.player.events.on('emptyQueue', (queue: GuildQueue) => {
                 if ( queue.connection && queue.connection.state.status !== 'destroyed') {
                     const interaction = queue.metadata as Interaction;
-                    if (!interaction || !interaction.channel) {
+                    if (!interaction?.channel) {
                         discordLogger.error("No interaction or channel found.");
                         return;
                     }
@@ -346,7 +346,7 @@ class BotApplication {
         // This event is triggered when the connection to the voice channel is destroyed
         this.player.events.on('connectionDestroyed', (queue: GuildQueue) => {
                 const interaction = queue.metadata as Interaction;
-                if (!interaction || !interaction.channel) {
+                if (!interaction?.channel) {
                     discordLogger.error("No interaction or channel found.");
                     return;
                 }
@@ -389,11 +389,7 @@ class BotApplication {
                 this.player.extractors.register(YoutubeiExtractor, {
                     streamOptions: {
                         useClient: "WEB_EMBEDDED",
-                        // Add timeout and retry options if available
                     },
-                    //cookie: process.env.YT_COOKIE || '',
-                    //generateWithPoToken: true,
-                    //authentication: process.env.YT_ACCESS_TOKEN,
                 });
                 playerLogger.info('YouTube extractor registered successfully');
             } catch (youtubeError) {
@@ -482,16 +478,11 @@ class BotApplication {
         await grokService.init()
             .then(() => discordLogger.info('AtGrokIsThisTrueService initialized successfully'))
 
-        //const youtubeFallbackService = new YtdlFallbackService();
-        //await youtubeFallbackService.init()
-        //    .then(() => discordLogger.info('YtdlFallbackService initialized successfully'))
-
         const networkFileService = new NetworkFileService();
         await networkFileService.init()
             .then(() => discordLogger.info('NetworkFileService initialized successfully'));
         
         this.client.services.set('AtGrokIsThisTrueService', grokService);
-        //this.client.services.set('YtdlFallbackService', youtubeFallbackService);
         this.client.services.set('NetworkFileService', networkFileService);
     }
 
@@ -502,7 +493,7 @@ class BotApplication {
         }
         const data: string = readFileSync(join(process.env.PATH_TO_STATUS_JSON, 'status.json'), { encoding: 'utf-8' });
         const parsedData: StatusMessage = JSON.parse(data);
-        if (this.currentStatus == parsedData.status && forced == false) return;
+        if (this.currentStatus == parsedData.status && !forced) return;
         discordLogger.info('Updating bot status message...');
         this.currentStatus = parsedData.status;
         (this.client.user as ClientUser).setPresence({
@@ -521,7 +512,7 @@ class BotApplication {
         }
         if (!existsSync(process.env.PATH_TO_STATUS_JSON)) {
             discordLogger.warn('Status file does not exist, creating a new one.');
-            mkdirSync(process.env.PATH_TO_STATUS_JSON.replace(/\/[^\/]+$/, ''), { recursive: true });
+            mkdirSync(process.env.PATH_TO_STATUS_JSON.replace(/[^\/]+$/, ''), { recursive: true });
             writeFileSync(join(process.env.PATH_TO_STATUS_JSON, 'status.json'), JSON.stringify({ status: 'Hello There!' }, null, 2), { encoding: 'utf-8' });
         }
     }
