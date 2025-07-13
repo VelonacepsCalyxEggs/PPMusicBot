@@ -10,6 +10,7 @@ export class NetworkFileService extends ServiceInterface {
     public readonly serviceName: string = "NetworkFileService";
     private readonly useWebserver: boolean;
     private readonly encryptionKey: Buffer;
+    private readonly cipherAlgorithm: string;
     private readonly serviceName_auth: string = 'sharing'; // Service name for authentication
     private readonly token: string;
 
@@ -24,9 +25,26 @@ export class NetworkFileService extends ServiceInterface {
         if (this.useWebserver && !rawKey) {
             throw new Error('ENCRYPTION_KEY is required when using webserver');
         }
+        if (!process.env.ECRYPTION_ALGORITHM) {
+            this.cipherAlgorithm = 'aes-256-cbc'; // Default to AES-256-CBC
+        }
         
-        // Use same key normalization as the server: SHA-256 hash, first 16 bytes
-        this.encryptionKey = createHash('sha256').update(rawKey).digest().subarray(0, 16);
+        if (this.cipherAlgorithm.includes('aes-256')) {
+            // Use AES-256-CBC which requires a 32-byte key
+            if (rawKey.length < 32) {
+                throw new Error('ENCRYPTION_KEY must be at least 32 characters for AES-256');
+            }
+            this.encryptionKey = createHash('sha256').update(rawKey).digest().subarray(0, 32);
+        } else if (this.cipherAlgorithm.includes('aes-128')) {
+            // Use AES-128-ECB which requires a 16-byte key
+            if (rawKey.length < 16) {
+                throw new Error('ENCRYPTION_KEY must be at least 16 characters for AES-128');
+            }
+            this.encryptionKey = createHash('sha256').update(rawKey).digest().subarray(0, 16);
+        } else {
+            throw new Error(`Unsupported encryption algorithm: ${this.cipherAlgorithm}`);
+        }
+
         this.token = this.generateToken();
         
         if (this.useWebserver && !this.encryptionKey) {
@@ -46,7 +64,7 @@ export class NetworkFileService extends ServiceInterface {
     private generateToken(): string {
         const payload = `${this.apiKey}:${this.serviceName_auth}`;
         // Use AES-128-ECB mode which is faster and doesn't require IV
-        const cipher = createCipheriv('aes-128-ecb', this.encryptionKey, null);
+        const cipher = createCipheriv(this.cipherAlgorithm, this.encryptionKey, null);
         let encrypted = cipher.update(payload, 'utf8', 'hex');
         encrypted += cipher.final('hex');
         return encrypted;
