@@ -13,7 +13,7 @@ import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
 import { commandLogger, logError, playerLogger } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
-import { YtdlFallbackService } from '../services/ytdlFallback';
+import { YtdlFallback } from '../services/ytdlFallback';
 import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } from '../types/ytdlServiceTypes';
 import { NetworkFileService } from '../services/networkFileService';
 
@@ -153,7 +153,7 @@ export default class PlayCommand extends CommandInterface {
 
                 try {
                     interaction.editReply("Downloading YouTube video, this might take a moment...");
-                    song = await YtdlFallbackService.playVideo(player, this.cleanYoutubeUrl(argument), null, interaction.user);
+                    song = await YtdlFallback.playVideo(player, this.cleanYoutubeUrl(argument), null, interaction.user);
                 }
                 catch (error) {
                     if (error instanceof NoTrackFoundError || error instanceof YoutubeDownloadFailedError) {
@@ -173,7 +173,7 @@ export default class PlayCommand extends CommandInterface {
                 try {
                     interaction.editReply("Loading playlist, this might take a moment...");
                     
-                    const playlistResult = await YtdlFallbackService.playPlaylistWithBackground(argument, player, interaction.user, guildQueue);
+                    const playlistResult = await YtdlFallback.playPlaylistWithBackground(argument, player, interaction.user, guildQueue);
                     
                     // Play the first track immediately if available
                     if (playlistResult.firstTrack) {
@@ -220,7 +220,7 @@ export default class PlayCommand extends CommandInterface {
                 commandLogger.debug(`Search term detected: ${argument}`);
                 try {
                     interaction.editReply("Downloading YouTube video, this might take a moment...");
-                    song = await YtdlFallbackService.playVideo(player, null, argument, interaction.user);
+                    song = await YtdlFallback.playVideo(player, null, argument, interaction.user);
                     embed = this.createTrackEmbed(song, guildQueue.tracks.size);
                 }
                 catch (error) {

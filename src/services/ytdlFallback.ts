@@ -11,13 +11,7 @@ import { playerLogger } from '../utils/loggerUtil';
 import { readdirSync } from 'fs';
 import YouTube from 'youtube-sr/dist/mod';
 import Stream from 'stream';
-export class YtdlFallbackService extends ServiceInterface {
-
-    public async init(): Promise<void> {
-        this.serviceName = 'YtdlFallbackService';
-        this.serviceDescription = 'Service to handle YouTube video downloads using ytdl-core methods.';
-    }
-
+export class YtdlFallback {
 
     private static async cleanVideoUrl(url: string): Promise<string> {
         playerLogger.debug(`Cleaning URL: ${url}`);
