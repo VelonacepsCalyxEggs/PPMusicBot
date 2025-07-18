@@ -11,16 +11,16 @@ export default class SkipCommand extends CommandInterface {
         .setDescription('Skips the current song')
     execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         // Get the queue for the server
-        if (!interaction.guild || !interaction.guildId) return interaction.reply({ content: 'You need to be in a guild.', ephemeral: true });
+        if (!interaction.guild || !interaction.guildId) return interaction.reply({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
 
         // If there is no queue, return
         if (!queue) {
-            await interaction.reply({ content: 'There is no queue!', ephemeral: true });
+            await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
             return;
         } 
         const currentSong = queue.currentTrack as Track<TrackMetadata>;
-        if (!currentSong) return interaction.reply({ content: 'No song is currently playing.', ephemeral: true });
+        if (!currentSong) return interaction.reply({ content: 'No song is currently playing.', flags: ['Ephemeral'] });
         
         const metadata = currentSong.metadata;
         if (!metadata) {
@@ -52,7 +52,7 @@ export default class SkipCommand extends CommandInterface {
             queue.node.skip();
         } catch (error) {
             logError(error);
-            return interaction.reply({ content: 'Failed to skip the current song.', ephemeral: true });
+            return interaction.reply({ content: 'Failed to skip the current song.', flags: ['Ephemeral'] });
         }
         
         // Create an embed to inform the user with metadata-aware properties

@@ -238,7 +238,7 @@ export default class PlayCommand extends CommandInterface {
         if (embed) {
             return await interaction.followUp({ embeds: [embed] });
         } else {
-            return await interaction.followUp({ content: 'No track information available.', ephemeral: true });
+            return await interaction.followUp({ content: 'No track information available.', flags: ['Ephemeral'] });
         }
     };
 

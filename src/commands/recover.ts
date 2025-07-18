@@ -10,7 +10,7 @@ export default class RecoverCommand implements CommandInterface {
 
     async execute({ client, player, interaction }: { client: Client, player: Player, interaction: ChatInputCommandInteraction }) {
         if (!interaction.guild) {
-            return interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true });
+            return interaction.reply({ content: 'This command can only be used in a server.', flags: ['Ephemeral'] });
         }
 
         await interaction.deferReply();

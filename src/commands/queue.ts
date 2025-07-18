@@ -130,7 +130,7 @@ export default class QueueCommand extends CommandInterface {
                     .setDisabled(page === maxPages)
             );
 
-        await interaction.reply({ ephemeral: true, embeds: [embed], components: [actionRow] }).catch(console.error);
+        await interaction.reply({ embeds: [embed], components: [actionRow], flags: ['Ephemeral'] }).catch(console.error);
         const message = await interaction.fetchReply() as Message;
 
         const filter = (i: ButtonInteraction) => ['prev_page', 'next_page', 'first_page', 'last_page'].includes(i.customId);
