@@ -7,7 +7,7 @@ import axios from 'axios';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import CommandInterface from './types/commandInterface';
 import dotenv from 'dotenv';
-dotenv.config({path: `./.env-${process.env.NODE_ENV || 'development'}`});
+dotenv.config({path: `./.env.${process.env.NODE_ENV || 'development'}`});
 import cron from 'node-cron';
 import TrackMetadata from './types/trackMetadata';
 import { 

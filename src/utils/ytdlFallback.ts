@@ -1,16 +1,39 @@
 import ytdl, { videoInfo } from '@distube/ytdl-core';
 import ytpl from 'ytpl';
 import { ServiceInterface } from '../types/serviceInterface';
-import { readFile, writeFile } from 'fs/promises';
+import { readFile, writeFile, mkdir } from 'fs/promises';
 import { PlaylistTooLargeError, videoCache, YoutubeDownloadFailedError, YtdlFallbackResponseInterface } from '../types/ytdlServiceTypes';
 import { join } from 'path';
 import { GuildQueue, Player, QueryType, SearchResult, Track } from 'discord-player/dist';
 import { User } from 'discord.js';
 import { NoTrackFoundError } from '../types/ytdlServiceTypes';
 import { playerLogger } from '../utils/loggerUtil';
-import { readdirSync } from 'fs';
+import { appendFileSync, readdirSync } from 'fs';
 import YouTube from 'youtube-sr/dist/mod';
 import Stream from 'stream';
+
+interface cachedVideo {
+    metadata: {
+        videoDetails: {
+            videoId: string;
+            title: string;
+            author: {
+                name: string;
+            };
+            thumbnails: {
+                url: string;
+            }[];
+            duration: string;
+            video_url?: string;
+        }
+    };
+    filePath: string;
+}
+
+interface cachedVideoDictionary {
+    [videoId: string]: cachedVideo;
+}
+
 export class YtdlFallback {
 
     private static async cleanVideoUrl(url: string): Promise<string> {
@@ -90,24 +113,6 @@ export class YtdlFallback {
         }
     }
 
-    private static async getCachedVideo(videoId: string): Promise<YtdlFallbackResponseInterface | null> {
-        playerLogger.debug(`Checking cache for video ID: ${videoId}`);
-        try {
-            const files = JSON.parse(await readFile(join(process.env.CACHE_DIR || './cache', 'cachedVideos.json'), 'utf-8')) as videoCache;
-            if (files[videoId]) {
-                playerLogger.debug(`Found cached video: ${files[videoId].filePath}`);
-                return files[videoId];
-            } else {
-                playerLogger.debug(`No cached video found for ID: ${videoId}`);
-                return null;
-            }
-        }
-        catch (error) {
-            playerLogger.error(`Error reading cache file: ${error.message}`);
-            return null;
-        }
-    }
-
     private static getCachedPlaylist(playlistId: string): string | null {
         const files = readdirSync(process.env.CACHE_DIR || './cache');
         for (const file of files) {
@@ -124,7 +129,20 @@ export class YtdlFallback {
         const fileName = `${videoData.videoDetails.videoId}.mp3`;
         const filePath = join(process.env.CACHE_DIR || './cache', fileName);
         try {
-            await this.cacheVideoAsJson(videoData);
+            await this.cacheVideoAsJson({
+                filePath: filePath,
+                metadata: {
+                    videoDetails: {
+                        videoId: videoData.videoDetails.videoId,
+                        title: videoData.videoDetails.title,
+                        duration: videoData.videoDetails.lengthSeconds,
+                        thumbnails: videoData.videoDetails.thumbnails.map(thumbnail => ({ url: thumbnail.url })),
+                        author: {
+                            name: videoData.videoDetails.author.name
+                        }
+                    }
+                },
+            });
             await writeFile(filePath, buffer);
             return filePath;
         } catch (error) {
@@ -132,31 +150,50 @@ export class YtdlFallback {
         }
     }
 
-    private static async cacheVideoAsJson(videoData: videoInfo): Promise<void> {
-        const filePath = join(process.env.CACHE_DIR || './cache', `cachedVideos.json`);
+    private static async cacheVideoAsJson(videoData: cachedVideo): Promise<void> {
+        const fileName = `${videoData.metadata.videoDetails.videoId}.json`;
+        const filePath = join(process.env.CACHE_DIR || './cache', 'metadata', fileName);
+        
         try {
-            let cachedVideos: videoCache = {};
-            try {
-                const data = await readFile(filePath, 'utf-8');
-                cachedVideos = JSON.parse(data);
-            } catch (error) {
-                playerLogger.debug(`No existing cache file found, creating new one.`);
-            }
-            cachedVideos[videoData.videoDetails.videoId] = { filePath: join(process.env.CACHE_DIR || './cache', videoData.videoDetails.videoId + '.mp3'), metadata: videoData };
-            await writeFile(filePath, JSON.stringify(cachedVideos, null, 2));
-            playerLogger.debug(`Video metadata cached successfully for video ID: ${videoData.videoDetails.videoId}`);
+            // Ensure metadata directory exists
+            const metadataDir = join(process.env.CACHE_DIR || './cache', 'metadata');
+            await mkdir(metadataDir, { recursive: true });
+            
+            await writeFile(filePath, JSON.stringify(videoData, null, 2));
+            playerLogger.debug(`Video metadata cached successfully for video ID: ${videoData.metadata.videoDetails.videoId}`);
         } catch (error) {
             throw new Error(`Error caching video metadata: ${error.message}`);
         }
     }
 
-    public static async getVideo(url: string): Promise<YtdlFallbackResponseInterface> {
+    private static async getCachedVideo(videoId: string): Promise<cachedVideo | null> {
+        playerLogger.debug(`Checking cache for video ID: ${videoId}`);
+        try {
+            const fileName = `${videoId}.json`;
+            const filePath = join(process.env.CACHE_DIR || './cache', 'metadata', fileName);
+            
+            const data = await readFile(filePath, 'utf-8');
+            const cachedVideo = JSON.parse(data) as cachedVideo;
+            
+            playerLogger.debug(`Found cached video: ${cachedVideo.filePath}`);
+            return cachedVideo;
+        } catch (error) {
+            if (error.code === 'ENOENT') {
+                playerLogger.debug(`No cached video found for ID: ${videoId}`);
+            } else {
+                playerLogger.error(`Error reading cache file: ${error.message}`);
+            }
+            return null;
+        }
+    }
+
+    public static async getVideo(url: string): Promise<YtdlFallbackResponseInterface | cachedVideo> {
         playerLogger.debug(`Getting video from URL: ${url}`);
         const videoId = ytdl.getURLVideoID(url);
         const cachedVideo = await this.getCachedVideo(videoId)
         if (cachedVideo) {
             playerLogger.debug(`Using cached video: ${cachedVideo.filePath}`);
-            return { filePath: cachedVideo.filePath, metadata: cachedVideo.metadata };
+            return cachedVideo;
         }
         const cleanedUrl = await this.cleanVideoUrl(url);
         const videoBuffer = await this.downloadVideo(cleanedUrl);
@@ -165,10 +202,10 @@ export class YtdlFallback {
         return { filePath: filePath, metadata: videoMetadata };
     }
 
-    public static async getPlaylist(url: string): Promise<YtdlFallbackResponseInterface[]> {
+    public static async getPlaylist(url: string) {
         try {
             let playlist: ytpl.Result;
-            const playlistItems: YtdlFallbackResponseInterface[] = [];
+            const playlistItems: YtdlFallbackResponseInterface[] | cachedVideo[] = [];
             const cachedPlaylist = this.getCachedPlaylist(await ytpl.getPlaylistID(url));
             if (cachedPlaylist) {
                 playerLogger.debug(`Using cached playlist: ${cachedPlaylist}`);
@@ -187,11 +224,25 @@ export class YtdlFallback {
             playerLogger.debug(playlist.items.map(item => `Item: ${item.title}, URL: ${item.url}`).join('\n'));
             for (const item of playlist.items) {
                 try {
-                const video = await this.getVideo(item.url)
-                
+                const video = await this.getVideo(item.url);
+
+                // Normalize metadata to ensure duration is present
+                let normalizedMetadata: any = video.metadata;
+                if ('videoDetails' in normalizedMetadata) {
+                    if (!('duration' in normalizedMetadata.videoDetails)) {
+                        normalizedMetadata = {
+                            ...normalizedMetadata,
+                            videoDetails: {
+                                ...normalizedMetadata.videoDetails,
+                                duration: (normalizedMetadata.videoDetails.lengthSeconds || normalizedMetadata.videoDetails.duration || "0")
+                            }
+                        };
+                    }
+                }
+
                 playlistItems.push({
                     filePath: video.filePath,
-                    metadata: video.metadata,
+                    metadata: normalizedMetadata,
                     playlistMetadata: {
                         title: playlist.title,
                         author: playlist.author?.name || '',
@@ -203,7 +254,11 @@ export class YtdlFallback {
                 }
             }
 
-            return playlistItems;
+            return {playlistItems, playlistMetadata: {
+                title: playlist.title,
+                author: playlist.author?.name || '',
+                thumbnail: playlist.bestThumbnail.url || ''
+            }};
         } catch (error) {
         throw new Error(`Failed to process playlist: ${error.message}`);
         }
@@ -228,7 +283,7 @@ export class YtdlFallback {
 
     public static async playVideo(player: Player, url?: string | null, query?: string | null, user?: User): Promise<Track<unknown>> {
         let searchResult: SearchResult; 
-        let videoData: YtdlFallbackResponseInterface;
+        let videoData: YtdlFallbackResponseInterface | cachedVideo;
         if (url) {
             videoData = await this.getVideo(url);
             searchResult = await this.searchFile(player, videoData.filePath, user);
@@ -257,10 +312,10 @@ export class YtdlFallback {
     
     public static async playPlaylist(url: string, player: Player, user?: User): Promise<SearchResult> {
         try {
-        const playlistData = await this.getPlaylist(url);
+        const {playlistItems, playlistMetadata} = await this.getPlaylist(url);
         const tracks: Track<unknown>[] = [];
 
-        for (const item of playlistData) {
+        for (const item of playlistItems) {
             const searchResult = await this.searchFile(player, item.filePath, user);
             if (searchResult.tracks.length) {
             const track = searchResult.tracks[0];
@@ -274,11 +329,11 @@ export class YtdlFallback {
         return {
             tracks,
             playlist: {
-                title: playlistData[0]?.playlistMetadata?.title || 'YouTube Playlist',
+                title: playlistMetadata.title || 'YouTube Playlist',
                 tracks: tracks,
                 type: 'playlist',
                 source: url,
-                thumbnail: playlistData[0]?.playlistMetadata?.thumbnail || '',
+                thumbnail: playlistMetadata.thumbnail,
             }
         } as SearchResult;
         } catch (error) {

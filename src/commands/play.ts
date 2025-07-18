@@ -13,7 +13,7 @@ import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
 import { commandLogger, logError, playerLogger } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
-import { YtdlFallback } from '../services/ytdlFallback';
+import { YtdlFallback } from '../utils/ytdlFallback';
 import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } from '../types/ytdlServiceTypes';
 import { NetworkFileService } from '../services/networkFileService';
 
