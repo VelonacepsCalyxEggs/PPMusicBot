@@ -13,9 +13,9 @@ export default class ShuffleCommand extends CommandInterface {
                 .setDescription('Shuffle algorithm.')
                 .setRequired(false)
                 .addChoices(
-                    { name: 'Fisher-Yates', value: 'fy' },
-                    { name: 'Durstenfeld', value: 'df' },
-                    { name: 'Sattolo', value: 'st' },
+                    { name: 'Fisher-Yates', value: 'Fisher-Yates' },
+                    { name: 'Durstenfeld', value: 'Durstenfeld' },
+                    { name: 'Sattolo', value: 'Sattolo' },
                 ))
     execute = async ({ interaction }: { interaction: ChatInputCommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
