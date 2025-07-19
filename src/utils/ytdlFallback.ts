@@ -61,7 +61,7 @@ export class YtdlFallback {
 
             const downloadWorker = new Worker('./src/workers/videoDownloader.ts', {
                 workerData: { videoUrl: url, filePath: join(process.env.CACHE_DIR || './cache', `${videoId}.mp3`) },
-                execArgv: ['--import', 'tsx/esm'],
+                execArgv: ['--import', 'tsx/esm', '--enable-source-maps']
             });
 
             downloadWorker.on('message', (filePath: string) => {
