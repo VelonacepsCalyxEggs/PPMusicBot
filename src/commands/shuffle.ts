@@ -27,13 +27,13 @@ export default class ShuffleCommand extends CommandInterface {
 
         // Shuffle based on the selected algorithm
         switch (shuffleAlgorithm) {
-            case 'fy': // Fisher-Yates (Knuth) shuffle
+            case 'Fisher-Yates': // Fisher-Yates (Knuth) shuffle
                 this.fisherYatesShuffle(tracks);
                 break;
-            case 'df': // Durstenfeld shuffle
+            case 'Durstenfeld': // Durstenfeld shuffle
                 this.durstenfeldShuffle(tracks);
-                break;  
-            case 'st': // Sattolo's algorithm
+                break;
+            case 'Sattolo': // Sattolo's algorithm
                 this.sattoloShuffle(tracks);
                 break;
             default:
