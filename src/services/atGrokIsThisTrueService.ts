@@ -281,7 +281,7 @@ export class AtGrokIsThisTrueService extends ServiceInterface {
                         'X-Title': 'Discord Bot Grok Service'
                     },
                     body: JSON.stringify(requestBody),
-                    signal: AbortSignal.timeout(30000)
+                    signal: AbortSignal.timeout(60000)
                 });
 
                 discordLogger.info('API Response received', {
