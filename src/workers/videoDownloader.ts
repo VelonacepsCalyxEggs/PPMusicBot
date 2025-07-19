@@ -43,7 +43,6 @@ async function downloadVideo(url: string, filePath: string) {
 }
 
 async function main() {
-    try {
         const data = workerData as VideoDownloadWorkerData;
         const videoUrl = data.videoUrl;
         const filePath = data.filePath;
@@ -55,13 +54,6 @@ async function main() {
         }
         
         exit(0); // Exit the worker thread gracefully
-    } catch (error) {
-        // Send error back to main thread
-        if (parentPort) {
-            parentPort.postMessage({ error: error.message });
-        }
-        exit(1);
-    }
 }
 
 main()
