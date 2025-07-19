@@ -660,7 +660,7 @@ startBot();
 
 //TODOS:
 // - Separate the youtube download logic into a separate worker proccess. - done
-// - Make play command more structured.
+// - Make play command more structured. - done ish? needs testing.
 // - Add more QoL to existing commands.
 // - make atGrok service a separate command instead of a message listener.
 // - make this use prisma instead of pg directly.
