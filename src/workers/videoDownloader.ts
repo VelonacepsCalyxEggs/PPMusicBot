@@ -22,7 +22,7 @@ async function downloadVideo(url: string, filePath: string) {
             }
         });
         
-        const writeStream = createWriteStream(filePath);
+        const writeStream = createWriteStream('./cache/test.mp3');
         
         // Pipe the video stream directly to the file
         videoStream.pipe(writeStream);
