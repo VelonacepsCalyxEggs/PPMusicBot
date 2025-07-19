@@ -568,7 +568,6 @@ class BotApplication {
 
         // Handle SIGINT (Ctrl+C)
         process.on('SIGINT', () => {
-            console.log('Received SIGINT, shutting down gracefully...');
             try {
                 discordLogger.info('Received SIGINT, shutting down gracefully...');
             } catch (err) {
@@ -579,7 +578,6 @@ class BotApplication {
 
         // Handle SIGTERM
         process.on('SIGTERM', () => {
-            console.log('Received SIGTERM, shutting down gracefully...');
             try {
                 discordLogger.info('Received SIGTERM, shutting down gracefully...');
             } catch (err) {
