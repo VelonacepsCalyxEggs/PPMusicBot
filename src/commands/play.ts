@@ -369,9 +369,7 @@ export default class PlayCommand extends CommandInterface {
         if (!process.env.API_URL) {
             return interaction.followUp('API URL is not set. Please contact the bot owner.');
         }
-
         const networkFileService = client.services.get('NetworkFileService') as NetworkFileService;
-        
         // Test connection if using webserver
         if (process.env.USE_WEBSERVER === 'true') {
             try {
@@ -390,14 +388,13 @@ export default class PlayCommand extends CommandInterface {
                 });
             }
         }
-        
         try {
             commandLogger.http(`Searching database for query: ${interaction.options.get('dbquery')?.value}`);
             const response = await axios.request<SearchResultsDto>({
                 method: 'POST',
                 url: `${process.env.API_URL}/music/search`,
                 data: { query: interaction.options.get('dbquery')?.value },
-                timeout: 5000, // Set a timeout of 5 seconds
+                timeout: PlayCommand.CONFIDENCE_THRESHOLDS.REQUEST_TIMEOUT, // Set a timeout of 5 seconds
             });
             commandLogger.debug(`Database response: ${JSON.stringify(response.data)}`);
             
@@ -418,26 +415,24 @@ export default class PlayCommand extends CommandInterface {
             const highestAlbumScore = response.data.albums.length > 0 ? response.data.albums[0].score : 0;
             
             // If the highest score is below confidence threshold, show combined suggestions
-            if (Math.max(highestTrackScore, highestAlbumScore) <= 300) {
+            if (Math.max(highestTrackScore, highestAlbumScore) <= PlayCommand.CONFIDENCE_THRESHOLDS.LOW_CONFIDENCE) {
                 commandLogger.debug('Low confidence match found, showing suggestions');
                 
                 // Create combined suggestions list from tracks and albums
                 const combinedSuggestions: Array<{type: 'track' | 'album', name: string, score: number}> = [
-                    ...response.data.tracks.slice(0, 10).map(track => ({
+                    ...response.data.tracks.slice(0, PlayCommand.CONFIDENCE_THRESHOLDS.MAX_SUGGESTIONS).map(track => ({
                         type: 'track' as const,
                         name: track.title,
                         score: track.score
                     })),
-                    ...response.data.albums.slice(0, 10).map(album => ({
+                    ...response.data.albums.slice(0, PlayCommand.CONFIDENCE_THRESHOLDS.MAX_SUGGESTIONS).map(album => ({
                         type: 'album' as const,
                         name: album.name,
                         score: album.score
                     }))
                 ];
-                
                 // Sort by score descending
                 combinedSuggestions.sort((a, b) => b.score - a.score);
-                
                 // Format the suggestions
                 const suggestions = combinedSuggestions
                     .slice(0, 5)
@@ -498,7 +493,7 @@ export default class PlayCommand extends CommandInterface {
 
             if (result.tracks.length === 0) {
                 // Show suggestions if there are other tracks
-                if (track.score <= 25 && allTracks.length > 1) {
+                if (track.score <= PlayCommand.CONFIDENCE_THRESHOLDS.VERY_LOW_CONFIDENCE && allTracks.length > 1) {
                     commandLogger.debug('Unconfident track match found, showing suggestions');
                     const suggestions = allTracks
                         .slice(0, 5)
@@ -559,8 +554,8 @@ export default class PlayCommand extends CommandInterface {
     ): Promise<Message<boolean>> {
         try {
             commandLogger.debug(`Found album: ${album.name}`);
-            
-            if (album.score <= 300 && allAlbums.length > 1) {
+
+            if (album.score <= PlayCommand.CONFIDENCE_THRESHOLDS.LOW_CONFIDENCE && allAlbums.length > 1) {
                 commandLogger.debug('Unconfident album match found, showing suggestions');
                 const suggestions = allAlbums
                     .slice(0, 5)
