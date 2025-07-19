@@ -599,11 +599,6 @@ class BotApplication {
             this.client.destroy();
         }
         
-        // Close database connection
-        if (this.pool && !this.pool.ended) {
-            this.pool.end();
-        }
-        
         // Give time for cleanup
         setTimeout(() => {
             process.exit(0);
