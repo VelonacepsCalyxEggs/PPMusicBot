@@ -2,7 +2,8 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.10",
-    "@types/winston": "^2.4.4"
+    "@types/winston": "^2.4.4",
+    "tsx": "^4.20.3"
   },
   "dependencies": {
     "@discord-player/extractor": "^7.1.0",
