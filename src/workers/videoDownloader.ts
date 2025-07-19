@@ -1,7 +1,6 @@
 import ytdl from "@distube/ytdl-core";
 import { createWriteStream } from "fs";
 import { exit } from "process";
-import { YoutubeDownloadFailedError } from "src/types/ytdlServiceTypes";
 import Stream from "stream";
 import { workerData } from "worker_threads";
 
@@ -36,7 +35,7 @@ async function downloadVideo(url: string, filePath: string) {
         await saveVideoToFile(videoBuffer, filePath);
     });
     videoStream.on('error', (error) => {
-        throw new YoutubeDownloadFailedError(`Error downloading video: ${error.message}`);
+        throw new Error(`Error downloading video: ${error.message}`);
     });
 }
 
@@ -44,7 +43,7 @@ async function saveVideoToFile(videoBuffer: Buffer, filePath: string) {
     return new Promise<void>((resolve, reject) => {
         const writeStream = createWriteStream(filePath);
         writeStream.on('finish', () => resolve());
-        writeStream.on('error', (error) => reject(new YoutubeDownloadFailedError(`Error saving video to file: ${error.message}`)));
+        writeStream.on('error', (error) => reject(new Error(`Error saving video to file: ${error.message}`)));
         writeStream.write(videoBuffer);
         writeStream.end();
     });
