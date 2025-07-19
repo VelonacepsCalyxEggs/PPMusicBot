@@ -18,7 +18,7 @@ export default class MoveCommand extends CommandInterface {
                 .setDescription('index')
                 .setRequired(true)
         )
-    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
+    execute = async ({ interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
         if (!commandPreRunCheckUtil(interaction, queue)) return;

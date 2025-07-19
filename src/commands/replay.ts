@@ -8,7 +8,7 @@ export default class ReplayCommand extends CommandInterface {
         .setName('replay')
         .setDescription('Skips the current song and plays it again.')
 
-    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
+    execute = async ({ interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);

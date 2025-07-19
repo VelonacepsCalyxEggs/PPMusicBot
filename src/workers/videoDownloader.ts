@@ -11,7 +11,7 @@ interface VideoDownloadWorkerData {
 
 async function downloadVideo(url: string, filePath: string) {
     return new Promise<void>((resolve, reject) => {
-        let videoStream: Stream.Readable = ytdl(url, {
+        const videoStream: Stream.Readable = ytdl(url, {
             quality: 'highest',
             filter: 'audioonly',
             highWaterMark: 1 << 25, // 32MB buffer

@@ -83,6 +83,7 @@ export interface ScoredAlbum extends AlbumDto, ScoredItem {
   resultType: 'album';
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ScoredArtist extends Record<string, any>, ScoredItem {
   id: string;
   name: string;

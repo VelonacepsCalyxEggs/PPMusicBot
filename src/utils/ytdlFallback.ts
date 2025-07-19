@@ -1,16 +1,14 @@
 import ytdl, { videoInfo } from '@distube/ytdl-core';
 import ytpl from 'ytpl';
-import { ServiceInterface } from '../types/serviceInterface';
 import { readFile, writeFile, mkdir } from 'fs/promises';
-import { PlaylistTooLargeError, videoCache, YoutubeDownloadFailedError, YtdlFallbackResponseInterface } from '../types/ytdlServiceTypes';
-import { dirname, join } from 'path';
+import { PlaylistTooLargeError, YoutubeDownloadFailedError, YtdlFallbackResponseInterface } from '../types/ytdlServiceTypes';
+import { join } from 'path';
 import { GuildQueue, Player, QueryType, SearchResult, Track } from 'discord-player/dist';
 import { User } from 'discord.js';
 import { NoTrackFoundError } from '../types/ytdlServiceTypes';
 import { playerLogger } from '../utils/loggerUtil';
-import { appendFileSync, readdirSync } from 'fs';
+import { readdirSync } from 'fs';
 import YouTube from 'youtube-sr/dist/mod';
-import Stream from 'stream';
 import { Worker } from 'worker_threads';
 
 interface cachedVideo {
@@ -35,7 +33,6 @@ export class YtdlFallback {
 
     private static async cleanVideoUrl(url: string): Promise<string> {
         playerLogger.debug(`Cleaning URL: ${url}`);
-        const cleanUrl: string = '';
         try {
             const urlSplit = url.split('&');
             return urlSplit[0]
@@ -201,6 +198,7 @@ export class YtdlFallback {
                 const video = await this.getVideo(item.url);
 
                 // Normalize metadata to ensure duration is present
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 let normalizedMetadata: any = video.metadata;
                 if ('videoDetails' in normalizedMetadata) {
                     if (!('duration' in normalizedMetadata.videoDetails)) {

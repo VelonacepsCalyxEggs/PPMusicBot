@@ -17,7 +17,7 @@ export default class LoopCommand extends CommandInterface {
                     { name: 'Track', value: '2' },
                     { name: 'Off', value: '3' }
                 ))
-    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
+    execute = async ({ interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId) return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);

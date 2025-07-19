@@ -9,7 +9,7 @@ export default class SkipCommand extends CommandInterface {
     data = new SlashCommandBuilder()
         .setName('skip')
         .setDescription('Skips the current song')
-    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
+    execute = async ({ interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId) return interaction.reply({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);

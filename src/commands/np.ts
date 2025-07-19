@@ -11,7 +11,7 @@ export default class NowPlayingCommand extends CommandInterface {
         .setName('np')
         .setDescription('Gets the currently playing song.')
 
-    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
+    execute = async ({ interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId) return interaction.followUp('You need to be in a guild.');
         const queue = useQueue(interaction.guild);

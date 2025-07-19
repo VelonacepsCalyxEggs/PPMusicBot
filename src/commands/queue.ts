@@ -16,7 +16,7 @@ export default class QueueCommand extends CommandInterface {
                 .setRequired(false)
                 .setMinValue(1)
         )
-    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
+    execute = async ({ interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId) {
             return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         }

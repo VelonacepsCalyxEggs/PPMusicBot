@@ -8,7 +8,7 @@ export default class RecoverCommand implements CommandInterface {
         .setName('recover')
         .setDescription('Force recovery from stuck playback state');
 
-    async execute({ client, player, interaction }: { client: Client, player: Player, interaction: ChatInputCommandInteraction }) {
+    async execute({ player, interaction }: { client: Client, player: Player, interaction: ChatInputCommandInteraction }) {
         if (!interaction.guild) {
             return interaction.reply({ content: 'This command can only be used in a server.', flags: ['Ephemeral'] });
         }

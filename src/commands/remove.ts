@@ -18,7 +18,7 @@ export default class RemoveCommand extends CommandInterface {
                 .setDescription('index 2')
                 .setRequired(false)
         )
-    execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
+    execute = async ({ interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
         if (!commandPreRunCheckUtil(interaction, queue)) return;
@@ -29,14 +29,14 @@ export default class RemoveCommand extends CommandInterface {
         if (!position2) {
             tracks.splice(position, 1);
             queue!.clear();
-            for (let track of tracks) {
+            for (const track of tracks) {
                 queue!.addTrack(track);
             }
             return interaction.reply({ content: `The track at position ${position} has been removed!`, flags: ['SuppressNotifications'] });
         } else {
             tracks.splice(position, position2);
             queue!.clear();
-            for (let track of tracks) {
+            for (const track of tracks) {
                 queue!.addTrack(track);
             }
             return interaction.reply({ content: `The tracks from position ${position} to ${position2} have been removed!`, flags: ['SuppressNotifications'] });

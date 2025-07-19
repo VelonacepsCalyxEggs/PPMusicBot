@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import winston from 'winston';
 import path from 'path';
+import { existsSync, mkdirSync } from 'fs';
 
 // Define custom log levels
 const logLevels = {
@@ -74,9 +77,8 @@ const logsDir = path.join(process.cwd(), 'logs');
 
 // Ensure logs directory exists
 try {
-    const fs = require('fs');
-    if (!fs.existsSync(logsDir)) {
-        fs.mkdirSync(logsDir, { recursive: true });
+    if (!existsSync(logsDir)) {
+        mkdirSync(logsDir, { recursive: true });
         console.log(`Created logs directory: ${logsDir}`);
     }
 } catch (error) {

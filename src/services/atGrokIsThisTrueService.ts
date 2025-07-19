@@ -12,6 +12,7 @@ export class AtGrokIsThisTrueService extends ServiceInterface {
     private apiKey: string;
     private cacheDir: string;
     private imageSupport: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private queryQueues: Map<string, Promise<any>> = new Map();
     constructor() {
         super();
@@ -228,6 +229,7 @@ export class AtGrokIsThisTrueService extends ServiceInterface {
             }
 
             try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const messages: any[] = [
                     { 
                         role: 'system', 

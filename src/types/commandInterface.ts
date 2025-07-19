@@ -8,5 +8,6 @@ export default abstract class CommandInterface {
         client?: Client;
         player?: Player;
         interaction: ChatInputCommandInteraction;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) => Promise<void | InteractionResponse<boolean> | Message<any>>;
 }

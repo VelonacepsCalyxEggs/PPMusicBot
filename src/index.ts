@@ -143,6 +143,7 @@ class BotApplication {
                             }
                         } catch (quoteError) {
                             // Fallback if quote fetching fails
+                            logError(quoteError);
                             if (interaction.deferred) {
                                 await interaction.editReply({
                                     content: `${errorMessage}\n\nDiscord API Status: ${status}`
@@ -274,7 +275,7 @@ class BotApplication {
             });
             
             // This event is triggered when a track is added to the queue
-            this.player.events.on('audioTrackAdd', async (queue: GuildQueue, track: Track<TrackMetadata>) => {
+            this.player.events.on('audioTrackAdd', async (queue: GuildQueue) => {
                 if (queue.tracks.size !== 0) {
                     const trackMeta = (queue.tracks.at(0) as Track<TrackMetadata>).metadata;
                     if (trackMeta) {
@@ -313,10 +314,6 @@ class BotApplication {
                         }
                     }
                 }
-            });
-            
-            this.player.events.on('playerStart', (queue: GuildQueue) => {
-                
             });
             
             // This event is triggered when the player encounters a regular error.
@@ -360,11 +357,6 @@ class BotApplication {
                     logError(error as Error, 'connectionDestroyed', { interaction });
                 }
             });
-        
-        // This event is triggered when a connection is established to a voice channel
-        this.player.events.on('connection', (queue: GuildQueue) => {
-            
-        });
     }
 
     private initializeRest() {
@@ -512,7 +504,7 @@ class BotApplication {
         }
         if (!existsSync(process.env.PATH_TO_STATUS_JSON)) {
             discordLogger.warn('Status file does not exist, creating a new one.');
-            mkdirSync(process.env.PATH_TO_STATUS_JSON.replace(/[^\/]+$/, ''), { recursive: true });
+            mkdirSync(process.env.PATH_TO_STATUS_JSON.replace(/[^/]+$/, ''), { recursive: true });
             writeFileSync(join(process.env.PATH_TO_STATUS_JSON, 'status.json'), JSON.stringify({ status: 'Hello There!' }, null, 2), { encoding: 'utf-8' });
         }
     }
@@ -530,6 +522,7 @@ class BotApplication {
 
     private setupGlobalErrorHandlers() {
         // Handle unhandled promise rejections
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
         process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
             console.error('Unhandled Rejection:', reason);
             

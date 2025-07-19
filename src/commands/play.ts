@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { ChatInputCommandInteraction, Client, CommandInteractionOptionResolver, EmbedBuilder, GuildMember, Message, User, VoiceBasedChannel } from 'discord.js';
+import { ChatInputCommandInteraction, Client, EmbedBuilder, GuildMember, Message, User, VoiceBasedChannel } from 'discord.js';
 import { QueryType, useQueue, GuildQueue, Player, useMainPlayer, Track, SearchResult } from 'discord-player';
 import https from 'https';
 import http from 'http';
@@ -151,6 +151,7 @@ export default class PlayCommand extends CommandInterface {
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     private async handleSpotifySourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
         // This is a placeholder for future Spotify support.
         throw new Error('Spotify support is not implemented yet.');
@@ -572,13 +573,13 @@ export default class PlayCommand extends CommandInterface {
                 });
             }
             
-            const albumResponse = await axios.request<any>({
+            const albumResponse = await axios.request<{ data: MusicDto[] }>({
                 method: 'GET',
                 url: `${process.env.API_URL}/music`,
                 params: { albumId: album.id, sortBy:"trackNumber", limit: 512, sortOrder: "asc" }
             });
             
-            const foundAlbum = albumResponse.data.data as MusicDto[];
+            const foundAlbum = albumResponse.data.data;
             if (!foundAlbum || foundAlbum.length === 0) {
                 commandLogger.debug('No tracks found in the album');
                 return interaction.followUp({ 
@@ -670,7 +671,9 @@ export default class PlayCommand extends CommandInterface {
         
         // Sort disc groups: numbers first (in numerical order), then strings (alphabetically)
         const sortedGroups = Array.from(discGroups.entries()).sort((a, b) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const [discA, _] = a;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const [discB, __] = b;
             
             // Handle undefined disc numbers
@@ -695,6 +698,7 @@ export default class PlayCommand extends CommandInterface {
         });
         
         // Flatten back into a single array
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         return sortedGroups.flatMap(([_, tracks]) => tracks);
     }
     
