@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { ChatInputCommandInteraction, Client, CommandInteractionOptionResolver, EmbedBuilder, GuildMember, Message, User, VoiceBasedChannel } from 'discord.js';
 import { QueryType, useQueue, GuildQueue, Player, useMainPlayer, Track, SearchResult } from 'discord-player';
 import https from 'https';
-import http, { RequestOptions } from 'http';
+import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import CommandInterface from '../types/commandInterface';
