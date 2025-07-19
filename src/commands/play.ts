@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { ChatInputCommandInteraction, Client, CommandInteractionOptionResolver, EmbedBuilder, GuildMember, Message, User } from 'discord.js';
+import { ChatInputCommandInteraction, Client, CommandInteractionOptionResolver, EmbedBuilder, GuildMember, Message, User, VoiceBasedChannel } from 'discord.js';
 import { QueryType, useQueue, GuildQueue, Player, useMainPlayer, Track, SearchResult } from 'discord-player';
 import https from 'https';
 import http, { RequestOptions } from 'http';
@@ -21,6 +21,14 @@ export default class PlayCommand extends CommandInterface {
     constructor() {
         super();
     }
+
+    private static readonly CONFIDENCE_THRESHOLDS = {
+        LOW_CONFIDENCE: 300,
+        VERY_LOW_CONFIDENCE: 25,
+        MAX_SUGGESTIONS: 5,
+        MAX_TRACKS: 10,
+        REQUEST_TIMEOUT: 5000
+    } as const;
 
     data = new SlashCommandBuilder()
         .setName('play')
@@ -55,39 +63,23 @@ export default class PlayCommand extends CommandInterface {
         if (!(interaction.member as GuildMember).voice.channel) {
             return interaction.followUp({content: 'You need to be in a voice channel to use this command!', flags: ['Ephemeral']});
         }
-        if (!interaction.guild)return interaction.followUp('You need to be in a guild.');
         const player = useMainPlayer();
-        
-        let guildQueue = useQueue(interaction.guild);
-        if (!guildQueue) {
-            guildQueue = player.nodes.create(interaction.guild, {leaveOnEnd: false, leaveOnEmpty: true, leaveOnStop: false, metadata: interaction, noEmitInsert: true});
-        } else if (guildQueue.deleted) {
-            guildQueue.revive();
+        let guildQueue: GuildQueue;
+        let voiceChannel: VoiceBasedChannel;
+
+        // GuildQueue initialization.
+        try {
+            ({ guildQueue, voiceChannel } = await this.getQueue(interaction, player));
+            await this.checkVoiceConnection(interaction, voiceChannel, guildQueue);
+        }
+        catch (error) {
+            if (error instanceof Error) {
+                return interaction.followUp({content: error.message, flags: ['Ephemeral']});
+            }
+            else throw error;
         }
 
-        const voiceChannel = (interaction.member as GuildMember).voice.channel;
-
-        if (!voiceChannel) {
-          return interaction.reply({ content: "You need to be in a voice channel to use this command!", ephemeral: true });
-        }
-        if (!guildQueue.connection) {
-            if (voiceChannel.joinable === false) {
-                return interaction.followUp({content: 'I cannot join your voice channel. Please check my permissions.', flags: ['Ephemeral']});
-            }
-            if (voiceChannel.full) {
-                return interaction.followUp({content: 'Your voice channel is full.', flags: ['Ephemeral']});
-            }
-            
-            await guildQueue.connect(voiceChannel);
-            if (!guildQueue.connection) {
-                return interaction.followUp({content: 'Failed to connect to the voice channel.', flags: ['SuppressNotifications']});
-            }
-        }
-
-
-    
-        // Assuming interaction is of type ChatInputCommandInteraction
-        const subcommand = (interaction.options as CommandInteractionOptionResolver).getSubcommand();
+        const subcommand = interaction.options.getSubcommand();
 
         commandLogger.info(`Subcommand used: ${subcommand}`)
 
@@ -106,141 +98,119 @@ export default class PlayCommand extends CommandInterface {
 
     private handleSongCommand = async (client: Client, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<Message<boolean>> => {
         commandLogger.debug(`Handling song command with interaction: ${interaction.id}`);
-        
-        const argument = interaction.options.get('music')?.value;
-        if ((typeof(argument) !== 'string')) {
-            throw new Error('Invalid argument type. Expected a string.');
-        }
-    
-        const sourceType = this.detectSourceType(argument);
-        let result: SearchResult;
-        let song: Track<unknown> | null = null;
-        let embed: EmbedBuilder | undefined = undefined;
-        switch (sourceType) {
-            case 'spotify':
-                commandLogger.debug(`Spotify URL detected: ${argument}`);
-                result = await player.search(argument, {
-                    requestedBy: interaction.user,
-                    searchEngine: QueryType.SPOTIFY_SEARCH
-                });
-                if (!result.tracks.length) {
-                    return interaction.followUp({content: 'No results found for the Spotify URL.', flags: ['Ephemeral']});
-                }
-                song = result.tracks[0];
-                embed = this.createTrackEmbed(song, guildQueue.tracks.size);
-                break;
-            case 'stream':
-                commandLogger.debug(`Stream URL detected: ${argument}`);
-                result = await this.searchTrack(player, this.normalizeStreamUrl(argument), interaction.user);
-                
-                if (!result.tracks.length) return interaction.followUp({content: 'No results found for the stream URL.', flags: ['Ephemeral']});
-                song = result.tracks[0];
-                song.duration = '∞';
-                embed = this.createTrackEmbed(song, guildQueue.tracks.size);
-                break;
-                
-            case 'external_url':
-                commandLogger.debug(`External URL detected: ${argument}`);
-                result = await this.searchFile(player, await this.downloadFile(argument.split('?')[0], argument), interaction.user);
-                
-                if (!result.tracks.length) return interaction.followUp({content: 'No results found for the external URL.', flags: ['Ephemeral']});
-                song = result.tracks[0];
-                embed = this.createTrackEmbed(song, guildQueue.tracks.size);
-                break;
-                
-            case 'youtube_video':
-                commandLogger.debug(`YouTube video URL detected: ${argument}`);
+        const argument = interaction.options.getString('music', true);
+        try {
+            const { result, song, embed } = await this.handleSourceType(argument, player, interaction, guildQueue);
 
-                try {
-                    interaction.editReply("Downloading YouTube video, this might take a moment...");
-                    song = await YtdlFallback.playVideo(player, this.cleanYoutubeUrl(argument), null, interaction.user);
-                }
-                catch (error) {
-                    if (error instanceof NoTrackFoundError || error instanceof YoutubeDownloadFailedError) {
-                        return interaction.followUp({content: error.message, flags: ['Ephemeral']});
-                    }
-                    else {
-                        logError(error, `Error while processing YouTube video: ${argument}`);
-                        return interaction.followUp({content: 'An unexpected error occurred while processing the YouTube video.', flags: ['Ephemeral']});
-                    }
-                }
-                embed = this.createTrackEmbed(song!, guildQueue.tracks.size);
-                break;
-                
-            case 'youtube_playlist':
-                commandLogger.debug(`YouTube playlist URL detected: ${argument}`);
-                
-                try {
-                    interaction.editReply("Loading playlist, this might take a moment...");
-                    
-                    const playlistResult = await YtdlFallback.playPlaylistWithBackground(argument, player, interaction.user, guildQueue);
-                    
-                    // Play the first track immediately if available
-                    if (playlistResult.firstTrack) {
-                        await this.playTrack(playlistResult.firstTrack, guildQueue, interaction);
-                        
-                        embed = createEmbedUtil(
-                            `**${playlistResult.playlistInfo.title}** - Started playing first track`, 
-                            playlistResult.playlistInfo.bestThumbnail?.url || '', 
-                            `Total tracks: ${playlistResult.playlistInfo.items.length} | Downloading remaining tracks in background...`
-                        );
-                    } else {
-                        embed = createEmbedUtil(
-                            `**${playlistResult.playlistInfo.title}** - Loading playlist...`, 
-                            playlistResult.playlistInfo.bestThumbnail?.url || '', 
-                            `Total tracks: ${playlistResult.playlistInfo.items.length} | Processing tracks in background...`
-                        );
-                    }
-                    
-                    // Handle the background promise
-                    playlistResult.backgroundPromise.then(() => {
-                        playerLogger.debug(`Finished processing all tracks for playlist: ${playlistResult.playlistInfo.title}`);
-                        interaction.followUp({ content: `Finished loading all tracks from **${playlistResult.playlistInfo.title}**`, flags: ['SuppressNotifications'] });
-                    }).catch((error) => {
-                        playerLogger.error(`Error processing background tracks: ${error.message}`);
-                        interaction.followUp({ content: `Error processing playlist tracks: ${error.message}`, flags: ['Ephemeral'] });
-                    });
-                    
-                } catch (error) {
-                    if (error instanceof PlaylistTooLargeError) {
-                        return interaction.followUp({content: error.message, flags: ['Ephemeral']});
-                    }
-                    else if (error instanceof NoTrackFoundError) {
-                        return interaction.followUp({content: error.message, flags: ['Ephemeral']});
-                    }
-                    else {
-                        logError(error, `Error while processing YouTube playlist: ${argument}`);
-                        return interaction.followUp({content: 'An error occurred while processing the YouTube playlist.', flags: ['Ephemeral']});
-                    }
-                }
-                break;
-                
-            case 'search_term':
-            default:
-                commandLogger.debug(`Search term detected: ${argument}`);
-                try {
-                    interaction.editReply("Downloading YouTube video, this might take a moment...");
-                    song = await YtdlFallback.playVideo(player, null, argument, interaction.user);
-                    embed = this.createTrackEmbed(song, guildQueue.tracks.size);
-                }
-                catch (error) {
-                    if (error instanceof NoTrackFoundError) {
-                        return interaction.followUp({content: error.message, flags: ['Ephemeral']});
-                    }
-                }
-                break;
+            if (result) {
+                await this.playTrack(result, guildQueue, interaction);
+            }
+            else if (song) {
+                await this.playTrack(song, guildQueue, interaction);
+            }
+            else {
+                throw new Error('Unhandled exception! No track or result was given!')
+            }
+            if (embed) {
+                return await interaction.followUp({ embeds: [embed] });
+            } else {
+                return await interaction.followUp({ content: 'No track information available.', flags: ['Ephemeral'] });
+            }
         }
-
-        if (song) {
-            await this.playTrack(song, guildQueue, interaction);
-        }
-
-        if (embed) {
-            return await interaction.followUp({ embeds: [embed] });
-        } else {
-            return await interaction.followUp({ content: 'No track information available.', flags: ['Ephemeral'] });
+        catch(error) {
+            if (error instanceof NoTrackFoundError) {
+                return interaction.followUp({ content: 'No track found for the provided input.', flags: ['Ephemeral'] });
+            } else if (error instanceof PlaylistTooLargeError) {
+                return interaction.followUp({ content: 'The playlist is too large to process.', flags: ['Ephemeral'] });
+            } else if (error instanceof YoutubeDownloadFailedError) {
+                return interaction.followUp({ content: 'Failed to download the YouTube video.', flags: ['Ephemeral'] });
+            } else {
+                logError(error, `Error handling song command: ${interaction.id}`);
+                return interaction.followUp({ content: 'An unexpected error occurred while processing your request.', flags: ['Ephemeral'] });
+            }
         }
     };
+
+    private async handleSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
+        const sourceType = this.detectSourceType(argument);
+        switch (sourceType) {
+            case 'spotify':
+                return await this.handleSpotifySourceType(argument, player, interaction, guildQueue);
+            case 'stream':
+                return await this.handleStreamSourceType(argument, player, interaction, guildQueue);
+            case 'external_url':
+                return await this.handleExternalUrlSourceType(argument, player, interaction, guildQueue);
+            case 'search_term':
+                return await this.handleSearchTermSourceType(argument, player, interaction, guildQueue);
+            case 'youtube_video':
+                return await this.handleYoutubeVideoSourceType(argument, player, interaction, guildQueue);
+            case 'youtube_playlist':
+                return await this.handleYoutubePlaylistSourceType(argument, player, interaction, guildQueue);
+            default:
+                throw new Error('Unknown source type');
+        }
+    }
+
+    private async handleSpotifySourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
+        // This is a placeholder for future Spotify support.
+        throw new Error('Spotify support is not implemented yet.');
+    }
+
+    private async handleStreamSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
+        commandLogger.debug(`Stream URL detected: ${argument}`);
+        const result = await this.searchTrack(player, this.normalizeStreamUrl(argument), interaction.user);
+        return { result, song: result.tracks[0], embed: this.createTrackEmbed(result.tracks[0], guildQueue.tracks.size) };
+    }
+
+    private async handleExternalUrlSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
+        commandLogger.debug(`External URL detected: ${argument}`);
+        const result = await this.searchFile(player, await this.downloadFile(argument.split('?')[0], argument), interaction.user);
+        return { result, song: result.tracks[0], embed: this.createTrackEmbed(result.tracks[0], guildQueue.tracks.size) };
+    }
+
+    private async handleSearchTermSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
+        commandLogger.debug(`Search term detected: ${argument}`);
+        interaction.editReply("Downloading YouTube video, this might take a moment...");
+        const result = await YtdlFallback.playVideo(player, null, argument, interaction.user);
+        return { result, song: result.tracks[0], embed: this.createTrackEmbed(result.tracks[0], guildQueue.tracks.size) };
+    }
+
+    private async handleYoutubeVideoSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
+        commandLogger.debug(`YouTube video URL detected: ${argument}`);
+        interaction.editReply("Downloading YouTube video, this might take a moment...");
+        const result = await YtdlFallback.playVideo(player, this.cleanYoutubeUrl(argument), null, interaction.user);
+        return { result, song: result.tracks[0], embed: this.createTrackEmbed(result.tracks[0], guildQueue.tracks.size) };
+    }
+
+    private async handleYoutubePlaylistSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null,  embed: EmbedBuilder | null}> {
+        commandLogger.debug(`YouTube playlist URL detected: ${argument}`);
+        interaction.editReply("Loading playlist, this might take a moment...");
+        let embed: EmbedBuilder | null = null;
+        const playlistResult = await YtdlFallback.playPlaylistWithBackground(argument, player, interaction.user, guildQueue);
+        // Play the first track immediately if available
+        if (playlistResult.firstTrack) {
+            embed = createEmbedUtil(
+                `**${playlistResult.playlistInfo.title}** - Started playing first track`, 
+                playlistResult.playlistInfo.bestThumbnail?.url || '', 
+                `Total tracks: ${playlistResult.playlistInfo.items.length} | Downloading remaining tracks in background...`
+            );
+        } else {
+            embed = createEmbedUtil(
+                `**${playlistResult.playlistInfo.title}** - Loading playlist...`, 
+                playlistResult.playlistInfo.bestThumbnail?.url || '', 
+                `Total tracks: ${playlistResult.playlistInfo.items.length} | Processing tracks in background...`
+            );
+        }
+        // Handle the background promise
+        playlistResult.backgroundPromise.then(() => {
+            playerLogger.debug(`Finished processing all tracks for playlist: ${playlistResult.playlistInfo.title}`);
+            interaction.followUp({ content: `Finished loading all tracks from **${playlistResult.playlistInfo.title}**`, flags: ['SuppressNotifications'] });
+        }).catch((error) => {
+            playerLogger.error(`Error processing background tracks: ${error.message}`);
+            interaction.followUp({ content: `Error processing playlist tracks: ${error.message}`, flags: ['Ephemeral'] });
+        });
+        return { result: null, song: playlistResult.firstTrack, embed };
+    }
 
     // Helper method to detect source type
     private detectSourceType(input: string): 'stream' | 
@@ -356,7 +326,10 @@ export default class PlayCommand extends CommandInterface {
     }
 
     // Helper to create a track embed
-    private createTrackEmbed(track: Track, queueSize: number): EmbedBuilder {
+    private createTrackEmbed(track: Track | undefined, queueSize: number): EmbedBuilder {
+        if (!track) {
+            throw new Error('No track information available.');
+        }
         return createEmbedUtil(
             `**${track.title}** has been added to the queue`, 
             track.thumbnail.length > 0 ? track.thumbnail : 'https://www.funckenobi42.space/images/AlbumCoverArt/DefaultCoverArt.png', 
@@ -842,4 +815,40 @@ export default class PlayCommand extends CommandInterface {
             }
         });
     };
+
+    private async getQueue(interaction: ChatInputCommandInteraction, player: Player): Promise<{ guildQueue: GuildQueue, voiceChannel: VoiceBasedChannel }> {
+        if (!interaction.guild) {
+            throw new Error('This command can only be used in a server.');
+        }
+
+        let guildQueue = useQueue(interaction.guild);
+
+        if (!guildQueue) {
+            guildQueue = player.nodes.create(interaction.guild, {leaveOnEnd: false, leaveOnEmpty: true, leaveOnStop: false, metadata: interaction, noEmitInsert: true});
+        } else if (guildQueue.deleted) {
+            guildQueue.revive();
+        }
+        const voiceChannel = (interaction.member as GuildMember).voice.channel;
+        if (!voiceChannel) {
+            throw new Error('You must be in a voice channel to use this command.');
+        }
+        return { guildQueue, voiceChannel };
+    }
+
+    private async checkVoiceConnection(interaction: ChatInputCommandInteraction, voiceChannel: VoiceBasedChannel, guildQueue: GuildQueue): Promise<void> {
+        if (!guildQueue.connection) {
+            if (voiceChannel.joinable === false) {
+                throw new Error('I cannot join your voice channel. Please check my permissions.');
+            }
+
+            if (voiceChannel.full) {
+                throw new Error('Your voice channel is full.');
+            }
+
+            await guildQueue.connect(voiceChannel);
+            if (!guildQueue.connection) {
+                throw new Error('Failed to connect to the voice channel.');
+            }
+        }
+    }
 };

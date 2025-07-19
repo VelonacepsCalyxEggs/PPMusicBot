@@ -255,7 +255,7 @@ export class YtdlFallback {
         }
     }
 
-    public static async playVideo(player: Player, url?: string | null, query?: string | null, user?: User): Promise<Track<unknown>> {
+    public static async playVideo(player: Player, url?: string | null, query?: string | null, user?: User): Promise<SearchResult> {
         let searchResult: SearchResult; 
         let videoData: YtdlFallbackResponseInterface | cachedVideo;
         if (url) {
@@ -280,7 +280,7 @@ export class YtdlFallback {
         searchResult.tracks[0].author = videoData.metadata.videoDetails.author.name;
         searchResult.tracks[0].thumbnail = videoData.metadata.videoDetails.thumbnails[0].url;
         searchResult.tracks[0].url = videoData.metadata.videoDetails.video_url || '#';
-        return searchResult.tracks[0];
+        return searchResult;
     }
     
     
