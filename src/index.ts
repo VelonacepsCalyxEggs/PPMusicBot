@@ -590,14 +590,7 @@ class BotApplication {
     }
 
     private gracefulShutdown() {
-        console.log('Initiating graceful shutdown...');
-        
-        try {
-            discordLogger.info('Initiating graceful shutdown...');
-        } catch (err) {
-            console.error('Failed to log shutdown:', err);
-        }
-        
+        discordLogger.info('Initiating graceful shutdown...');
         // Close logger first to prevent further write attempts
         closeLogger();
         
@@ -607,7 +600,7 @@ class BotApplication {
         }
         
         // Close database connection
-        if (this.pool) {
+        if (this.pool && !this.pool.ended) {
             this.pool.end();
         }
         
