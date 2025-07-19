@@ -31,10 +31,6 @@ interface cachedVideo {
     filePath: string;
 }
 
-interface cachedVideoDictionary {
-    [videoId: string]: cachedVideo;
-}
-
 export class YtdlFallback {
 
     private static async cleanVideoUrl(url: string): Promise<string> {
@@ -49,7 +45,6 @@ export class YtdlFallback {
             throw new Error(`Failed to clean URL: ${error.message}`);
         }
     }
-
 
     private static async downloadVideo(url: string, videoId: string): Promise<string> {
         playerLogger.debug(`Downloading video from URL: ${url}`);
