@@ -3,7 +3,7 @@ import ytpl from 'ytpl';
 import { ServiceInterface } from '../types/serviceInterface';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { PlaylistTooLargeError, videoCache, YoutubeDownloadFailedError, YtdlFallbackResponseInterface } from '../types/ytdlServiceTypes';
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { GuildQueue, Player, QueryType, SearchResult, Track } from 'discord-player/dist';
 import { User } from 'discord.js';
 import { NoTrackFoundError } from '../types/ytdlServiceTypes';
@@ -11,6 +11,7 @@ import { playerLogger } from '../utils/loggerUtil';
 import { appendFileSync, readdirSync } from 'fs';
 import YouTube from 'youtube-sr/dist/mod';
 import Stream from 'stream';
+import { Worker } from 'worker_threads';
 
 interface cachedVideo {
     metadata: {
@@ -50,57 +51,36 @@ export class YtdlFallback {
     }
 
 
-    private static async downloadVideo(url: string): Promise<Buffer> {
+    private static async downloadVideo(url: string, videoId: string): Promise<string> {
         playerLogger.debug(`Downloading video from URL: ${url}`);
-        let videoStream: Stream.Readable;
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
-                videoStream.destroy();
+                downloadWorker.terminate();
                 reject(new YoutubeDownloadFailedError(`Download timeout after 60 seconds for ${url}`));
             }, 60000); // 60 second timeout
 
-            try {
-                playerLogger.debug(`Starting download via ytdl.`);
-                videoStream = ytdl(url, {
-                    quality: 'highest',
-                    filter: 'audioonly',
-                    highWaterMark: 1 << 25, // 32MB buffer
-                    requestOptions: {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                        }
-                    }
-                });
-                
-                playerLogger.debug(`ytdl download stream created for ${url}.`);
-                const chunks: Buffer[] = [];
-                
-                videoStream.on('data', (chunk) => {
-                    if (Buffer.isBuffer(chunk)) {
-                        playerLogger.debug(`Received chunk of size: ${chunk.length}`);
-                        chunks.push(chunk);
-                    } else {
-                        playerLogger.debug(`Received non-buffer chunk: ${typeof chunk}`);
-                        chunks.push(Buffer.from(chunk));
-                    }
-                });
+            const downloadWorker = new Worker('../workers/videoDownloader.ts', {
+                workerData: { videoUrl: url, filePath: join(process.env.CACHE_DIR || './cache', `${videoId}.mp3`) },
+            });
 
-                videoStream.on('end', () => {
-                    clearTimeout(timeout);
-                    playerLogger.debug(`Downloaded video from ${url} successfully.`);
-                    resolve(Buffer.concat(chunks));
-                });
-
-                videoStream.on('error', (error) => {
-                    clearTimeout(timeout);
-                    playerLogger.error(`Stream error for ${url}: ${error.message}`);
-                    reject(new Error(`Failed to download video from ${url}: ${error.message}`));
-                });
-
-            } catch (error) {
+            downloadWorker.on('message', (filePath: string) => {
                 clearTimeout(timeout);
-                reject(new Error(`Failed to download video from ${url}: ${error.message}`));
-            }
+                playerLogger.info(`Video downloaded successfully to ${filePath}`);
+                resolve(filePath);
+            });
+
+            downloadWorker.on('error', (error) => {
+                clearTimeout(timeout);
+                playerLogger.error(`Error downloading video: ${error.message}`);
+                reject(new YoutubeDownloadFailedError(`Error downloading video: ${error.message}`));
+            });
+
+            downloadWorker.on('exit', (code) => {
+                if (code !== 0) {
+                    playerLogger.error(`Video download worker exited with code ${code}`);
+                    reject(new YoutubeDownloadFailedError(`Video download worker exited with code ${code}`));
+                }
+            });
         });
     }   
 
@@ -125,9 +105,7 @@ export class YtdlFallback {
         return null;
     }
 
-    private static async saveVideoToCache(videoData: videoInfo, buffer: Buffer): Promise<string> {
-        const fileName = `${videoData.videoDetails.videoId}.mp3`;
-        const filePath = join(process.env.CACHE_DIR || './cache', fileName);
+    private static async saveVideoToCache(videoData: videoInfo, filePath: string): Promise<string> {
         try {
             await this.cacheVideoAsJson({
                 filePath: filePath,
@@ -143,7 +121,6 @@ export class YtdlFallback {
                     }
                 },
             });
-            await writeFile(filePath, buffer);
             return filePath;
         } catch (error) {
             throw new Error(`Failed to save video to cache: ${error.message}`);
@@ -196,10 +173,12 @@ export class YtdlFallback {
             return cachedVideo;
         }
         const cleanedUrl = await this.cleanVideoUrl(url);
-        const videoBuffer = await this.downloadVideo(cleanedUrl);
+        const videoFilePath = await this.downloadVideo(cleanedUrl, videoId);
         const videoMetadata = await this.extractMetadata(cleanedUrl);
-        const filePath = await this.saveVideoToCache(videoMetadata, videoBuffer);
-        return { filePath: filePath, metadata: videoMetadata };
+        // So... If I want to make it a separate worker process, I need save the buffer first, and then save the metadata...
+        // Which will require some refactoring.
+        await this.saveVideoToCache(videoMetadata, videoFilePath);
+        return { filePath: videoFilePath, metadata: videoMetadata };
     }
 
     public static async getPlaylist(url: string) {
