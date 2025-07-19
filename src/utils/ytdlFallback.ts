@@ -59,9 +59,8 @@ export class YtdlFallback {
                 reject(new YoutubeDownloadFailedError(`Download timeout after 60 seconds for ${url}`));
             }, 60000); // 60 second timeout
 
-            const downloadWorker = new Worker('./src/workers/videoDownloader.ts', {
+            const downloadWorker = new Worker('./dist/workers/videoDownloader.js', {
                 workerData: { videoUrl: url, filePath: join(process.env.CACHE_DIR || './cache', `${videoId}.mp3`) },
-                execArgv: ['--import', 'tsx/esm', '--enable-source-maps']
             });
 
             downloadWorker.on('message', (filePath: string) => {
