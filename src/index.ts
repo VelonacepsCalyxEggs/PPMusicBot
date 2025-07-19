@@ -659,7 +659,7 @@ async function startBot() {
 startBot();
 
 //TODOS:
-// - Separate the youtube download logic into a separate worker proccess.
+// - Separate the youtube download logic into a separate worker proccess. - done
 // - Make play command more structured.
 // - Add more QoL to existing commands.
 // - make atGrok service a separate command instead of a message listener.
