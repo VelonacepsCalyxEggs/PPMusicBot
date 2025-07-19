@@ -2,7 +2,7 @@ import ytdl from "@distube/ytdl-core";
 import { createWriteStream } from "fs";
 import { exit } from "process";
 import Stream from "stream";
-import { workerData } from "worker_threads";
+import { workerData, parentPort } from "worker_threads";
 
 interface VideoDownloadWorkerData {
     videoUrl: string;
@@ -47,16 +47,28 @@ async function saveVideoToFile(videoBuffer: Buffer, filePath: string) {
         writeStream.write(videoBuffer);
         writeStream.end();
     });
-
 }
 
 async function main() {
-    const data = workerData as VideoDownloadWorkerData;
-    const videoUrl = data.videoUrl;
-    const filePath = data.filePath;
-    await downloadVideo(videoUrl, filePath);
-    postMessage(filePath); // Send the file path back to the main thread
-    exit(0); // Exit the worker thread gracefully
+    try {
+        const data = workerData as VideoDownloadWorkerData;
+        const videoUrl = data.videoUrl;
+        const filePath = data.filePath;
+        await downloadVideo(videoUrl, filePath);
+        
+        // Send the file path back to the main thread
+        if (parentPort) {
+            parentPort.postMessage(filePath);
+        }
+        
+        exit(0); // Exit the worker thread gracefully
+    } catch (error) {
+        // Send error back to main thread
+        if (parentPort) {
+            parentPort.postMessage({ error: error.message });
+        }
+        exit(1);
+    }
 }
 
 main()
