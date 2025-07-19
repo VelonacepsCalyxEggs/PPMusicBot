@@ -58,8 +58,8 @@ export class YtdlFallback {
                 downloadWorker.terminate();
                 reject(new YoutubeDownloadFailedError(`Download timeout after 60 seconds for ${url}`));
             }, 60000); // 60 second timeout
-
-            const downloadWorker = new Worker('./src/workers/videoDownloader.ts', {
+            // Use env variable for worker dir later? since well, the dist directory might be different...
+            const downloadWorker = new Worker('./dist/workers/videoDownloader.js', {
                 workerData: { videoUrl: url, filePath: join(process.env.CACHE_DIR || './cache', `${videoId}.mp3`) },
             });
 
