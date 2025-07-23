@@ -49,6 +49,12 @@ declare module 'discord.js' {
         services: Collection<string, ServiceInterface>;
     }
 }
+
+interface CommandCache {
+    commands: Collection<string, CommandInterface>;
+    timestamp: Date;
+}
+
 interface StatusMessage {
     status: string;
 }
@@ -439,6 +445,14 @@ class BotApplication {
         this.commands.set('error', new ErrorCommand());
         this.commands.set('recover', new RecoverCommand());
         this.commands.set('getquote', new GetQuoteCommand());
+
+
+        const cachedCommands = this.loadCommandsFromCache();
+
+        if (cachedCommands.commands == this.commands) {
+            discordLogger.info('Commands are up to date, skipping registration.');
+            return;
+        }
         // Get all ids of the servers
         const guild_ids = this.client.guilds.cache.map(guild => guild.id);
 
@@ -508,7 +522,8 @@ class BotApplication {
             writeFileSync(join(process.env.PATH_TO_STATUS_JSON, 'status.json'), JSON.stringify({ status: 'Hello There!' }, null, 2), { encoding: 'utf-8' });
         }
     }
-    // Function to check Discord statusfunction 
+
+    // Function to check Discord status
     private async checkDiscordStatus(): Promise<string> {
         try {
             const response = await axios.get('https://discordstatus.com/api/v2/status.json');
@@ -520,6 +535,40 @@ class BotApplication {
         }
     }
 
+    private loadCommandsFromCache(): CommandCache {
+        if (!process.env.CACHE_DIR) {
+            throw new Error('CACHE_DIR environment variable is not set.');
+        }
+
+        if (!existsSync(join(process.env.CACHE_DIR, 'commands', 'commandCache.json'))) {
+            discordLogger.warn('Command cache file does not exist, creating a new one.');
+            this.createCommandsCache();
+            return { commands: new Collection<string, CommandInterface>(), timestamp: new Date() };
+        }
+
+        const cacheData = readFileSync(join(process.env.CACHE_DIR, 'commands', 'commandCache.json'), { encoding: 'utf-8' });
+        const cache: CommandCache = JSON.parse(cacheData);
+
+        return cache;
+    }
+
+    private createCommandsCache(): void {
+        if (!process.env.CACHE_DIR) {
+            throw new Error('CACHE_DIR environment variable is not set.');
+        }
+
+        const cache: CommandCache = {
+            commands: this.commands,
+            timestamp: new Date()
+        };
+        const cacheDir = join(process.env.CACHE_DIR, 'commands');
+        if (!existsSync(cacheDir)) {
+            discordLogger.info('Creating command cache directory:', cacheDir);
+            mkdirSync(cacheDir, { recursive: true });
+            writeFileSync(join(cacheDir, 'commandCache.json'), JSON.stringify(cache, null, 2), { encoding: 'utf-8' });
+        }
+    }
+ 
     private setupGlobalErrorHandlers() {
         // Handle unhandled promise rejections
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
