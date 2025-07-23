@@ -438,7 +438,7 @@ class BotApplication {
         this.commands.set('whereami', new WhereAmICommand());
         this.commands.set('error', new ErrorCommand());
         this.commands.set('recover', new RecoverCommand());
-        this.commands.set('getQuote', new GetQuoteCommand());
+        this.commands.set('getquote', new GetQuoteCommand());
         // Get all ids of the servers
         const guild_ids = this.client.guilds.cache.map(guild => guild.id);
 
