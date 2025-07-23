@@ -51,7 +51,7 @@ declare module 'discord.js' {
 }
 
 interface CommandCache {
-    commands: Collection<string, CommandInterface>;
+    commands: [string, string][];
     timestamp: Date;
 }
 
@@ -449,10 +449,21 @@ class BotApplication {
 
         const cachedCommands = this.loadCommandsFromCache();
 
-        if (cachedCommands.commands == this.commands) {
+        const currentCommandsArray = this.commands.map((command) => [command.data.name, command.constructor.name]);
+        const isSame =
+            cachedCommands.commands.length === currentCommandsArray.length &&
+            cachedCommands.commands.every(
+                ([name, ctor], idx) =>
+                    name === currentCommandsArray[idx][0] && ctor === currentCommandsArray[idx][1]
+            );
+        if (isSame) {
             discordLogger.info('Commands are up to date, skipping registration.');
             return;
         }
+        else discordLogger.info('Commands have changed, updating registration...');
+
+        this.createCommandsCache();
+
         // Get all ids of the servers
         const guild_ids = this.client.guilds.cache.map(guild => guild.id);
 
@@ -543,7 +554,7 @@ class BotApplication {
         if (!existsSync(join(process.env.CACHE_DIR, 'commands', 'commandCache.json'))) {
             discordLogger.warn('Command cache file does not exist, creating a new one.');
             this.createCommandsCache();
-            return { commands: new Collection<string, CommandInterface>(), timestamp: new Date() };
+            return { commands: [], timestamp: new Date() };
         }
 
         const cacheData = readFileSync(join(process.env.CACHE_DIR, 'commands', 'commandCache.json'), { encoding: 'utf-8' });
@@ -558,7 +569,7 @@ class BotApplication {
         }
 
         const cache: CommandCache = {
-            commands: this.commands,
+            commands: this.commands.map((command) => [command.data.name, command.constructor.name]),
             timestamp: new Date()
         };
         const cacheDir = join(process.env.CACHE_DIR, 'commands');
