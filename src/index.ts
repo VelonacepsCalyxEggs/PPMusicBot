@@ -563,7 +563,7 @@ class BotApplication {
         };
         const cacheDir = join(process.env.CACHE_DIR, 'commands');
         if (!existsSync(cacheDir)) {
-            discordLogger.info('Creating command cache directory:', cacheDir);
+            discordLogger.info('Creating command cache directory: ' + cacheDir);
             mkdirSync(cacheDir, { recursive: true });
             writeFileSync(join(cacheDir, 'commandCache.json'), JSON.stringify(cache, null, 2), { encoding: 'utf-8' });
         }
