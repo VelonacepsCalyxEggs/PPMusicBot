@@ -37,10 +37,10 @@ import ShuffleCommand from './commands/shuffle';
 import SkipCommand from './commands/skip';
 import WhereAmICommand from './commands/whereami';
 import RecoverCommand from './commands/recover';
+import GetQuoteCommand from './commands/getQuote';
 import { ServiceInterface } from './types/serviceInterface';
 import { AtGrokIsThisTrueService } from './services/atGrokIsThisTrueService';
 import { NetworkFileService } from './services/networkFileService';
-import GetQuouteCommand from './commands/getQuote';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
@@ -121,7 +121,7 @@ class BotApplication {
                         }
                         
                         const status = await this.checkDiscordStatus();
-                        discordLogger.warn('Discord API Status:', status); // Logs the status for your reference
+                        discordLogger.warn('Discord API Status:', status);
                         
                         // Fetch a random quote from the database
                         try {
@@ -438,7 +438,7 @@ class BotApplication {
         this.commands.set('whereami', new WhereAmICommand());
         this.commands.set('error', new ErrorCommand());
         this.commands.set('recover', new RecoverCommand());
-        this.commands.set('getQuote', new GetQuouteCommand());
+        this.commands.set('getQuote', new GetQuoteCommand());
         // Get all ids of the servers
         const guild_ids = this.client.guilds.cache.map(guild => guild.id);
 
@@ -465,7 +465,7 @@ class BotApplication {
     private async initializeServices() {
         discordLogger.info('Initializing services...');
         this.client.services = new Collection<string, ServiceInterface>();
-        // Initialize the AtGrokIsThisTrueService
+
         const grokService = new AtGrokIsThisTrueService();
         await grokService.init()
             .then(() => discordLogger.info('AtGrokIsThisTrueService initialized successfully'))
@@ -603,7 +603,6 @@ class BotApplication {
         await this.initializeDatabase();
         this.initializeClient();
         
-        // Register the 'ready' event handler first
         this.client.on('ready', async () => {
             discordLogger.info('Client is ready!');
             this.initializeRest();
@@ -628,7 +627,6 @@ class BotApplication {
             discordLogger.info('Bot is online and ready');
         });
         
-        // Then login to Discord - this must be OUTSIDE the 'ready' handler
         discordLogger.info('Logging in to Discord...');
         if (!process.env.TOKEN) {
             throw new Error('TOKEN environment variable is not set.');
@@ -648,7 +646,8 @@ async function startBot() {
     }
 
 }
-// Start the bot
+
+// Start the bot (duh)
 startBot();
 
 //TODOS:
