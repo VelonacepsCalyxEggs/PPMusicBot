@@ -576,8 +576,8 @@ class BotApplication {
         if (!existsSync(cacheDir)) {
             discordLogger.info('Creating command cache directory: ' + cacheDir);
             mkdirSync(cacheDir, { recursive: true });
-            writeFileSync(join(cacheDir, 'commandCache.json'), JSON.stringify(cache, null, 2), { encoding: 'utf-8' });
         }
+        writeFileSync(join(cacheDir, 'commandCache.json'), JSON.stringify(cache, null, 2), { encoding: 'utf-8' });
     }
  
     private setupGlobalErrorHandlers() {
