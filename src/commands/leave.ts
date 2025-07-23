@@ -19,12 +19,11 @@ export default class LeaveCommand extends CommandInterface {
         if (!commandPreRunCheckUtil(interaction, queue)) return;
 
         queue!.delete();
-        console.log('Managed to delete a queue like a normal person.');
         
         // Create an embed to inform the user
         const embed = new EmbedBuilder()
             .setDescription(`Left the channel!`);
 
-        return interaction.reply({ flags: 'SuppressNotifications', embeds: [embed] }).catch(console.error);
+        return interaction.reply({ flags: 'SuppressNotifications', embeds: [embed] })
     }
 };

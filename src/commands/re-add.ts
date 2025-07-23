@@ -35,6 +35,6 @@ export default class ReaddCommand extends CommandInterface {
             .setDescription(`${currentSong.title} has been re-added!`)
             .setThumbnail(currentSong.thumbnail);
 
-        return interaction.reply({ flags: ['SuppressNotifications'], embeds: [embed] }).catch(console.error);
+        return interaction.reply({ flags: ['SuppressNotifications'], embeds: [embed] })
     }
 };

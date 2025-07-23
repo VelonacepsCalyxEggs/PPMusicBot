@@ -32,6 +32,6 @@ export default class ReplayCommand extends CommandInterface {
             .setDescription(`${currentSong.title} has been skipped and replayed!`)
             .setThumbnail(currentSong.thumbnail);
 
-        return interaction.reply({ flags: ['SuppressNotifications'], embeds: [embed] }).catch(console.error);
+        return interaction.reply({ flags: ['SuppressNotifications'], embeds: [embed] })
     }
 };

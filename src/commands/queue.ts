@@ -5,6 +5,7 @@ import CommandInterface from '../types/commandInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
+import { discordLogger } from 'src/utils/loggerUtil';
 
 export default class QueueCommand extends CommandInterface {
     data = new SlashCommandBuilder()
@@ -130,7 +131,7 @@ export default class QueueCommand extends CommandInterface {
                     .setDisabled(page === maxPages)
             );
 
-        await interaction.reply({ embeds: [embed], components: [actionRow], flags: ['Ephemeral'] }).catch(console.error);
+        await interaction.reply({ embeds: [embed], components: [actionRow], flags: ['Ephemeral'] });
         const message = await interaction.fetchReply() as Message;
 
         const filter = (i: ButtonInteraction) => ['prev_page', 'next_page', 'first_page', 'last_page'].includes(i.customId);
@@ -219,7 +220,7 @@ export default class QueueCommand extends CommandInterface {
         });
 
         collector.on('end', (collected) => {
-            console.log(`Collected ${collected.size} interactions.`);
+            discordLogger.debug(`Collected ${collected.size} interactions.`);
         });
     }
 };

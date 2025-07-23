@@ -29,10 +29,6 @@ export default class NowPlayingCommand extends CommandInterface {
         let elapsedTime = 0;
         if (metadata.startedPlaying instanceof Date) {
             elapsedTime = new Date().getTime() - metadata.startedPlaying.getTime();
-            console.log(`Track started at: ${metadata.startedPlaying.toISOString()}, elapsed: ${elapsedTime}ms`);
-        } else {
-            // Fallback if startedPlaying is not available
-            console.log('No startedPlaying timestamp available');
         }
 
         // Check if this is a database track or a regular track
@@ -51,7 +47,7 @@ export default class NowPlayingCommand extends CommandInterface {
             const dbTrack = metadata.scoredTrack!;
             trackTitle = dbTrack.title;
             artistName = dbTrack.artist?.name || 'Unknown Artist';
-            durationMs = dbTrack.duration * 1000; // Convert seconds to milliseconds
+            durationMs = dbTrack.duration * 1000; // seconds to milliseconds
             sourceUrl = `https://www.funckenobi42.space/music/tracks/${dbTrack.id}`;
             thumbnailUrl = dbTrack.album?.pathToCoverArt 
                 ? `https://www.funckenobi42.space/images/AlbumCoverArt/${dbTrack.album.pathToCoverArt}`
@@ -66,17 +62,13 @@ export default class NowPlayingCommand extends CommandInterface {
             thumbnailUrl = currentTrack.thumbnail || 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png';
         }
 
-        console.log(`Track duration (ms): ${durationMs}`);
-        
         // Calculate the current position (capped at track duration)
         const currentPosition = Math.min(elapsedTime, durationMs);
         const currentPositionFormatted = formatDuration(currentPosition);
-        console.log(`Current position: ${currentPosition}ms, formatted: ${currentPositionFormatted}`);
 
         // Format the full duration
         const fullDuration = formatDuration(durationMs);
 
-        // Create the embed
         const embed = new EmbedBuilder()
             .setDescription(`Currently playing: **${trackTitle}** by **${artistName}** from [${albumName || 'Source'}](${sourceUrl})`)
             .setThumbnail(thumbnailUrl)
@@ -85,7 +77,6 @@ export default class NowPlayingCommand extends CommandInterface {
                 iconURL: interaction.user.displayAvatarURL(),
             });
 
-        // Reply with the embed
-        return interaction.reply({ flags: 'Ephemeral', embeds: [embed] }).catch(console.error);
+        return interaction.reply({ flags: 'Ephemeral', embeds: [embed] })
     }
 };

@@ -4,6 +4,7 @@ import { useQueue, Track } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import TrackMetadata from '../types/trackMetadata';
 import { logError } from '../utils/loggerUtil';
+import commandPreRunCheckUtil from 'src/utils/commandPreRunCheckUtil';
 
 export default class SkipCommand extends CommandInterface {
     data = new SlashCommandBuilder()
@@ -14,12 +15,9 @@ export default class SkipCommand extends CommandInterface {
         if (!interaction.guild || !interaction.guildId) return interaction.reply({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
 
-        // If there is no queue, return
-        if (!queue) {
-            await interaction.reply({ content: 'There is no queue!', flags: ['Ephemeral'] });
-            return;
-        } 
-        const currentSong = queue.currentTrack as Track<TrackMetadata>;
+        if (!commandPreRunCheckUtil(interaction, queue, false)) return;
+
+        const currentSong = queue!.currentTrack as Track<TrackMetadata>;
         if (!currentSong) return interaction.reply({ content: 'No song is currently playing.', flags: ['Ephemeral'] });
         
         const metadata = currentSong.metadata;
@@ -49,17 +47,16 @@ export default class SkipCommand extends CommandInterface {
         
         // Skip the current song
         try {
-            queue.node.skip();
+            queue!.node.skip();
         } catch (error) {
             logError(error);
             return interaction.reply({ content: 'Failed to skip the current song.', flags: ['Ephemeral'] });
         }
         
-        // Create an embed to inform the user with metadata-aware properties
         const embed = new EmbedBuilder()
             .setDescription(`${title} has been skipped!`)
             .setThumbnail(thumbnail);
 
-        return interaction.reply({ flags: ['SuppressNotifications'], embeds: [embed] }).catch(console.error);
+        return interaction.reply({ flags: ['SuppressNotifications'], embeds: [embed] })
     }
 };

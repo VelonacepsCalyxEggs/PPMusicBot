@@ -3,6 +3,7 @@ import { Client, ChatInputCommandInteraction, EmbedBuilder, TextChannel } from '
 import * as fs from 'fs';
 import * as path from 'path';
 import CommandInterface from '../types/commandInterface';
+import { logError } from 'src/utils/loggerUtil';
 
 export default class ScanCommand extends CommandInterface {
     data = new SlashCommandBuilder()
@@ -80,7 +81,7 @@ export default class ScanCommand extends CommandInterface {
             await interaction.editReply({ embeds: [embed] });
             
         } catch (error) {
-            console.error('Error in scan command:', error);
+            logError(error, 'ScanCommand');
             await interaction.editReply({ 
                 content: `An error occurred: ${error instanceof Error ? error.message : String(error)}` 
             });

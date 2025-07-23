@@ -218,6 +218,8 @@ export const discordLogger = createContextLogger('Discord');
 export const playerLogger = createContextLogger('Player');
 export const databaseLogger = createContextLogger('Database');
 export const commandLogger = createContextLogger('Commands');
+export const networkFileSerivceLogger = createContextLogger('NetworkFileService');
+export const ytdlFallbackLogger = createContextLogger('YTDL-Fallback');
 export const errorLogger = createContextLogger('Error');
 
 // Log bot startup information

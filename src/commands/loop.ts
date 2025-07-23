@@ -48,6 +48,6 @@ export default class LoopCommand extends CommandInterface {
             .setDescription(`Current looping mode is now ${repeatModeString}`);
 
         // Reply with the embed
-        return interaction.reply({ flags: ['SuppressNotifications'], embeds: [embed] }).catch(console.error);
+        return interaction.reply({ flags: ['SuppressNotifications'], embeds: [embed] });
     }
 };

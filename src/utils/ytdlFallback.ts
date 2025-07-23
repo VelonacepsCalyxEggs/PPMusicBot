@@ -6,7 +6,7 @@ import { join } from 'path';
 import { GuildQueue, Player, QueryType, SearchResult, Track } from 'discord-player/dist';
 import { User } from 'discord.js';
 import { NoTrackFoundError } from '../types/ytdlServiceTypes';
-import { playerLogger } from '../utils/loggerUtil';
+import { playerLogger, ytdlFallbackLogger } from '../utils/loggerUtil';
 import { readdirSync } from 'fs';
 import YouTube from 'youtube-sr/dist/mod';
 import { Worker } from 'worker_threads';
@@ -222,7 +222,7 @@ export class YtdlFallback {
                     }
                 });
                 } catch (error) {
-                console.error(`Skipping ${item.title}: ${error.message}`);
+                    ytdlFallbackLogger.error(`Failed to process playlist item ${item.title}: ${error.message}`);
                 }
             }
 

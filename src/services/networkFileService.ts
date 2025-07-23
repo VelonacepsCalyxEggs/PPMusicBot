@@ -3,6 +3,7 @@ import { ServiceInterface } from '../types/serviceInterface';
 import { Player, SearchResult, QueryType } from 'discord-player';
 import { User } from 'discord.js';
 import { createCipheriv, createHash } from 'crypto';
+import { networkFileSerivceLogger } from 'src/utils/loggerUtil';
 
 export class NetworkFileService extends ServiceInterface {
     private readonly baseUrl: string;
@@ -100,7 +101,7 @@ export class NetworkFileService extends ServiceInterface {
             });
             return response.status === 200;
         } catch (error) {
-            console.error('File server connection test failed:', error);
+            networkFileSerivceLogger.error('NetworkFileService connection test failed:', error);
             return false;
         }
     }

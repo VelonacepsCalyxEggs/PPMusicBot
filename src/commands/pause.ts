@@ -28,6 +28,6 @@ export default class PauseCommand extends CommandInterface {
             embed.setDescription(`You have paused the queue!`);
         }
 
-        return interaction.reply({ flags: 'SuppressNotifications', embeds: [embed] }).catch(console.error);
+        return interaction.reply({ flags: 'SuppressNotifications', embeds: [embed] })
     }
 };
