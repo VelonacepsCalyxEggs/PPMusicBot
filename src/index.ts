@@ -3,7 +3,6 @@ import { Player, GuildQueue, Track } from 'discord-player';
 import { DefaultExtractors } from '@discord-player/extractor';
 import { YoutubeiExtractor } from 'discord-player-youtubei';
 import { Pool } from 'pg';
-import axios from 'axios';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import CommandInterface from './types/commandInterface';
 import dotenv from 'dotenv';
@@ -41,6 +40,7 @@ import GetQuoteCommand from './commands/getQuote';
 import { ServiceInterface } from './types/serviceInterface';
 import { AtGrokIsThisTrueService } from './services/atGrokIsThisTrueService';
 import { NetworkFileService } from './services/networkFileService';
+import checkDiscordStatus from './utils/checkDiscordStatusUtil';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
@@ -126,7 +126,7 @@ class BotApplication {
                             errorMessage = "YouTube connection timeout occurred. This is usually temporary - please try again in a moment.";
                         }
                         
-                        const status = await this.checkDiscordStatus();
+                        const status = await checkDiscordStatus();
                         discordLogger.warn('Discord API Status:', status);
                         
                         // Fetch a random quote from the database
@@ -532,18 +532,6 @@ class BotApplication {
             discordLogger.warn('Status file does not exist, creating a new one.');
             mkdirSync(process.env.PATH_TO_STATUS_JSON.replace(/[^/]+$/, ''), { recursive: true });
             writeFileSync(join(process.env.PATH_TO_STATUS_JSON, 'status.json'), JSON.stringify({ status: 'Hello There!' }, null, 2), { encoding: 'utf-8' });
-        }
-    }
-
-    // Function to check Discord status
-    private async checkDiscordStatus(): Promise<string> {
-        try {
-            const response = await axios.get('https://discordstatus.com/api/v2/status.json');
-            const status = response.data.status.description;
-            return status;
-        } catch (error) {
-            console.error('Error fetching Discord status:', error);
-            return 'Error fetching status';
         }
     }
 
