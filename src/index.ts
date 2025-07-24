@@ -428,23 +428,24 @@ class BotApplication {
     private async initializeCommands() {
         this.commands = new Collection<string, CommandInterface>();
         discordLogger.info('Initializing commands...');
-        this.commands.set('play', new PlayCommand());
-        this.commands.set('queue', new QueueCommand());
-        this.commands.set('leave', new LeaveCommand());
-        this.commands.set('loop', new LoopCommand());
-        this.commands.set('move', new MoveCommand());
-        this.commands.set('np', new NowPlayingCommand());
-        this.commands.set('pause', new PauseCommand());
-        this.commands.set('scan', new ScanCommand());
-        this.commands.set('shuffle', new ShuffleCommand());
-        this.commands.set('skip', new SkipCommand());
-        this.commands.set('replay', new ReplayCommand());
-        this.commands.set('re-add', new ReaddCommand());
-        this.commands.set('remove', new RemoveCommand());
-        this.commands.set('whereami', new WhereAmICommand());
-        this.commands.set('error', new ErrorCommand());
-        this.commands.set('recover', new RecoverCommand());
-        this.commands.set('getquote', new GetQuoteCommand());
+
+        this.commands.set(PlayCommand.name, new PlayCommand());
+        this.commands.set(QueueCommand.name, new QueueCommand());
+        this.commands.set(LeaveCommand.name, new LeaveCommand());
+        this.commands.set(LoopCommand.name, new LoopCommand());
+        this.commands.set(MoveCommand.name, new MoveCommand());
+        this.commands.set(NowPlayingCommand.name, new NowPlayingCommand());
+        this.commands.set(PauseCommand.name, new PauseCommand());
+        this.commands.set(ScanCommand.name, new ScanCommand());
+        this.commands.set(ShuffleCommand.name, new ShuffleCommand());
+        this.commands.set(SkipCommand.name, new SkipCommand());
+        this.commands.set(ReplayCommand.name, new ReplayCommand());
+        this.commands.set(ReaddCommand.name, new ReaddCommand());
+        this.commands.set(RemoveCommand.name, new RemoveCommand());
+        this.commands.set(WhereAmICommand.name, new WhereAmICommand());
+        this.commands.set(ErrorCommand.name, new ErrorCommand());
+        this.commands.set(RecoverCommand.name, new RecoverCommand());
+        this.commands.set(GetQuoteCommand.name, new GetQuoteCommand());
 
 
         const cachedCommands = this.loadCommandsFromCache();
