@@ -3,7 +3,7 @@ import { Client, ChatInputCommandInteraction, EmbedBuilder, TextChannel } from '
 import * as fs from 'fs';
 import * as path from 'path';
 import CommandInterface from '../types/commandInterface';
-import { logError } from 'src/utils/loggerUtil';
+import { logError } from '../utils/loggerUtil';
 
 export default class ScanCommand extends CommandInterface {
     data = new SlashCommandBuilder()

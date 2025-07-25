@@ -3,7 +3,7 @@ import { ServiceInterface } from '../types/serviceInterface';
 import { Player, SearchResult, QueryType } from 'discord-player';
 import { User } from 'discord.js';
 import { createCipheriv, createHash } from 'crypto';
-import { networkFileSerivceLogger } from 'src/utils/loggerUtil';
+import { networkFileSerivceLogger } from '../utils/loggerUtil';
 
 export class NetworkFileService extends ServiceInterface {
     private readonly baseUrl: string;

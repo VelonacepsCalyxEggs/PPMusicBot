@@ -4,7 +4,7 @@ import { useQueue, Track } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import TrackMetadata from '../types/trackMetadata';
 import { logError } from '../utils/loggerUtil';
-import commandPreRunCheckUtil from 'src/utils/commandPreRunCheckUtil';
+import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class SkipCommand extends CommandInterface {
     data = new SlashCommandBuilder()

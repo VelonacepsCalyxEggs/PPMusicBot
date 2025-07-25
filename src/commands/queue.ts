@@ -5,7 +5,7 @@ import CommandInterface from '../types/commandInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
-import { discordLogger } from 'src/utils/loggerUtil';
+import { discordLogger } from '../utils/loggerUtil';
 
 export default class QueueCommand extends CommandInterface {
     data = new SlashCommandBuilder()
