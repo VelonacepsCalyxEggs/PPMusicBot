@@ -31,11 +31,11 @@ export class NetworkFileService extends ServiceInterface {
         if (this.useWebserver && !rawKey) {
             throw new Error('ENCRYPTION_KEY is required when using webserver');
         }
-        if (!process.env.ECRYPTION_ALGORITHM) {
+        if (!process.env.ENCRYPTION_ALGORITHM) {
             this.cipherAlgorithm = 'aes-256-cbc'; // Default to AES-256-CBC
         }
         else {
-            this.cipherAlgorithm = process.env.ECRYPTION_ALGORITHM;
+            this.cipherAlgorithm = process.env.ENCRYPTION_ALGORITHM;
         }
         
         if (this.cipherAlgorithm.includes('aes-256')) {
