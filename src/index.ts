@@ -101,9 +101,9 @@ class BotApplication {
 
                 
                     const command = this.commands.get(interaction.commandName);
-                    discordLogger.debug(`Received command interaction: ${interaction.commandName}`, { userId: interaction.user.id, guildId: interaction.guildId });
                     if (!command) return;
 
+                    
                     try {
                         if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
                         
@@ -448,23 +448,23 @@ class BotApplication {
         this.commands.set(RecoverCommand.name, new RecoverCommand());
         this.commands.set(GetQuoteCommand.name, new GetQuoteCommand());
 
+        // Command caching seems to be breaking discord, i.e. the bot does not recognize commands if they are not registered... which is frustrating.
+        //const cachedCommands = this.loadCommandsFromCache();
 
-        const cachedCommands = this.loadCommandsFromCache();
+        //const currentCommandsArray = this.commands.map((command) => [command.data.name, command.constructor.name]);
+        //const isSame =
+        //    cachedCommands.commands.length === currentCommandsArray.length &&
+        //    cachedCommands.commands.every(
+        //        ([name, ctor], idx) =>
+        //            name === currentCommandsArray[idx][0] && ctor === currentCommandsArray[idx][1]
+        //    );
+        //if (isSame) {
+        //    discordLogger.info('Commands are up to date, skipping registration.');
+        //    return;
+        //}
+        //else discordLogger.info('Commands have changed, updating registration...');
 
-        const currentCommandsArray = this.commands.map((command) => [command.data.name, command.constructor.name]);
-        const isSame =
-            cachedCommands.commands.length === currentCommandsArray.length &&
-            cachedCommands.commands.every(
-                ([name, ctor], idx) =>
-                    name === currentCommandsArray[idx][0] && ctor === currentCommandsArray[idx][1]
-            );
-        if (isSame) {
-            discordLogger.info('Commands are up to date, skipping registration.');
-            return;
-        }
-        else discordLogger.info('Commands have changed, updating registration...');
-
-        this.createCommandsCache();
+        //this.createCommandsCache();
 
         // Get all ids of the servers
         const guild_ids = this.client.guilds.cache.map(guild => guild.id);
