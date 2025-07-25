@@ -22,7 +22,7 @@ export class NetworkFileService extends ServiceInterface {
 
     constructor() {
         super();
-        this.baseUrl = process.env.FILEWEBSERVER_URL || 'http://192.168.0.50:4000';
+        this.baseUrl = process.env.FILEWEBSERVER_URL || 'http://localhost:4000';
         this.apiKey = process.env.FILEWEBSERVER_API_KEY || '';
         this.useWebserver = process.env.USE_WEBSERVER === 'true';
         
