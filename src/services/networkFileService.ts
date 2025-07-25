@@ -55,10 +55,6 @@ export class NetworkFileService extends ServiceInterface {
         }
 
         this.token = this.generateToken();
-        
-        if (this.useWebserver && !this.encryptionKey) {
-            throw new Error('ENCRYPTION_KEY is required when using webserver');
-        }
     }
 
     public init(): Promise<void> {
