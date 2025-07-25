@@ -5,8 +5,9 @@ import CommandInterface from '../types/commandInterface';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class RemoveCommand extends CommandInterface {
+    public static readonly commandName = 'remove';
     data = new SlashCommandBuilder()
-        .setName('remove')
+        .setName(RemoveCommand.commandName)
         .setDescription('removes the track with an index.')
         .addNumberOption(option =>
             option.setName('position')

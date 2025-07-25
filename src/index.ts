@@ -103,7 +103,6 @@ class BotApplication {
                     const command = this.commands.get(interaction.commandName);
                     if (!command) return;
 
-                    
                     try {
                         if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
                         
@@ -430,41 +429,43 @@ class BotApplication {
         this.commands = new Collection<string, CommandInterface>();
         discordLogger.info('Initializing commands...');
 
-        this.commands.set(PlayCommand.name, new PlayCommand());
-        this.commands.set(QueueCommand.name, new QueueCommand());
-        this.commands.set(LeaveCommand.name, new LeaveCommand());
-        this.commands.set(LoopCommand.name, new LoopCommand());
-        this.commands.set(MoveCommand.name, new MoveCommand());
-        this.commands.set(NowPlayingCommand.name, new NowPlayingCommand());
-        this.commands.set(PauseCommand.name, new PauseCommand());
-        this.commands.set(ScanCommand.name, new ScanCommand());
-        this.commands.set(ShuffleCommand.name, new ShuffleCommand());
-        this.commands.set(SkipCommand.name, new SkipCommand());
-        this.commands.set(ReplayCommand.name, new ReplayCommand());
-        this.commands.set(ReaddCommand.name, new ReaddCommand());
-        this.commands.set(RemoveCommand.name, new RemoveCommand());
-        this.commands.set(WhereAmICommand.name, new WhereAmICommand());
-        this.commands.set(ErrorCommand.name, new ErrorCommand());
-        this.commands.set(RecoverCommand.name, new RecoverCommand());
-        this.commands.set(GetQuoteCommand.name, new GetQuoteCommand());
+        this.commands.set(PlayCommand.commandName, new PlayCommand());
+        this.commands.set(QueueCommand.commandName, new QueueCommand());
+        this.commands.set(LeaveCommand.commandName, new LeaveCommand());
+        this.commands.set(LoopCommand.commandName, new LoopCommand());
+        this.commands.set(MoveCommand.commandName, new MoveCommand());
+        this.commands.set(NowPlayingCommand.commandName, new NowPlayingCommand());
+        this.commands.set(PauseCommand.commandName, new PauseCommand());
+        this.commands.set(ScanCommand.commandName, new ScanCommand());
+        this.commands.set(ShuffleCommand.commandName, new ShuffleCommand());
+        this.commands.set(SkipCommand.commandName, new SkipCommand());
+        this.commands.set(ReplayCommand.commandName, new ReplayCommand());
+        this.commands.set(ReaddCommand.commandName, new ReaddCommand());
+        this.commands.set(RemoveCommand.commandName, new RemoveCommand());
+        this.commands.set(WhereAmICommand.commandName, new WhereAmICommand());
+        this.commands.set(ErrorCommand.commandName, new ErrorCommand());
+        this.commands.set(RecoverCommand.commandName, new RecoverCommand());
+        this.commands.set(GetQuoteCommand.commandName, new GetQuoteCommand());
+        for (const command of this.commands.values()) {
+            discordLogger.debug(`Loaded command: ${command.data.name}`);
+        }
+        discordLogger.info(`Total commands loaded: ${this.commands.size}`);
+        const cachedCommands = this.loadCommandsFromCache();
 
-        // Command caching seems to be breaking discord, i.e. the bot does not recognize commands if they are not registered... which is frustrating.
-        //const cachedCommands = this.loadCommandsFromCache();
+        const currentCommandsArray = this.commands.map((command) => [command.data.name, command.constructor.name]);
+        const isSame =
+            cachedCommands.commands.length === currentCommandsArray.length &&
+            cachedCommands.commands.every(
+                ([name, ctor], idx) =>
+                    name === currentCommandsArray[idx][0] && ctor === currentCommandsArray[idx][1]
+            );
+        if (isSame) {
+            discordLogger.info('Commands are up to date, skipping registration.');
+            return;
+        }
+        else discordLogger.info('Commands have changed, updating registration...');
 
-        //const currentCommandsArray = this.commands.map((command) => [command.data.name, command.constructor.name]);
-        //const isSame =
-        //    cachedCommands.commands.length === currentCommandsArray.length &&
-        //    cachedCommands.commands.every(
-        //        ([name, ctor], idx) =>
-        //            name === currentCommandsArray[idx][0] && ctor === currentCommandsArray[idx][1]
-        //    );
-        //if (isSame) {
-        //    discordLogger.info('Commands are up to date, skipping registration.');
-        //    return;
-        //}
-        //else discordLogger.info('Commands have changed, updating registration...');
-
-        //this.createCommandsCache();
+        this.createCommandsCache();
 
         // Get all ids of the servers
         const guild_ids = this.client.guilds.cache.map(guild => guild.id);

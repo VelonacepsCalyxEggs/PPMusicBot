@@ -7,8 +7,9 @@ import { logError } from '../utils/loggerUtil';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class SkipCommand extends CommandInterface {
+    public static readonly commandName = 'skip';
     data = new SlashCommandBuilder()
-        .setName('skip')
+        .setName(SkipCommand.commandName)
         .setDescription('Skips the current song')
     execute = async ({ interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         // Get the queue for the server

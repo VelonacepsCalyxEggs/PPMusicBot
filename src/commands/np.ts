@@ -7,8 +7,9 @@ import TrackMetadata from '../types/trackMetadata';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class NowPlayingCommand extends CommandInterface {
+    public static readonly commandName = 'np';
     data = new SlashCommandBuilder()
-        .setName('np')
+        .setName(NowPlayingCommand.commandName)
         .setDescription('Gets the currently playing song.')
 
     execute = async ({ interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {

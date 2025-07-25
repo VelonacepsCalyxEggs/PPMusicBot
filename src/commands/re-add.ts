@@ -5,8 +5,9 @@ import CommandInterface from '../types/commandInterface';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class ReaddCommand extends CommandInterface {
+    public static readonly commandName = 're-add';
     data = new SlashCommandBuilder()
-        .setName('re-add')
+        .setName(ReaddCommand.commandName)
         .setDescription('Adds the current song to the queue.')
         .addBooleanOption(option =>
             option.setName('now')

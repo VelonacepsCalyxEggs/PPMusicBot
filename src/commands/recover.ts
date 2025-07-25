@@ -4,8 +4,9 @@ import { Player, Track } from 'discord-player';
 import { commandLogger, logError } from '../utils/loggerUtil';
 
 export default class RecoverCommand implements CommandInterface {
+    public static readonly commandName = 'recover';
     data = new SlashCommandBuilder()
-        .setName('recover')
+        .setName(RecoverCommand.commandName)
         .setDescription('Force recovery from stuck playback state');
 
     async execute({ player, interaction }: { client: Client, player: Player, interaction: ChatInputCommandInteraction }) {

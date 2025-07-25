@@ -4,8 +4,9 @@ import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 
 export default class ReplayCommand extends CommandInterface {
+    public static readonly commandName = 'replay';
     data = new SlashCommandBuilder()
-        .setName('replay')
+        .setName(ReplayCommand.commandName)
         .setDescription('Skips the current song and plays it again.')
 
     execute = async ({ interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {

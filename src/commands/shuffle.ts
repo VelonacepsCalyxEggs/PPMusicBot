@@ -5,8 +5,9 @@ import CommandInterface from '../types/commandInterface';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class ShuffleCommand extends CommandInterface {
+    public static readonly commandName = 'shuffle';
     data = new SlashCommandBuilder()
-        .setName('shuffle')
+        .setName(ShuffleCommand.commandName)
         .setDescription('Shuffles the playlist')
         .addStringOption(option =>
             option.setName('algorithm')

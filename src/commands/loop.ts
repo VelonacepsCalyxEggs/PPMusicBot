@@ -5,8 +5,9 @@ import CommandInterface from '../types/commandInterface';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class LoopCommand extends CommandInterface {
+    public static readonly commandName = 'loop';
     data = new SlashCommandBuilder()
-        .setName('loop')
+        .setName(LoopCommand.commandName)
         .setDescription('Loops with the given mode.')
         .addStringOption(option =>
             option.setName('mode')

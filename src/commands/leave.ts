@@ -5,8 +5,9 @@ import CommandInterface from '../types/commandInterface';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class LeaveCommand extends CommandInterface {
+    public static readonly commandName = 'leave';
     data = new SlashCommandBuilder()
-        .setName('leave')
+        .setName(LeaveCommand.commandName)
         .setDescription('Drops the queue and leaves from the channel.')
 
     execute = async ({ interaction }: { interaction: ChatInputCommandInteraction }) : Promise<void | import('discord.js').InteractionResponse | import('discord.js').Message> => {

@@ -6,8 +6,9 @@ import CommandInterface from '../types/commandInterface';
 import { logError } from '../utils/loggerUtil';
 
 export default class ScanCommand extends CommandInterface {
+    public static readonly commandName = 'scan';
     data = new SlashCommandBuilder()
-        .setName('scan')
+        .setName(ScanCommand.commandName)
         .setDescription('Extracts messages from a channel and saves them to a file for debugging.')
         .addStringOption(option => 
             option.setName('channelid')

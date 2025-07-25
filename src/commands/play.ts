@@ -18,9 +18,7 @@ import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } 
 import { NetworkFileService } from '../services/networkFileService';
 
 export default class PlayCommand extends CommandInterface {
-    constructor() {
-        super();
-    }
+    public static readonly commandName = 'play';
 
     private static readonly CONFIDENCE_THRESHOLDS = {
         LOW_CONFIDENCE: 300,
@@ -31,7 +29,7 @@ export default class PlayCommand extends CommandInterface {
     } as const;
 
     data = new SlashCommandBuilder()
-        .setName('play')
+        .setName(PlayCommand.commandName)
         .setDescription('play a song from YouTube.')
         .addSubcommand(subcommand =>
             subcommand

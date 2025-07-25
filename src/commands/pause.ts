@@ -5,8 +5,9 @@ import CommandInterface from '../types/commandInterface';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
  
 export default class PauseCommand extends CommandInterface {
+    public static readonly commandName = 'pause';
     data = new SlashCommandBuilder()
-        .setName('pause')
+        .setName(PauseCommand.commandName)
         .setDescription('Pauses the playback. Use again to unpause.')
 
 

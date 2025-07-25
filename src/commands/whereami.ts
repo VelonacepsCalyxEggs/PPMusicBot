@@ -3,8 +3,9 @@ import { Client, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import CommandInterface from '../types/commandInterface';
 
 export default class WhereAmICommand extends CommandInterface {
+    public static readonly commandName = 'whereami';
     data = new SlashCommandBuilder()
-        .setName('whereami')
+        .setName(WhereAmICommand.commandName)
         .setDescription('Returns all servers the bot is currently in.')
     execute = async ({ client, interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
         await interaction.deferReply({ flags: ['Ephemeral'] });

@@ -8,8 +8,9 @@ import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 import { discordLogger } from '../utils/loggerUtil';
 
 export default class QueueCommand extends CommandInterface {
+    public static readonly commandName = 'queue';
     data = new SlashCommandBuilder()
-        .setName('queue')
+        .setName(QueueCommand.commandName)
         .setDescription('show the queue')
         .addNumberOption(option =>
             option.setName('page')

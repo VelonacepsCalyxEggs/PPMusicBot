@@ -5,8 +5,9 @@ import CommandInterface from '../types/commandInterface';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
 export default class MoveCommand extends CommandInterface {
+    public static readonly commandName = 'move';
     data = new SlashCommandBuilder()
-        .setName('move')
+        .setName(MoveCommand.commandName)
         .setDescription('moves the track from one index to another index.')
         .addNumberOption(option =>
             option.setName('index')
