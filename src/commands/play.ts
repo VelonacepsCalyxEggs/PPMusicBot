@@ -322,7 +322,9 @@ export default class PlayCommand extends CommandInterface {
                     leaveOnStop: false,
                 },
                 requestOptions: {
-                    "help-me-please-god": true,
+                    headers: {
+                        "help-me-please-god": true,
+                    },
                 }
             });
     }
