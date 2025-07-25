@@ -20,6 +20,11 @@ export class NetworkFileService extends ServiceInterface {
     // and this system that I for some reason thought was a good idea needs to go.
     // But for now, this is what I have, and it works...
 
+    // In case anyone reads this, this is an answer why I am not simply using a bearer token with HTTPS.
+    // Discord Player library uses a url to extract music with the player.search function, which accepts RequestOptions from Http library,
+    // but it does not work!! it gets lost somewhere in the context of the library, I tried to read the source code and fix it, but it is quite
+    // complex and I don't have time to do it right now, so I am using this workaround.
+
     constructor() {
         super();
         this.baseUrl = process.env.FILEWEBSERVER_URL || 'http://localhost:4000';
