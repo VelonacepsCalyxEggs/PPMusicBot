@@ -101,6 +101,7 @@ class BotApplication {
 
                 
                     const command = this.commands.get(interaction.commandName);
+                    discordLogger.debug(`Received command interaction: ${interaction.commandName}`, { userId: interaction.user.id, guildId: interaction.guildId });
                     if (!command) return;
 
                     try {
