@@ -15,6 +15,11 @@ export class NetworkFileService extends ServiceInterface {
     private readonly serviceName_auth: string = 'sharing'; // Service name for authentication
     private readonly token: string;
 
+    // Encryption here is dumb, anyone still can get the encrypted token, and it will work, 
+    // since all the server does is decrypt it and check if it's valid, I need token rotation, 
+    // and this system that I for some reason thought was a good idea needs to go.
+    // But for now, this is what I have, and it works...
+
     constructor() {
         super();
         this.baseUrl = process.env.FILEWEBSERVER_URL || 'http://192.168.0.50:4000';
