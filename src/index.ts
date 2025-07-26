@@ -544,6 +544,7 @@ class BotApplication {
 
         if (!existsSync(join(process.env.CACHE_DIR, 'commands', 'commandCache.json'))) {
             discordLogger.warn('Command cache file does not exist, creating a new one.');
+            mkdirSync(join(process.env.CACHE_DIR, 'commands'), { recursive: true });
             writeFileSync(join(process.env.CACHE_DIR, 'commands', 'commandCache.json'), JSON.stringify({ commands: [], timestamp: new Date() }, null, 2), { encoding: 'utf-8' });
             return { commands: [], timestamp: new Date() };
         }
