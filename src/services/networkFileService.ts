@@ -33,7 +33,7 @@ export class NetworkFileService extends ServiceInterface {
             return localPath || '';
         }
 
-        return `${this.baseUrl}/createMusicStream/${fileId}`;
+        return `${this.baseUrl}/file/createMusicStream/${fileId}`;
     }
 
     /**
@@ -72,7 +72,7 @@ export class NetworkFileService extends ServiceInterface {
             })
         }
         // Use authenticated URL with token
-        const streamUrl = await this.getFileUrl(fileId, localPath);
+        const streamUrl =  this.getFileUrl(fileId, localPath);
         
         // Create a custom search result for streaming
         return await player.search(streamUrl, {
