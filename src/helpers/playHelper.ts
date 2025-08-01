@@ -1,7 +1,7 @@
 import { SearchResult, Track, GuildQueue } from "discord-player/dist";
 import { ChatInputCommandInteraction } from "discord.js";
-import { ScoredTrack } from "src/types/searchResultInterface";
-import TrackMetadata from "src/types/trackMetadata";
+import { ScoredTrack } from "../types/searchResultInterface";
+import TrackMetadata from "../types/trackMetadata";
 
     // To optimize, it's probably best to pass a list of tracks.
     /**
