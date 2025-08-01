@@ -16,7 +16,7 @@ import TrackMetadata from "src/types/trackMetadata";
      * 
      * @throws Error if track metadata is missing.
      */
-export default async function playTrack(result: SearchResult | Track, queue: GuildQueue, interaction: ChatInputCommandInteraction, scoredTrack?: ScoredTrack ): Promise<void> {
+export default async function playTrackHelper(result: SearchResult | Track, queue: GuildQueue, interaction: ChatInputCommandInteraction, scoredTrack?: ScoredTrack ): Promise<void> {
         let metadata: TrackMetadata | undefined;
         if (result instanceof SearchResult) {
             metadata = result.tracks[0].metadata as TrackMetadata
