@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ServiceInterface } from '../types/serviceInterface';
-import { Player, SearchResult, QueryType, GuildQueue } from 'discord-player';
+import { Player, SearchResult, QueryType } from 'discord-player';
 import { User } from 'discord.js';
 import { networkFileSerivceLogger } from '../utils/loggerUtil';
 
@@ -86,11 +86,5 @@ export class NetworkFileService extends ServiceInterface {
                 }
             }
         });
-    }
-
-    async playTrack(localPath: string, queue: GuildQueue, fileId: string, requestedBy: User): Promise<void> {
-        if (!this.useWebserver) {
-            playTrack
-        }
     }
 }
