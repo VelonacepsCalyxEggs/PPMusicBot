@@ -16,7 +16,7 @@ import { randomUUID, createHash } from 'crypto';
 import { YtdlFallback } from '../utils/ytdlFallback';
 import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } from '../types/ytdlServiceTypes';
 import { NetworkFileService } from '../services/networkFileService';
-import playTrack from 'src/helpers/playHelper';
+import playTrack from '../helpers/playHelper';
 
 export default class PlayCommand extends CommandInterface {
     public static readonly commandName = 'play';
