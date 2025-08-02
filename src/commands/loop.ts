@@ -35,14 +35,7 @@ export default class LoopCommand extends CommandInterface {
                     { name: 'Available Modes', value: 'Queue Loop\nTrack Repeat\nNo Loop', inline: true }
                 ]);
                 
-            const actionRow = new ActionRowBuilder<ButtonBuilder>()
-                .addComponents(
-                    new ButtonBuilder().setCustomId('loop_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder().setCustomId('loop_track').setLabel('Track').setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder().setCustomId('loop_off').setLabel('Off').setStyle(ButtonStyle.Secondary)
-                );
-                
-            return interaction.reply({ embeds: [embed], components: [actionRow], flags: ['Ephemeral'] });
+            return interaction.reply({ embeds: [embed], flags: ['Ephemeral'] });
         }
         
         let repeatModeString = '';
