@@ -704,7 +704,9 @@ startBot();
 
 //TODOS:
 // - Separate the youtube download logic into a separate worker proccess. - done
-// - Make play command more structured. - done ish? needs testing.
+// - Make play command more structured. - done
 // - Add more QoL to existing commands.
-// - make atGrok service a separate command instead of a message listener.
+// - Make services use the proper dependency injection pattern. Which I need to research first.
+// - make atGrok service a separate command instead of a message listener. - not sure if 
+//   this is a good idea since it will lose the premise... but... oh well...
 // - make this use prisma instead of pg directly.
