@@ -22,7 +22,7 @@ export default class LoopCommand extends CommandInterface {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId) return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
-        if (!commandPreRunCheckUtil(interaction, queue)) return;
+        if (!commandPreRunCheckUtil(interaction, queue, false)) return;
         
         const repeatDict: { [key: number]: string } = { 0: 'Off', 1: 'Track', 2: 'Queue' };
         const repeatModeUser = interaction.options.get('mode')?.value;
