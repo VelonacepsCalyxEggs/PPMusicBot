@@ -20,11 +20,27 @@ export default class MoveCommand extends CommandInterface {
                 .setRequired(true)
         )
     execute = async ({ interaction }: { client: Client; interaction: ChatInputCommandInteraction }) => {
-        if (!interaction.guild || !interaction.guildId)return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
+        if (!interaction.guild || !interaction.guildId) return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
         if (!commandPreRunCheckUtil(interaction, queue)) return;
-        queue!.moveTrack(Number(interaction.options.get('index')?.value) - 1, Number(interaction.options.get('position')?.value) - 1);
+        
+        const fromIndex = Number(interaction.options.get('index')?.value) - 1;
+        const toIndex = Number(interaction.options.get('position')?.value) - 1;
+        
+        // Validate indices
+        if (fromIndex < 0 || fromIndex >= queue!.size || toIndex < 0 || toIndex >= queue!.size) {
+            return interaction.reply({ 
+                content: `Invalid position. Queue has ${queue!.size} tracks (1-${queue!.size}).`, 
+                flags: ['Ephemeral'] 
+            });
+        }
+        
+        const track = queue!.tracks.toArray()[fromIndex];
+        queue!.moveTrack(fromIndex, toIndex);
+        
         return interaction.reply({
-            flags: ['SuppressNotifications'], content: 'The track has been moved!',});
+            content: `Moved "${track.title}" from position ${fromIndex + 1} to ${toIndex + 1}.`,
+            flags: ['SuppressNotifications']
+        });
     }
 };
