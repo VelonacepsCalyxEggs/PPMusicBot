@@ -17,6 +17,7 @@ import { YtdlFallback } from '../utils/ytdlFallback';
 import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } from '../types/ytdlServiceTypes';
 import { NetworkFileService } from '../services/networkFileService';
 import playTrack from '../helpers/playHelper';
+import ShuffleUtil from 'src/utils/shuffleUtil';
 
 export default class PlayCommand extends CommandInterface {
     public static readonly commandName = 'play';
@@ -46,6 +47,10 @@ export default class PlayCommand extends CommandInterface {
                 .setDescription('plays a song from database')
                 .addStringOption(option =>
                     option.setName('dbquery').setDescription('name/author/album').setRequired(true)
+                )
+                .addBooleanOption(option => 
+                    option.setName("shuffle")
+                    .setDescription("Shuffle the playlist/album order before adding tracks")
                 )
         )
         .addSubcommand(subcommand =>
@@ -553,6 +558,11 @@ export default class PlayCommand extends CommandInterface {
 
             // Sort tracks by disc number before playing
             const sortedAlbumTracks = this.sortAlbumTracks(foundAlbum);
+
+            if (interaction.options.getBoolean('shuffle', false)) {
+                commandLogger.debug('Shuffling album tracks');
+                ShuffleUtil.fisherYatesShuffle(sortedAlbumTracks);
+            }
 
             // Process each track in the album using NetworkFileService
             let successfulTracks = 0;
