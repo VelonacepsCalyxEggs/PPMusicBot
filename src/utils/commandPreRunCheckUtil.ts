@@ -13,6 +13,11 @@ export default function commandPreRunCheckUtil(interaction: ChatInputCommandInte
         interaction.reply({ content: 'There is no queue for this guild.', flags: ['Ephemeral'] });
         return false;
     }
+
+    if (!queue.connection) {
+        interaction.reply({ content: 'I am not connected to a voice channel.', flags: ['Ephemeral'] });
+        return false;
+    }
     
     if (queue && queue.size === 0 && doQueueSizeCheck) {
         interaction.reply({ content: 'The queue is empty.', flags: ['Ephemeral'] });
