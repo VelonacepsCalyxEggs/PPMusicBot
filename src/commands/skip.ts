@@ -57,7 +57,7 @@ export default class SkipCommand extends CommandInterface {
             // Database track - use scoredTrack data
             const dbTrack = metadata.scoredTrack!;
             title = dbTrack.title;
-            thumbnail = dbTrack.album?.coverArt[0].filePath.split('\\').pop()
+            thumbnail = dbTrack.album?.coverArt[0]?.filePath?.split('\\').pop()
                 ? `https://www.funckenobi42.space/images/AlbumCoverArt/${dbTrack.album.coverArt[0].filePath.split('\\').pop()}`
                 : 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png';
         } else {

@@ -492,7 +492,7 @@ export default class PlayCommand extends CommandInterface {
                 flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
                     `**${(song.metadata as TrackMetadata).scoredTrack!.title}** has been added to the queue`, 
-                    `https://www.funckenobi42.space/images/AlbumCoverArt/${track.album.coverArt[0].filePath.split('\\').pop()}`, // Use the cover from the first track if available
+                    `https://www.funckenobi42.space/images/AlbumCoverArt/${track.album.coverArt[0]?.filePath?.split('\\').pop() || ''}`, // Use the cover from the first track if available
                     `Duration: ${(formatDuration((song.metadata as TrackMetadata).scoredTrack!.duration * 1000))} Position: ${guildQueue.tracks.size}`
                 )]
             });
