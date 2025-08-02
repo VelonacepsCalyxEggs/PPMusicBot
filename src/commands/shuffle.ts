@@ -3,7 +3,7 @@ import { ChatInputCommandInteraction } from 'discord.js';
 import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
-import TrackShuffleUtil from 'src/utils/shuffleUtil';
+import ShuffleUtil from '../utils/shuffleUtil';
 
 export default class ShuffleCommand extends CommandInterface {
     public static readonly commandName = 'shuffle';
@@ -30,16 +30,16 @@ export default class ShuffleCommand extends CommandInterface {
         // Shuffle based on the selected algorithm
         switch (shuffleAlgorithm) {
             case 'Fisher-Yates': // Fisher-Yates (Knuth) shuffle
-                tracks = TrackShuffleUtil.fisherYatesShuffle(tracks);
+                tracks = ShuffleUtil.fisherYatesShuffle(tracks);
                 break;
             case 'Durstenfeld': // Durstenfeld shuffle
-                tracks = TrackShuffleUtil.durstenfeldShuffle(tracks);
+                tracks = ShuffleUtil.durstenfeldShuffle(tracks);
                 break;
             case 'Sattolo': // Sattolo's algorithm
-                tracks = TrackShuffleUtil.sattoloShuffle(tracks);
+                tracks = ShuffleUtil.sattoloShuffle(tracks);
                 break;
             default:
-                tracks = TrackShuffleUtil.fisherYatesShuffle(tracks);
+                tracks = ShuffleUtil.fisherYatesShuffle(tracks);
                 break;
         }
 
