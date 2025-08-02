@@ -715,8 +715,12 @@ startBot();
 //TODOS:
 // - Separate the youtube download logic into a separate worker proccess. - done
 // - Make play command more structured. - done
-// - Add more QoL to existing commands.
+// - Add more QoL to existing commands. - in progress
 // - Make services use the proper dependency injection pattern. Which I need to research first.
-// - make atGrok service a separate command instead of a message listener. - not sure if 
-//   this is a good idea since it will lose the premise... but... oh well...
-// - make this use prisma instead of pg directly.
+// - Make atGrok service a separate command instead of a message listener. 
+//   not sure if this is a good idea since it will lose the premise... but... oh well...\
+//   still better than a message listener.
+// - Make this use prisma instead of pg directly.
+// - Make NetworkFileService a proper extractor
+// - Make YTDLFallback have more flexibility.
+// - Add Spotify support.
