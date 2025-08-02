@@ -1,31 +1,29 @@
-import { Track } from "discord-player/dist";
-
-export default class TrackShuffleUtil {
-    public static fisherYatesShuffle(tracks: Track<unknown>[]) {
-            for (let i = tracks.length - 1; i > 0; i--) {
+export default class ShuffleUtil {
+    public static fisherYatesShuffle<T>(item: T[]) {
+            for (let i = item.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
-                    [tracks[i], tracks[j]] = [tracks[j], tracks[i]];
+                    [item[i], item[j]] = [item[j], item[i]];
             }
-            return tracks;
+            return item;
     }
 
-    public static durstenfeldShuffle(tracks: Track<unknown>[]) {
-            for (let i = tracks.length - 1; i > 0; i--) {
+    public static durstenfeldShuffle<T>(item: T[]) {
+            for (let i = item.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
-                    const temp = tracks[i];
-                    tracks[i] = tracks[j];
-                    tracks[j] = temp;
+                    const temp = item[i];
+                    item[i] = item[j];
+                    item[j] = temp;
             }
-            return tracks;
+            return item;
     }
 
-    public static sattoloShuffle(tracks: Track<unknown>[]) {
-            for (let i = tracks.length - 1; i > 0; i--) {
+    public static sattoloShuffle<T>(item: T[]) {
+            for (let i = item.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * i);
-                    const temp = tracks[i];
-                    tracks[i] = tracks[j];
-                    tracks[j] = temp;
+                    const temp = item[i];
+                    item[i] = item[j];
+                    item[j] = temp;
             }
-            return tracks;
+            return item;
     }
 }
