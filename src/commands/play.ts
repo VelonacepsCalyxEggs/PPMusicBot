@@ -17,7 +17,7 @@ import { YtdlFallback } from '../utils/ytdlFallback';
 import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } from '../types/ytdlServiceTypes';
 import { NetworkFileService } from '../services/networkFileService';
 import playTrack from '../helpers/playHelper';
-import ShuffleUtil from 'src/utils/shuffleUtil';
+import ShuffleUtil from '../utils/shuffleUtil';
 
 export default class PlayCommand extends CommandInterface {
     public static readonly commandName = 'play';
