@@ -50,8 +50,8 @@ export default class NowPlayingCommand extends CommandInterface {
             artistName = dbTrack.artist?.name || 'Unknown Artist';
             durationMs = dbTrack.duration * 1000; // seconds to milliseconds
             sourceUrl = `https://www.funckenobi42.space/music/tracks/${dbTrack.id}`;
-            thumbnailUrl = dbTrack.album?.pathToCoverArt 
-                ? `https://www.funckenobi42.space/images/AlbumCoverArt/${dbTrack.album.pathToCoverArt}`
+            thumbnailUrl = dbTrack.album?.coverArt[0].filePath.split('\\').pop()
+                ? `https://www.funckenobi42.space/images/AlbumCoverArt/${dbTrack.album.coverArt[0].filePath.split('\\').pop()}`
                 : 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png';
             albumName = dbTrack.album?.name || null;
         } else {

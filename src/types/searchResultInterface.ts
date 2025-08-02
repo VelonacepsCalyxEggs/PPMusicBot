@@ -1,72 +1,6 @@
+import { Album, MusicTrack } from 'velonaceps-music-shared';
 // Base DTOs for related models
-export class ArtistDto {
-  id: string;
-  name: string;
-  Albums?: AlbumDto[];
-}
 
-export class AlbumDto {
-  id: string;
-  name: string;
-  pathToCoverArt?: string;
-  Artists?: ArtistDto[];
-}
-
-export class RoleDto {
-  id: string;
-  name: string;
-}
-
-export class UserDto {
-  username: string;
-  roles?: RoleDto[];
-  avatar?: string;
-}
-
-export class MusicMetadataDto {
-  musicId: string;
-  pathToCoverArt?: string;
-  publisher?: string;
-  genre?: string;
-  year?: number;
-  trackNumber?: number;
-  discNumber?: number;
-  composer?: string;
-  lyricist?: string;
-  conductor?: string;
-  remixer?: string;
-  bpm?: number;
-  key?: string;
-  language?: string;
-  copyright?: string;
-  license?: string;
-  isrc?: string;
-  encodedBy?: string;
-  encoderSoftware?: string;
-  bitrate?: number;
-  sampleRate?: number;
-  channels?: number;
-}
-
-export class MusicFileDto {
-  id: string;
-  filePath: string;
-  fileSize: number;
-  fileHash: string;
-}
-
-// Main Music DTO
-export class MusicDto {
-  id: string;
-  title: string;
-  duration: number;
-  uploadedAt: Date;
-  artist: ArtistDto;
-  album: AlbumDto;
-  uploader?: UserDto;
-  MusicMetadata?: MusicMetadataDto;
-  MusicFile: MusicFileDto[];
-}
 
 // Base scored item with common properties
 interface ScoredItem {
@@ -75,11 +9,11 @@ interface ScoredItem {
 }
 
 // Specific scored item types
-export interface ScoredTrack extends MusicDto, ScoredItem {
+export interface ScoredTrack extends MusicTrack, ScoredItem {
   resultType: 'track';
 }
 
-export interface ScoredAlbum extends AlbumDto, ScoredItem {
+export interface ScoredAlbum extends Album, ScoredItem {
   resultType: 'album';
 }
 

@@ -8,7 +8,7 @@ import path from 'path';
 import CommandInterface from '../types/commandInterface';
 import { createEmbedUtil } from '../utils/createEmbedUtil';
 import axios from 'axios';
-import { MusicDto, ScoredAlbum, ScoredTrack, SearchResultsDto } from '../types/searchResultInterface';
+import { ScoredAlbum, ScoredTrack, SearchResultsDto } from '../types/searchResultInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
 import { commandLogger, logError, playerLogger } from '../utils/loggerUtil';
@@ -18,6 +18,7 @@ import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } 
 import { NetworkFileService } from '../services/networkFileService';
 import playTrack from '../helpers/playHelper';
 import ShuffleUtil from '../utils/shuffleUtil';
+import { MusicTrack } from 'velonaceps-music-shared/dist';
 
 export default class PlayCommand extends CommandInterface {
     public static readonly commandName = 'play';
@@ -491,7 +492,7 @@ export default class PlayCommand extends CommandInterface {
                 flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
                     `**${(song.metadata as TrackMetadata).scoredTrack!.title}** has been added to the queue`, 
-                    `https://www.funckenobi42.space/images/AlbumCoverArt/${track.album.pathToCoverArt}`, // Use the cover from the first track if available
+                    `https://www.funckenobi42.space/images/AlbumCoverArt/${track.album.coverArt[0].filePath.split('\\').pop()}`, // Use the cover from the first track if available
                     `Duration: ${(formatDuration((song.metadata as TrackMetadata).scoredTrack!.duration * 1000))} Position: ${guildQueue.tracks.size}`
                 )]
             });
@@ -537,7 +538,7 @@ export default class PlayCommand extends CommandInterface {
                 });
             }
             
-            const albumResponse = await axios.request<{ data: MusicDto[] }>({
+            const albumResponse = await axios.request<{ data: MusicTrack[] }>({
                 method: 'GET',
                 url: `${process.env.API_URL}/music`,
                 params: { albumId: album.id, sortBy:"trackNumber", limit: 512, sortOrder: "asc" }
@@ -604,7 +605,7 @@ export default class PlayCommand extends CommandInterface {
                 flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
                     `**${album.name}** has been added to the queue`, 
-                    `https://www.funckenobi42.space/images/AlbumCoverArt/${album.pathToCoverArt}`, // Use the cover from the album
+                    `https://www.funckenobi42.space/images/AlbumCoverArt/${album.coverArt[0].filePath.split('\\').pop()}`, // Use the cover from the album
                     `Tracks: ${successfulTracks}/${foundAlbum.length} loaded | Starting from position: ${(guildQueue.tracks.size - successfulTracks) + 1}`
                 )]
             });
@@ -622,16 +623,17 @@ export default class PlayCommand extends CommandInterface {
     }
 
     // Helper method for sorting album tracks
-    private sortAlbumTracks(foundAlbum: MusicDto[]): MusicDto[] {
+    private sortAlbumTracks(foundAlbum: MusicTrack[]): MusicTrack[] {
         // Skip sorting if there's no data
         if (!foundAlbum || foundAlbum.length === 0) return foundAlbum;
         
         // Group tracks by disc number
-        const discGroups = new Map<string | number | undefined, MusicDto[]>();
+        const discGroups = new Map<string | number | undefined, MusicTrack[]>();
         
         // Create groups based on disc number
         for (const track of foundAlbum) {
-            const discNumber = track.MusicMetadata?.discNumber;
+            let discNumber = track.MusicMetadata?.discNumber;
+            if (discNumber === null) discNumber = undefined;
             if (!discGroups.has(discNumber)) {
                 discGroups.set(discNumber, []);
             }
