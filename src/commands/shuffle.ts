@@ -25,21 +25,21 @@ export default class ShuffleCommand extends CommandInterface {
         if (!commandPreRunCheckUtil(interaction, queue)) return;
 
         const shuffleAlgorithm = interaction.options.get('algorithm')?.value || 'fy';
-        let tracks = queue!.tracks.toArray();
+        const tracks = queue!.tracks.toArray();
 
         // Shuffle based on the selected algorithm
         switch (shuffleAlgorithm) {
             case 'Fisher-Yates': // Fisher-Yates (Knuth) shuffle
-                tracks = ShuffleUtil.fisherYatesShuffle(tracks);
+                ShuffleUtil.fisherYatesShuffle(tracks);
                 break;
             case 'Durstenfeld': // Durstenfeld shuffle
-                tracks = ShuffleUtil.durstenfeldShuffle(tracks);
+                ShuffleUtil.durstenfeldShuffle(tracks);
                 break;
             case 'Sattolo': // Sattolo's algorithm
-                tracks = ShuffleUtil.sattoloShuffle(tracks);
+                ShuffleUtil.sattoloShuffle(tracks);
                 break;
             default:
-                tracks = ShuffleUtil.fisherYatesShuffle(tracks);
+                ShuffleUtil.fisherYatesShuffle(tracks);
                 break;
         }
 

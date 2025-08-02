@@ -1,29 +1,26 @@
 export default class ShuffleUtil {
-    public static fisherYatesShuffle<T>(item: T[]) {
-            for (let i = item.length - 1; i > 0; i--) {
+    public static fisherYatesShuffle<T>(items: T[]) {
+            for (let i = items.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
-                    [item[i], item[j]] = [item[j], item[i]];
+                    [items[i], items[j]] = [items[j], items[i]];
             }
-            return item;
     }
 
-    public static durstenfeldShuffle<T>(item: T[]) {
-            for (let i = item.length - 1; i > 0; i--) {
+    public static durstenfeldShuffle<T>(items: T[]) {
+            for (let i = items.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
-                    const temp = item[i];
-                    item[i] = item[j];
-                    item[j] = temp;
+                    const temp = items[i];
+                    items[i] = items[j];
+                    items[j] = temp;
             }
-            return item;
     }
 
-    public static sattoloShuffle<T>(item: T[]) {
-            for (let i = item.length - 1; i > 0; i--) {
+    public static sattoloShuffle<T>(items: T[]) {
+            for (let i = items.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * i);
-                    const temp = item[i];
-                    item[i] = item[j];
-                    item[j] = temp;
+                    const temp = items[i];
+                    items[i] = items[j];
+                    items[j] = temp;
             }
-            return item;
     }
 }
