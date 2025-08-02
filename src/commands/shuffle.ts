@@ -1,8 +1,9 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { ChatInputCommandInteraction } from 'discord.js';
-import { Track, useQueue } from 'discord-player';
+import { useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
+import TrackShuffleUtil from 'src/utils/shuffleUtil';
 
 export default class ShuffleCommand extends CommandInterface {
     public static readonly commandName = 'shuffle';
@@ -24,21 +25,21 @@ export default class ShuffleCommand extends CommandInterface {
         if (!commandPreRunCheckUtil(interaction, queue)) return;
 
         const shuffleAlgorithm = interaction.options.get('algorithm')?.value || 'fy';
-        const tracks = queue!.tracks.toArray();
+        let tracks = queue!.tracks.toArray();
 
         // Shuffle based on the selected algorithm
         switch (shuffleAlgorithm) {
             case 'Fisher-Yates': // Fisher-Yates (Knuth) shuffle
-                this.fisherYatesShuffle(tracks);
+                tracks = TrackShuffleUtil.fisherYatesShuffle(tracks);
                 break;
             case 'Durstenfeld': // Durstenfeld shuffle
-                this.durstenfeldShuffle(tracks);
+                tracks = TrackShuffleUtil.durstenfeldShuffle(tracks);
                 break;
             case 'Sattolo': // Sattolo's algorithm
-                this.sattoloShuffle(tracks);
+                tracks = TrackShuffleUtil.sattoloShuffle(tracks);
                 break;
             default:
-                this.fisherYatesShuffle(tracks);
+                tracks = TrackShuffleUtil.fisherYatesShuffle(tracks);
                 break;
         }
 
@@ -50,30 +51,5 @@ export default class ShuffleCommand extends CommandInterface {
             content: `The queue has been shuffled using ${shuffleAlgorithm} algorithm!`,
             flags: ['SuppressNotifications']
         });
-    }
-
-    private fisherYatesShuffle(tracks: Track<unknown>[]) {
-            for (let i = tracks.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [tracks[i], tracks[j]] = [tracks[j], tracks[i]];
-                }
-    }
-
-    private durstenfeldShuffle(tracks: Track<unknown>[]) {
-            for (let i = tracks.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    const temp = tracks[i];
-                    tracks[i] = tracks[j];
-                    tracks[j] = temp;
-                }
-    }
-
-    private sattoloShuffle(tracks: Track<unknown>[]) {
-            for (let i = tracks.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * i);
-                    const temp = tracks[i];
-                    tracks[i] = tracks[j];
-                    tracks[j] = temp;
-                }
     }
 };
