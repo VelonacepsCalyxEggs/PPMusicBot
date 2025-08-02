@@ -51,7 +51,7 @@ declare module 'discord.js' {
 }
 
 interface CommandCache {
-    commands: [string, string][];
+    commands: [string, string, string][]; // Add third element for serialized data
     timestamp: Date;
 }
 
@@ -452,12 +452,18 @@ class BotApplication {
         discordLogger.info(`Total commands loaded: ${this.commands.size}`);
         const cachedCommands = this.loadCommandsFromCache();
 
-        const currentCommandsArray = this.commands.map((command) => [command.data.name, command.constructor.name]);
+        const currentCommandsArray = this.commands.map((command) => [
+            command.data.name, 
+            command.constructor.name,
+            JSON.stringify(command.data.toJSON())
+        ]);
         const isSame =
             cachedCommands.commands.length === currentCommandsArray.length &&
             cachedCommands.commands.every(
-                ([name, ctor], idx) =>
-                    name === currentCommandsArray[idx][0] && ctor === currentCommandsArray[idx][1]
+                ([name, ctor, data], idx) =>
+                    name === currentCommandsArray[idx][0] && 
+                    ctor === currentCommandsArray[idx][1] &&
+                    data === currentCommandsArray[idx][2] // Compare serialized command data
             );
         if (isSame) {
             discordLogger.info('Commands are up to date, skipping registration.');
@@ -561,7 +567,11 @@ class BotApplication {
         }
 
         const cache: CommandCache = {
-            commands: this.commands.map((command) => [command.data.name, command.constructor.name]),
+            commands: this.commands.map((command) => [
+                command.data.name, 
+                command.constructor.name,
+                JSON.stringify(command.data.toJSON()) // Add serialized command data
+            ]),
             timestamp: new Date()
         };
         const cacheDir = join(process.env.CACHE_DIR, 'commands');
