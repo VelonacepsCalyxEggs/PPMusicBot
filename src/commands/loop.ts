@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { useQueue, QueueRepeatMode } from 'discord-player';
-import { Client, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { Client, ChatInputCommandInteraction, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import CommandInterface from '../types/commandInterface';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 
@@ -22,15 +22,30 @@ export default class LoopCommand extends CommandInterface {
         // Get the queue for the server
         if (!interaction.guild || !interaction.guildId) return interaction.followUp({ content: 'You need to be in a guild.', flags: ['Ephemeral'] });
         const queue = useQueue(interaction.guild);
-        const repeatDict: { [key: number]: string } = {
-            0: 'Off',
-            1: 'Track',
-            2: 'Queue',
-        };
-        // If there is no queue, return
         if (!commandPreRunCheckUtil(interaction, queue)) return;
+        
+        const repeatDict: { [key: number]: string } = { 0: 'Off', 1: 'Track', 2: 'Queue' };
+        const repeatModeUser = interaction.options.get('mode')?.value;
+        
+        if (!repeatModeUser) {
+            // Show current status with quick action buttons
+            const embed = new EmbedBuilder()
+                .setDescription(`Current looping mode: **${repeatDict[queue!.repeatMode]}**`)
+                .addFields([
+                    { name: 'Available Modes', value: 'Queue Loop\nTrack Repeat\nNo Loop', inline: true }
+                ]);
+                
+            const actionRow = new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(
+                    new ButtonBuilder().setCustomId('loop_queue').setLabel('Queue').setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder().setCustomId('loop_track').setLabel('Track').setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder().setCustomId('loop_off').setLabel('Off').setStyle(ButtonStyle.Secondary)
+                );
+                
+            return interaction.reply({ embeds: [embed], components: [actionRow], flags: ['Ephemeral'] });
+        }
+        
         let repeatModeString = '';
-        const repeatModeUser = interaction.options.get('mode')?.value
         if (repeatModeUser === '1') {
             queue!.setRepeatMode(QueueRepeatMode.QUEUE);
             repeatModeString = 'QUEUE';
