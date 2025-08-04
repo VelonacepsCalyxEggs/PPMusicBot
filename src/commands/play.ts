@@ -605,7 +605,7 @@ export default class PlayCommand extends CommandInterface {
                 flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
                     `**${album.name}** has been added to the queue`, 
-                    `https://www.funckenobi42.space/images/AlbumCoverArt/${album.coverArt[0].filePath.split('\\').pop()}`, // Use the cover from the album
+                    `https://www.funckenobi42.space/images/AlbumCoverArt/${album.coverArt[0]?.filePath?.split('\\').pop() || ''}`, // Use the cover from the album
                     `Tracks: ${successfulTracks}/${foundAlbum.length} loaded | Starting from position: ${(guildQueue.tracks.size - successfulTracks) + 1}`
                 )]
             });
