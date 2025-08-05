@@ -41,6 +41,7 @@ import { ServiceInterface } from './types/serviceInterface';
 import { AtGrokIsThisTrueService } from './services/atGrokIsThisTrueService';
 import { NetworkFileService } from './services/networkFileService';
 import checkDiscordStatus from './utils/checkDiscordStatusUtil';
+import RestoreCommand from './commands/restore';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
@@ -453,6 +454,7 @@ class BotApplication {
         this.commands.set(ErrorCommand.commandName, new ErrorCommand());
         this.commands.set(RecoverCommand.commandName, new RecoverCommand());
         this.commands.set(GetQuoteCommand.commandName, new GetQuoteCommand());
+        this.commands.set(RestoreCommand.commandName, new RestoreCommand());
         for (const command of this.commands.values()) {
             discordLogger.debug(`Loaded command: ${command.data.name}`);
         }
