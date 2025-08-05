@@ -62,7 +62,8 @@ export class NetworkFileService extends ServiceInterface {
         player: Player, 
         fileId: string, 
         localPath: string, 
-        requestedBy: User
+        requestedBy: User,
+        ignoreUrlFormatting: boolean = false
     ): Promise<SearchResult> {
         if (!this.useWebserver) {
             // Use local file path
@@ -71,9 +72,9 @@ export class NetworkFileService extends ServiceInterface {
                     searchEngine: QueryType.FILE,
             })
         }
-        // Use authenticated URL with token
-        const streamUrl =  this.getFileUrl(fileId, localPath);
-        
+        let streamUrl: string
+        if (!ignoreUrlFormatting) streamUrl =  this.getFileUrl(fileId, localPath);
+        else streamUrl = localPath; // Use the provided local path directly if ignoreUrlFormatting is true
         // Create a custom search result for streaming
         return await player.search(streamUrl, {
             requestedBy,

@@ -50,7 +50,7 @@ export default class RestoreCommand extends CommandInterface {
                 for (const track of cachedState.tracks) {
                     if (track.url.includes(process.env.FILEWEBSERVER_URL!)) {
                         commandLogger.debug(`Webserver URL detected for track: ${track.url}`);
-                        const result = await networkFileService.searchTrack(player, track.url, track.url, interaction.user)
+                        const result = await networkFileService.searchTrack(player, track.url, track.url, interaction.user, true)
                         playTrackHelper(result, queue, interaction);
                     }
                     else {
