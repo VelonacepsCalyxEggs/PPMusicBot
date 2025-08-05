@@ -43,7 +43,7 @@ export default class RestoreCommand extends CommandInterface {
             }
         }
         let embed: EmbedBuilder
-        const networkFileService = client.services.get('NetworkFileService') as NetworkFileService;
+        const networkFileService = client.diContainer.get<NetworkFileService>('NetworkFileService') as NetworkFileService;
         if (client.cachedQueueStates && client.cachedQueueStates.length > 0) {
             const cachedState = client.cachedQueueStates.find(q => q.guildId === interaction.guild!.id);
             let loadedAmount = 0;

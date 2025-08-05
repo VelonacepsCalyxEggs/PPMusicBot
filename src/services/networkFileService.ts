@@ -1,18 +1,20 @@
 import axios from 'axios';
-import { ServiceInterface } from '../types/serviceInterface';
 import { Player, SearchResult, QueryType } from 'discord-player';
 import { User } from 'discord.js';
 import { networkFileSerivceLogger } from '../utils/loggerUtil';
+import { ServiceConstructor, ServiceDefinition } from '../classes/diContainer';
 
-export class NetworkFileService extends ServiceInterface {
+export class NetworkFileService implements ServiceDefinition {
+    ['constructor']: ServiceConstructor<object>;
+    dependencies?: string[] | undefined;
+    singleton?: boolean | undefined;
+    
     private readonly baseUrl: string;
     private readonly apiKey: string;
-    public readonly serviceName: string = "NetworkFileService";
     private readonly useWebserver: boolean;
     private readonly serviceName_auth: string = 'sharing'; // Service name for authentication
 
     constructor() {
-        super();
         // Please use http only for local development
         this.baseUrl = process.env.FILEWEBSERVER_URL || 'http://localhost:4000';
         this.apiKey = process.env.FILEWEBSERVER_API_KEY || '';
@@ -20,7 +22,6 @@ export class NetworkFileService extends ServiceInterface {
     }
 
     public init(): Promise<void> {
-        this.serviceDescription = "Service for handling network file operations, including streaming and downloading music files.";
         return Promise.resolve();
     }
 

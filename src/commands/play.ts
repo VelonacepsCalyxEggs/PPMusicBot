@@ -335,7 +335,7 @@ export default class PlayCommand extends CommandInterface {
         if (!process.env.API_URL) {
             return interaction.followUp('API URL is not set. Please contact the bot owner.');
         }
-        const networkFileService = client.services.get('NetworkFileService') as NetworkFileService;
+        const networkFileService = client.diContainer.get<NetworkFileService>('NetworkFileService');
         // Test connection if using webserver
         if (process.env.USE_WEBSERVER === 'true') {
             try {

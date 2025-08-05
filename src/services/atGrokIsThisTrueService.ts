@@ -1,24 +1,23 @@
 // This service will query a OpenRouter API endpoint, and return a response from an LLM of choice.
 
 import { discordLogger } from "../utils/loggerUtil";
-import { ServiceInterface } from "../types/serviceInterface";
+import { ServiceConstructor, ServiceDefinition } from "../classes/diContainer";
 import * as fs from 'fs';
 import * as path from 'path';
 import { createHash } from 'crypto';
 
 // It is designed to mock the '@Grok is this true?' question.
-export class AtGrokIsThisTrueService extends ServiceInterface {
+export class AtGrokIsThisTrueService implements ServiceDefinition {
+    ["constructor"]: ServiceConstructor<object>;
+    dependencies?: string[] | undefined;
+    singleton?: boolean | undefined;
+
     private model: string;
     private apiKey: string;
     private cacheDir: string;
     private imageSupport: boolean;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private queryQueues: Map<string, Promise<any>> = new Map();
-    constructor() {
-        super();
-        this.serviceName = 'AtGrokIsThisTrueService';
-        this.serviceDescription = 'Service to query "Grok" LLM for "truth" verification.';
-    }
 
     async init() {
         discordLogger.info('Initializing AtGrokIsThisTrueService...');

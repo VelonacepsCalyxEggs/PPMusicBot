@@ -37,17 +37,17 @@ import SkipCommand from './commands/skip';
 import WhereAmICommand from './commands/whereami';
 import RecoverCommand from './commands/recover';
 import GetQuoteCommand from './commands/getQuote';
-import { ServiceInterface } from './types/serviceInterface';
 import { AtGrokIsThisTrueService } from './services/atGrokIsThisTrueService';
 import { NetworkFileService } from './services/networkFileService';
 import checkDiscordStatus from './utils/checkDiscordStatusUtil';
 import RestoreCommand from './commands/restore';
+import { DIContainer } from './classes/diContainer';
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
     interface Client {
         commands: Collection<string, CommandInterface>;
-        services: Collection<string, ServiceInterface>;
+        diContainer: DIContainer;
         cachedQueueStates?: QueueState[];
     }
 }
@@ -75,6 +75,7 @@ class BotApplication {
             scan: '644950708160036864',
             error: '644950708160036864',
     }
+
     public currentStatus: string = '';
 
     private async initializeDatabase() {
@@ -195,11 +196,7 @@ class BotApplication {
                         });
                         return;
                     }
-                    const grokService = this.client.services.get('AtGrokIsThisTrueService') as AtGrokIsThisTrueService;
-                    if (!grokService) {
-                        discordLogger.error('AtGrokIsThisTrueService is not initialized.');
-                        return;
-                    }
+                    const grokService = this.client.diContainer.get<AtGrokIsThisTrueService>('AtGrokIsThisTrueService');
                     try {
                         let response: string;
                         discordLogger.debug(`Processing Grok query for message with possible attachments: ${referencedMessage.attachments.first()}`);
@@ -505,20 +502,36 @@ class BotApplication {
         }
     }
 
+    private setupDependencyInjection(): void {
+        discordLogger.info('Setting up dependency injection...');
+        
+        // Register the database pool as a service class (scuffed, but works, also will be reworked anyway when Prisma comes.)
+        const poolInstance = this.pool;
+        class DatabasePoolWrapper {
+            public pool: Pool;
+            constructor() {
+                this.pool = poolInstance;
+            }
+        }
+        this.client.diContainer.register(
+            'DatabasePool',
+            DatabasePoolWrapper,
+            [],
+            true
+        );
+        this.client.diContainer.register('AtGrokIsThisTrueService', AtGrokIsThisTrueService, ['DatabasePool'], true);
+        this.client.diContainer.register('NetworkFileService', NetworkFileService, ['DatabasePool'], true);
+    }
+
     private async initializeServices() {
         discordLogger.info('Initializing services...');
-        this.client.services = new Collection<string, ServiceInterface>();
 
-        const grokService = new AtGrokIsThisTrueService();
-        await grokService.init()
-            .then(() => discordLogger.info('AtGrokIsThisTrueService initialized successfully'))
+        // Setup DI container
+        this.setupDependencyInjection();
 
-        const networkFileService = new NetworkFileService();
-        await networkFileService.init()
-            .then(() => discordLogger.info('NetworkFileService initialized successfully'));
-        
-        this.client.services.set('AtGrokIsThisTrueService', grokService);
-        this.client.services.set('NetworkFileService', networkFileService);
+        // Initialize all services
+        await this.client.diContainer.initialize();
+        discordLogger.info('All services initialized successfully');
     }
 
     private updateBotStatusMessage(forced=false) {
