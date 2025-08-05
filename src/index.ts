@@ -504,7 +504,7 @@ class BotApplication {
 
     private setupDependencyInjection(): void {
         discordLogger.info('Setting up dependency injection...');
-        
+        this.client.diContainer = new DIContainer();
         // Register the database pool as a service class (scuffed, but works, also will be reworked anyway when Prisma comes.)
         const poolInstance = this.pool;
         class DatabasePoolWrapper {
