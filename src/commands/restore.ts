@@ -4,6 +4,7 @@ import { GuildQueue, Player, useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import { commandLogger } from '../utils/loggerUtil';
 import playTrackHelper from '../helpers/playHelper';
+import { NetworkFileService } from '../services/networkFileService';
 
 export default class RestoreCommand extends CommandInterface {
     public static readonly commandName = 'restore';
@@ -41,13 +42,20 @@ export default class RestoreCommand extends CommandInterface {
             }
         }
         let embed: EmbedBuilder
+        const networkFileService = client.services.get('NetworkFileService') as NetworkFileService;
         if (client.cachedQueueStates && client.cachedQueueStates.length > 0) {
             const cachedState = client.cachedQueueStates.find(q => q.guildId === interaction.guild!.id);
             if (cachedState) {
                 commandLogger.debug(`Restoring cached state for guild: ${interaction.guild.id}`);
                 for (const track of cachedState.tracks) {
-                    const result = await player.search(track.url)
-                    playTrackHelper(result, queue, interaction);
+                    if (track.url.includes(process.env.FILEWEBSERVER_URL!)) {
+                        const result = await networkFileService.searchTrack(player, track.url, track.url, interaction.user)
+                        playTrackHelper(result, queue, interaction);
+                    }
+                    else {
+                        const result = await player.search(track.url)
+                        playTrackHelper(result, queue, interaction);
+                    }
                 }
                 commandLogger.info(`Restored ${cachedState.tracks.length} tracks from cache for guild: ${interaction.guild.id}`);
                 embed = new EmbedBuilder()
