@@ -36,35 +36,14 @@ export default async function playTrackHelper(result: SearchResult | Track, queu
                 };
             }
         } catch {
-            if (result instanceof SearchResult) {
-                metadata = {
-                    interaction,
-                    startedPlaying: new Date(),
-                    scoredTrack: undefined,
-                    duration_ms: result.tracks[0].durationMS,
-                    live: false,
-                    duration: result.tracks[0].duration || '0:00',
-                };
-            }
-            else if (result instanceof Track) {
-                metadata = {
-                    interaction,
-                    startedPlaying: new Date(),
-                    scoredTrack: undefined,
-                    duration_ms: result.durationMS,
-                    live: false,
-                    duration: result.duration || '0:00',
-                };
-            }
-            else {
-                metadata = {
-                    interaction,
-                    startedPlaying: new Date(),
-                    scoredTrack: undefined,
-                    duration_ms: (result as SearchResult).tracks[0].durationMS || 0 || (result as Track).durationMS,
-                    live: false,
-                    duration: (result as SearchResult).tracks[0].duration || (result as Track).duration || '0:00',
-                };
+
+            metadata = {
+                interaction,
+                startedPlaying: new Date(),
+                scoredTrack: undefined,
+                duration_ms: 0,
+                live: false,
+                duration: '0:00',
             }
         }
         const newMetadata: TrackMetadata = {

@@ -49,10 +49,12 @@ export default class RestoreCommand extends CommandInterface {
                 commandLogger.debug(`Restoring cached state for guild: ${interaction.guild.id}`);
                 for (const track of cachedState.tracks) {
                     if (track.url.includes(process.env.FILEWEBSERVER_URL!)) {
+                        commandLogger.debug(`Webserver URL detected for track: ${track.url}`);
                         const result = await networkFileService.searchTrack(player, track.url, track.url, interaction.user)
                         playTrackHelper(result, queue, interaction);
                     }
                     else {
+                        commandLogger.debug(`Regular track URL detected: ${track.url}`);
                         const result = await player.search(track.url)
                         playTrackHelper(result, queue, interaction);
                     }
