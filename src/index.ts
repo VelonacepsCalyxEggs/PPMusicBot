@@ -47,6 +47,7 @@ declare module 'discord.js' {
     interface Client {
         commands: Collection<string, CommandInterface>;
         services: Collection<string, ServiceInterface>;
+        cachedQueueStates?: QueueState[];
     }
 }
 
@@ -57,6 +58,11 @@ interface CommandCache {
 
 interface StatusMessage {
     status: string;
+}
+
+interface QueueState {
+    guildId: string;
+    tracks: Track<TrackMetadata>[];
 }
 class BotApplication {
     public client: Client;
@@ -90,6 +96,7 @@ class BotApplication {
             GatewayIntentBits.GuildVoiceStates
             ],
         });
+        this.loadActiveQueueStates();
     }
 
     private intializeClientEvents() {
@@ -164,59 +171,59 @@ class BotApplication {
                 }
         });
 
-            // This event is triggered when a regular message is sent
-    this.client.on('messageCreate', async (message) => {
-        // Ignore messages from bots
-        if (message.author.bot) return;
-        
-        // Ignore messages that don't have content (embeds, files only, etc.)
-        if (!message.content) return;
-        
-        // Only process messages in guilds
-        if (!message.guild) return;
+                // This event is triggered when a regular message is sent
+        this.client.on('messageCreate', async (message) => {
+            // Ignore messages from bots
+            if (message.author.bot) return;
+            
+            // Ignore messages that don't have content (embeds, files only, etc.)
+            if (!message.content) return;
+            
+            // Only process messages in guilds
+            if (!message.guild) return;
 
-        if (message.content == '@Grok is this true?') {
-            if (message.reference && message.reference.messageId) {
-                await message.channel.sendTyping();
-                const referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
-                if (!referencedMessage) {
+            if (message.content == '@Grok is this true?') {
+                if (message.reference && message.reference.messageId) {
+                    await message.channel.sendTyping();
+                    const referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
+                    if (!referencedMessage) {
 
-                    await message.reply({
-                        content: `@${message.author.username}, I couldn't find the message you referenced.`,
-                        flags: ['SuppressNotifications']
-                    });
-                    return;
-                }
-                const grokService = this.client.services.get('AtGrokIsThisTrueService') as AtGrokIsThisTrueService;
-                if (!grokService) {
-                    discordLogger.error('AtGrokIsThisTrueService is not initialized.');
-                    return;
-                }
-                try {
-                    let response: string;
-                    discordLogger.debug(`Processing Grok query for message with possible attachments: ${referencedMessage.attachments.first()}`);
-                    discordLogger.debug(`Referenced message content: ${referencedMessage.content}`);
-                    if (referencedMessage.attachments.first() && referencedMessage.attachments.first()!.contentType?.startsWith('image/')) {
-                        response = await grokService.query('Is this true? ' + referencedMessage.content, message.guild.id, referencedMessage.attachments.first()!.url);
+                        await message.reply({
+                            content: `@${message.author.username}, I couldn't find the message you referenced.`,
+                            flags: ['SuppressNotifications']
+                        });
+                        return;
                     }
-                    else {
-                        response = await grokService.query('Is this true? ' + referencedMessage.content, message.guild.id);
+                    const grokService = this.client.services.get('AtGrokIsThisTrueService') as AtGrokIsThisTrueService;
+                    if (!grokService) {
+                        discordLogger.error('AtGrokIsThisTrueService is not initialized.');
+                        return;
                     }
-                    await message.reply({
-                        content: `<@${message.author.id}>, ${response}`,
-                        flags: ['SuppressNotifications']
-                        
-                    });
-                } catch (error) {
-                    logError(error as Error, 'Grok query', { userId: message.author.id, guildId: message.guild.id });
-                    await message.reply({
-                        content: `<@${message.author.id}>, there was an error processing your request.`,
-                        flags: ['SuppressNotifications']
-                    });
+                    try {
+                        let response: string;
+                        discordLogger.debug(`Processing Grok query for message with possible attachments: ${referencedMessage.attachments.first()}`);
+                        discordLogger.debug(`Referenced message content: ${referencedMessage.content}`);
+                        if (referencedMessage.attachments.first() && referencedMessage.attachments.first()!.contentType?.startsWith('image/')) {
+                            response = await grokService.query('Is this true? ' + referencedMessage.content, message.guild.id, referencedMessage.attachments.first()!.url);
+                        }
+                        else {
+                            response = await grokService.query('Is this true? ' + referencedMessage.content, message.guild.id);
+                        }
+                        await message.reply({
+                            content: `<@${message.author.id}>, ${response}`,
+                            flags: ['SuppressNotifications']
+                            
+                        });
+                    } catch (error) {
+                        logError(error as Error, 'Grok query', { userId: message.author.id, guildId: message.guild.id });
+                        await message.reply({
+                            content: `<@${message.author.id}>, there was an error processing your request.`,
+                            flags: ['SuppressNotifications']
+                        });
+                    }
                 }
             }
-        }
-    });
+        });
 
         // This event is triggered when a user joins or leaves a voice channel
         this.client.on('voiceStateUpdate', async (oldState: VoiceState, newState: VoiceState) => {
@@ -348,21 +355,21 @@ class BotApplication {
         
         // This event is triggered when the connection to the voice channel is destroyed
         this.player.events.on('connectionDestroyed', (queue: GuildQueue) => {
-                const interaction = queue.metadata as Interaction;
-                if (!interaction?.channel) {
-                    discordLogger.error("No interaction or channel found.");
+            const interaction = queue.metadata as Interaction;
+            if (!interaction?.channel) {
+                discordLogger.error("No interaction or channel found.");
+                return;
+            }
+            try {
+                if ( queue.connection && queue.connection.state.status !== 'destroyed') {
+                    (interaction.channel as TextChannel).send({ content: 'The connection to the voice channel was destroyed. The queue has been cleared.', flags: ['SuppressNotifications'] });
+                } else {
                     return;
                 }
-                try {
-                    if ( queue.connection && queue.connection.state.status !== 'destroyed') {
-                        (interaction.channel as TextChannel).send({ content: 'The connection to the voice channel was destroyed. The queue has been cleared.', flags: ['SuppressNotifications'] });
-                    } else {
-                        return;
-                    }
-                } catch (error) {
-                    logError(error as Error, 'connectionDestroyed', { interaction });
-                }
-            });
+            } catch (error) {
+                logError(error as Error, 'connectionDestroyed', { interaction });
+            }
+        });
     }
 
     private initializeRest() {
@@ -644,6 +651,9 @@ class BotApplication {
 
     private gracefulShutdown() {
         discordLogger.info('Initiating graceful shutdown...');
+        // Save active queue states before shutdown, so we can restore them later
+        this.saveActiveQueueStates();
+
         // Close logger first to prevent further write attempts
         closeLogger();
         
@@ -656,6 +666,34 @@ class BotApplication {
         setTimeout(() => {
             process.exit(0);
         }, 1000); // Reduced timeout since logger is already closed
+    }
+
+    private saveActiveQueueStates(): void {
+        discordLogger.info('Saving active queue states...');
+        const activeQueues = this.player.queues.cache.filter(queue => queue.tracks.size > 0);
+        const queueStates: QueueState[] = activeQueues.map(queue => ({
+            guildId: queue.guild.id,
+            tracks: queue.tracks.toArray() as Track<TrackMetadata>[]
+        }));
+
+        writeFileSync(join(process.env.CACHE_DIR!, 'activeQueues.json'), JSON.stringify(queueStates, null, 2), { encoding: 'utf-8' })
+        discordLogger.info('Active queue states saved successfully.');
+    }
+
+    private loadActiveQueueStates(): void {
+        discordLogger.info('Loading active queue states...');
+        if (!existsSync(join(process.env.CACHE_DIR!, 'activeQueues.json'))) {
+            discordLogger.warn('No active queue states found, skipping load.');
+            return;
+        }
+
+        const data = readFileSync(join(process.env.CACHE_DIR!, 'activeQueues.json'), { encoding: 'utf-8' });
+        this.client.cachedQueueStates = JSON.parse(data);
+        if (!Array.isArray(this.client.cachedQueueStates)) {
+            discordLogger.warn('No valid queue states found, resetting cache.');
+            this.client.cachedQueueStates = [];
+        }
+        discordLogger.info(`Loaded ${this.client.cachedQueueStates.length} active queue states.`);
     }
 
     public async run() {
@@ -716,6 +754,8 @@ startBot();
 // - Separate the youtube download logic into a separate worker proccess. - done
 // - Make play command more structured. - done
 // - Add more QoL to existing commands. - in progress
+// - Event listener for voice connection state changes (the bot voice connection, in case there is a timeout).
+// - This might be impossible without modifying the discord-player library?
 // - Make services use the proper dependency injection pattern. Which I need to research first.
 // - Make atGrok service a separate command instead of a message listener. 
 //   not sure if this is a good idea since it will lose the premise... but... oh well...\
@@ -723,4 +763,5 @@ startBot();
 // - Make this use prisma instead of pg directly.
 // - Make NetworkFileService a proper extractor
 // - Make YTDLFallback have more flexibility.
+// - Backup active queues before shutdown.
 // - Add Spotify support.

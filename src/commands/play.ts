@@ -74,7 +74,7 @@ export default class PlayCommand extends CommandInterface {
 
         // GuildQueue initialization.
         try {
-            ({ guildQueue, voiceChannel } = await this.getQueue(interaction, player));
+            ({ guildQueue, voiceChannel } = await this.getQueue(client, interaction, player));
             await this.checkVoiceConnection(interaction, voiceChannel, guildQueue);
         }
         catch (error) {
@@ -786,7 +786,7 @@ export default class PlayCommand extends CommandInterface {
         });
     };
 
-    private async getQueue(interaction: ChatInputCommandInteraction, player: Player): Promise<{ guildQueue: GuildQueue, voiceChannel: VoiceBasedChannel }> {
+    private async getQueue(client: Client, interaction: ChatInputCommandInteraction, player: Player): Promise<{ guildQueue: GuildQueue, voiceChannel: VoiceBasedChannel }> {
         if (!interaction.guild) {
             throw new Error('This command can only be used in a server.');
         }
@@ -794,7 +794,15 @@ export default class PlayCommand extends CommandInterface {
         let guildQueue = useQueue(interaction.guild);
 
         if (!guildQueue) {
+            commandLogger.debug(`Creating new queue for guild: ${interaction.guild.id}`);
             guildQueue = player.nodes.create(interaction.guild, {leaveOnEnd: false, leaveOnEmpty: true, leaveOnStop: false, metadata: interaction, noEmitInsert: true});
+            if (client.cachedQueueStates && client.cachedQueueStates.length > 0) {
+                const cachedState = client.cachedQueueStates.find(q => q.guildId === interaction.guild!.id);
+                if (cachedState) {
+                    commandLogger.debug(`Restoring cached state for guild: ${interaction.guild.id}`);
+                    guildQueue.tracks.add(cachedState.tracks);
+                }
+            }       
         } else if (guildQueue.deleted) {
             guildQueue.revive();
         }
