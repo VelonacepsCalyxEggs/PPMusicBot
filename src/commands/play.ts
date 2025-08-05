@@ -10,7 +10,6 @@ import { createEmbedUtil } from '../utils/createEmbedUtil';
 import axios from 'axios';
 import { ScoredAlbum, ScoredTrack, SearchResultsDto } from '../types/searchResultInterface';
 import formatDuration from '../utils/formatDurationUtil';
-import TrackMetadata from '../types/trackMetadata';
 import { commandLogger, logError, playerLogger } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
 import { YtdlFallback } from '../utils/ytdlFallback';
@@ -485,22 +484,22 @@ export default class PlayCommand extends CommandInterface {
                     )]
                 });
             }
-            const song = result.tracks[0];
-            result.tracks[0].title = (song.metadata as TrackMetadata).scoredTrack!.title; // Ensure title is set correctly
-            result.tracks[0].author = (song.metadata as TrackMetadata).scoredTrack!.artist?.name || 'Unknown Artist'; // Ensure author is set correctly
-            result.tracks[0].duration = ((song.metadata as TrackMetadata).scoredTrack!.duration * 1000).toString(); // Convert seconds to milliseconds
+            result.tracks[0].title = track.title; // Ensure title is set correctly
+            result.tracks[0].author = track.artist?.name || 'Unknown Artist'; // Ensure author is set correctly
+            result.tracks[0].duration = (track.duration * 1000).toString(); // Convert seconds to milliseconds
             // If we get here, we have a valid track to play
             await playTrack(result, guildQueue, interaction, track);
             return interaction.followUp({ 
                 flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
-                    `**${(song.metadata as TrackMetadata).scoredTrack!.title}** has been added to the queue`, 
+                    `**${track.title}** has been added to the queue`, 
                     `https://www.funckenobi42.space/images/AlbumCoverArt/${track.album.coverArt[0]?.filePath?.split('\\').pop() || ''}`, // Use the cover from the first track if available
-                    `Duration: ${(formatDuration((song.metadata as TrackMetadata).scoredTrack!.duration * 1000))} Position: ${guildQueue.tracks.size}`
+                    `Duration: ${(formatDuration(track.duration * 1000))} Position: ${guildQueue.tracks.size}`
                 )]
             });
         } catch (error) {
             commandLogger.error(`Error processing single track: ${(error as Error).message}`);
+            logError(error as Error, 'playCommand.handleSingleTrack');
             return interaction.followUp({ 
                 flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
