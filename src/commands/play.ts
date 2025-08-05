@@ -19,7 +19,6 @@ import { NetworkFileService } from '../services/networkFileService';
 import playTrack from '../helpers/playHelper';
 import ShuffleUtil from '../utils/shuffleUtil';
 import { MusicTrack } from 'velonaceps-music-shared/dist';
-import playTrackHelper from '../helpers/playHelper';
 
 export default class PlayCommand extends CommandInterface {
     public static readonly commandName = 'play';
@@ -796,17 +795,7 @@ export default class PlayCommand extends CommandInterface {
 
         if (!guildQueue) {
             commandLogger.debug(`Creating new queue for guild: ${interaction.guild.id}`);
-            guildQueue = player.nodes.create(interaction.guild, {leaveOnEnd: false, leaveOnEmpty: true, leaveOnStop: false, metadata: interaction, noEmitInsert: true});
-            if (client.cachedQueueStates && client.cachedQueueStates.length > 0) {
-                const cachedState = client.cachedQueueStates.find(q => q.guildId === interaction.guild!.id);
-                if (cachedState) {
-                    commandLogger.debug(`Restoring cached state for guild: ${interaction.guild.id}`);
-                    for (const track of cachedState.tracks) {
-                        playTrackHelper(track, guildQueue, interaction);
-                    }
-                    commandLogger.info(`Restored ${cachedState.tracks.length} tracks from cache for guild: ${interaction.guild.id}`);
-                }
-            }       
+            guildQueue = player.nodes.create(interaction.guild, {leaveOnEnd: false, leaveOnEmpty: true, leaveOnStop: false, metadata: interaction, noEmitInsert: true});   
         } else if (guildQueue.deleted) {
             guildQueue.revive();
         }
