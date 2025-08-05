@@ -63,7 +63,7 @@ interface StatusMessage {
 
 interface QueueState {
     guildId: string;
-    tracks: Track<TrackMetadata>[];
+    tracks: Track<unknown>[];
 }
 class BotApplication {
     public client: Client;
@@ -675,7 +675,7 @@ class BotApplication {
         const activeQueues = this.player.queues.cache.filter(queue => queue.tracks.size > 0);
         const queueStates: QueueState[] = activeQueues.map(queue => ({
             guildId: queue.guild.id,
-            tracks: queue.tracks.toArray() as Track<TrackMetadata>[]
+            tracks: queue.tracks.toArray() as Track<unknown>[]
         }));
 
         writeFileSync(join(process.env.CACHE_DIR!, 'activeQueues.json'), JSON.stringify(queueStates, null, 2), { encoding: 'utf-8' })
