@@ -34,9 +34,6 @@ export default async function playTrackHelper(result: SearchResult | Track, queu
                 duration: (result as SearchResult).tracks[0].duration || (result as Track).duration || '0:00',
             };
         }
-        if (!metadata) {
-            throw new Error('Track metadata is missing');
-        }
         const newMetadata: TrackMetadata = {
             interaction,
             startedPlaying: new Date(),
