@@ -25,6 +25,20 @@ export default class RestoreCommand extends CommandInterface {
             if (!voiceChannel) {
                 return interaction.followUp({ content: 'You need to be in a voice channel to use this command.', flags: ['Ephemeral'] });
             }
+            if (!queue.connection) {
+                if (voiceChannel.joinable === false) {
+                    throw new Error('I cannot join your voice channel. Please check my permissions.');
+                }
+
+                if (voiceChannel.full) {
+                    throw new Error('Your voice channel is full.');
+                }
+
+                await queue.connect(voiceChannel);
+                if (!queue.connection) {
+                    throw new Error('Failed to connect to the voice channel.');
+                }
+            }
         }
         let embed: EmbedBuilder
         if (client.cachedQueueStates && client.cachedQueueStates.length > 0) {
