@@ -25,7 +25,14 @@ export default async function playTrackHelper(result: SearchResult | Track, queu
             metadata = result.metadata as TrackMetadata;
         }
         else {
-            metadata = undefined;
+            metadata = {
+                interaction,
+                startedPlaying: new Date(),
+                scoredTrack: undefined,
+                duration_ms: (result as SearchResult).tracks[0].durationMS || 0 || (result as Track).durationMS,
+                live: false,
+                duration: (result as SearchResult).tracks[0].duration || (result as Track).duration || '0:00',
+            };
         }
         if (!metadata) {
             throw new Error('Track metadata is missing');
