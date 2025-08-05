@@ -2,6 +2,7 @@ import { SearchResult, Track, GuildQueue } from "discord-player/dist";
 import { ChatInputCommandInteraction } from "discord.js";
 import { ScoredTrack } from "../types/searchResultInterface";
 import TrackMetadata from "../types/trackMetadata";
+import { playerLogger } from "src/utils/loggerUtil";
 
     // To optimize, it's probably best to pass a list of tracks.
     /**
@@ -17,7 +18,7 @@ import TrackMetadata from "../types/trackMetadata";
      * @throws Error if track metadata is missing.
      */
 export default async function playTrackHelper(result: SearchResult | Track, queue: GuildQueue, interaction: ChatInputCommandInteraction, scoredTrack?: ScoredTrack ): Promise<void> {
-        let metadata: TrackMetadata | undefined;
+        let metadata: TrackMetadata | null;
         if (result instanceof SearchResult) {
             metadata = result.tracks[0].metadata as TrackMetadata
         }
@@ -25,18 +26,18 @@ export default async function playTrackHelper(result: SearchResult | Track, queu
             metadata = result.metadata as TrackMetadata;
         }
         else {
-            metadata = undefined;
+            metadata = null;
         }
         if (!metadata) {
-            throw new Error('Track metadata is missing');
+            playerLogger.error('Missing track metadata.');
         }
         const newMetadata: TrackMetadata = {
             interaction,
             startedPlaying: new Date(),
             scoredTrack: scoredTrack,
-            duration_ms: metadata.duration_ms | 0,
-            live: metadata.live || false,
-            duration: metadata.duration || '0:00',
+            duration_ms: metadata?.duration_ms ?? 0,
+            live: metadata?.live ?? false,
+            duration: metadata?.duration ?? '0:00',
         };
         if (result instanceof SearchResult) {
             result.tracks[0].setMetadata(newMetadata);
