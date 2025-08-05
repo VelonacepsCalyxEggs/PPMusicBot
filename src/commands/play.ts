@@ -19,6 +19,7 @@ import { NetworkFileService } from '../services/networkFileService';
 import playTrack from '../helpers/playHelper';
 import ShuffleUtil from '../utils/shuffleUtil';
 import { MusicTrack } from 'velonaceps-music-shared/dist';
+import playTrackHelper from '../helpers/playHelper';
 
 export default class PlayCommand extends CommandInterface {
     public static readonly commandName = 'play';
@@ -800,7 +801,10 @@ export default class PlayCommand extends CommandInterface {
                 const cachedState = client.cachedQueueStates.find(q => q.guildId === interaction.guild!.id);
                 if (cachedState) {
                     commandLogger.debug(`Restoring cached state for guild: ${interaction.guild.id}`);
-                    guildQueue.tracks.add(cachedState.tracks);
+                    for (const track of cachedState.tracks) {
+                        playTrackHelper(track, guildQueue, interaction);
+                    }
+                    commandLogger.info(`Restored ${cachedState.tracks.length} tracks from cache for guild: ${interaction.guild.id}`);
                 }
             }       
         } else if (guildQueue.deleted) {
