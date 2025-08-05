@@ -46,7 +46,8 @@ export default class RestoreCommand extends CommandInterface {
             if (cachedState) {
                 commandLogger.debug(`Restoring cached state for guild: ${interaction.guild.id}`);
                 for (const track of cachedState.tracks) {
-                    playTrackHelper(track, queue, interaction);
+                    const result = await player.search(track.url)
+                    playTrackHelper(result, queue, interaction);
                 }
                 commandLogger.info(`Restored ${cachedState.tracks.length} tracks from cache for guild: ${interaction.guild.id}`);
                 embed = new EmbedBuilder()
