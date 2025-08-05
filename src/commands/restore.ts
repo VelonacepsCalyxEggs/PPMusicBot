@@ -87,6 +87,6 @@ export default class RestoreCommand extends CommandInterface {
                 .setDescription(`No cached queue states found.`);
         }
         
-        return interaction.reply({ flags: 'SuppressNotifications', embeds: [embed] })
+        return interaction.followUp({ flags: 'SuppressNotifications', embeds: [embed] })
     }
 };
