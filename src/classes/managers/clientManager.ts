@@ -1,4 +1,13 @@
-import { ActivityType, ChatInputCommandInteraction, Client, ClientUser, Collection, GatewayIntentBits, REST, Routes, TextChannel, VoiceState } from "discord.js";
+import { ActivityType, 
+    ChatInputCommandInteraction, 
+    Client, 
+    ClientUser, 
+    Collection, 
+    GatewayIntentBits, 
+    REST, 
+    Routes, 
+    TextChannel, 
+    VoiceState } from "discord.js";
 import ErrorCommand from "../../commands/error";
 import LeaveCommand from "../../commands/leave";
 import LoopCommand from "../../commands/loop";

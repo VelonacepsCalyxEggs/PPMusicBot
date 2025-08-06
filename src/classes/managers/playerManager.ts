@@ -1,6 +1,6 @@
-import { DefaultExtractors } from "@discord-player/extractor/dist";
-import { YoutubeiExtractor } from "discord-player-youtubei/dist";
-import { Player, GuildQueue, Track } from "discord-player/dist";
+import { DefaultExtractors } from "@discord-player/extractor";
+import { YoutubeiExtractor } from "discord-player-youtubei";
+import { Player, GuildQueue, Track } from "discord-player";
 import { Client, Interaction, TextChannel } from "discord.js";
 import TrackMetadata from "../../types/trackMetadata";
 import { playerLogger, logError, discordLogger, logPlayerEvent } from "../../utils/loggerUtil";
