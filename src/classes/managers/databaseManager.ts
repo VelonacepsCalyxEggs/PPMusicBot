@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { databaseLogger } from "src/utils/loggerUtil";
+import { databaseLogger } from "../../utils/loggerUtil";
 
 export class DatabaseManager {
     public pool: Pool;
