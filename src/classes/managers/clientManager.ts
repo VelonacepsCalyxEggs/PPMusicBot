@@ -73,6 +73,9 @@ export class ClientManager {
 
     public async init(): Promise<void> {
         return new Promise<void>((resolve, reject) => {
+            try 
+            {
+                
             discordLogger.info('Initializing Discord client...');
             this.client = new Client({
                 intents: [
@@ -99,13 +102,19 @@ export class ClientManager {
                         this.updateBotStatusMessage();
                     });
                     discordLogger.info('Client is ready!');
-                    resolve();
                 }
                 catch (error) {
-                    logError(error as Error, 'client_initialization', { message: 'Failed to initialize client' });
-                    reject(error);
+                    logError(error as Error, 'ClientManager_init_ready', { message: 'Failed to initialize client' });
+                    throw new Error('Failed to initialize client: ' + (error as Error).message);
                 }
             });
+            resolve();
+            }
+            catch (error) {
+                logError(error as Error, 'ClientManager_init', { message: 'Failed to initialize ClientManager' });
+                discordLogger.error('Failed to initialize ClientManager:', error);
+                reject(error);
+            }
         });
     }
 

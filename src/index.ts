@@ -11,6 +11,7 @@ import { DIContainer } from './classes/diContainer';
 import { ClientManager } from './classes/managers/clientManager';
 import { DatabaseManager } from './classes/managers/databaseManager';
 import { PlayerManager } from './classes/managers/playerManager';
+import { Player } from 'discord-player/dist';
 
 
 class BotApplication {
@@ -99,8 +100,11 @@ class BotApplication {
     private gracefulShutdown() {
         discordLogger.info('Initiating graceful shutdown...');
         // Save active queue states before shutdown, so we can restore them later
+        if (this.clientManager instanceof ClientManager &&
+             this.playerManager instanceof PlayerManager &&
+              this.playerManager.player instanceof Player) {
         this.clientManager.saveActiveQueueStates(this.playerManager.player);
-
+        }
         closeLogger();
         
         if (this.clientManager.client) {
