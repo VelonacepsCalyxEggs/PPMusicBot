@@ -34,7 +34,7 @@ import { AtGrokIsThisTrueService } from "../../services/atGrokIsThisTrueService"
 import { Player, Track } from "discord-player/dist";
 import { DIContainer } from "../diContainer";
 import cron from 'node-cron';
-import { Pool } from "pg";
+import { DatabasePoolWrapper } from "./databaseManager";
 
 // Extend the Client interface to include a 'commands' property
 declare module 'discord.js' {
@@ -291,7 +291,7 @@ export class ClientManager {
                     
                     // Fetch a random quote from the database
                     try {
-                        const res = await this.diContainer?.get<Pool>("DatabasePool").query('SELECT quote_text FROM quotes ORDER BY RANDOM() LIMIT 1');
+                        const res = await this.diContainer?.get<DatabasePoolWrapper>("DatabasePool").pool.query('SELECT quote_text FROM quotes ORDER BY RANDOM() LIMIT 1');
                         if (!res || res.rows.length === 0) {
                             throw new Error('No quotes found in the database.');
                         }
@@ -388,7 +388,7 @@ export class ClientManager {
                 const values = [userId, oldChannel, newChannel, timestamp, serverName];
         
                 try {
-                    await this.diContainer?.get<Pool>("DatabasePool").query(query, values);
+                    await this.diContainer?.get<DatabasePoolWrapper>("DatabasePool").pool.query(query, values);
                     discordLogger.info('Voice state update recorded', {
                         userId,
                         oldChannel,

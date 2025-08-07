@@ -1,6 +1,12 @@
 import { Pool } from "pg";
 import { databaseLogger } from "../../utils/loggerUtil";
+export class DatabasePoolWrapper {
+    public pool: Pool;
 
+    constructor(pool: Pool) {
+        this.pool = pool;
+    }
+}
 export class DatabaseManager {
     public pool: Pool;
 
