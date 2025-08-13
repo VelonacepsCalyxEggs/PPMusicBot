@@ -39,10 +39,8 @@ export class DIContainer {
         // Resolve dependencies
         const dependencies = service.dependencies?.map(dep => this.get(dep)) || [];
         
-        // Create instance
         const instance = new service.constructor(...dependencies);
 
-        // Cache if singleton
         if (service.singleton) {
             this.instances.set(name, instance);
         }
@@ -51,7 +49,6 @@ export class DIContainer {
     }
 
     async initialize(): Promise<void> {
-        // Initialize all services that have an init method
         for (const [name] of this.services) {
             const instance = this.get(name);
             if (instance && typeof instance === 'object' && 'init' in instance && typeof instance.init === 'function') {

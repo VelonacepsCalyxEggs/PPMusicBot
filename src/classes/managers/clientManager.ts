@@ -1,7 +1,6 @@
 import { ActivityType, 
     ChatInputCommandInteraction, 
     Client, 
-    ClientUser, 
     Collection, 
     GatewayIntentBits, 
     REST, 
@@ -401,6 +400,10 @@ export class ClientManager {
                 }
             }
         });
+
+        this.client.on('debug', (message: string) => {
+            discordLogger.debug('Discord Debug:', message);
+        });
     }
 
     private updateBotStatusMessage(forced=false) {
@@ -413,7 +416,11 @@ export class ClientManager {
         if (this.currentStatus == parsedData.status && !forced) return;
         discordLogger.info('Updating bot status message...');
         this.currentStatus = parsedData.status;
-        (this.client.user as ClientUser).setPresence({
+        if (!this.client.user) {
+            discordLogger.error('Client user is not set, cannot update status.');
+            return;
+        }
+        this.client.user.setPresence({
             activities: [{
                 name: this.currentStatus,
                 type: ActivityType.Custom,

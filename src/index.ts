@@ -157,10 +157,12 @@ startBot();
 // - This might be impossible without modifying the discord-player library?
 // - Make services use the proper dependency injection pattern. - Done
 // - Make atGrok service a separate command instead of a message listener. 
+// - Probably not possible, since you can't 'reply' with a command.
 //   not sure if this is a good idea since it will lose the premise... but... oh well...\
 //   still better than a message listener.
 // - Make this use prisma instead of pg directly.
 // - Make NetworkFileService a proper extractor
 // - Make YTDLFallback have more flexibility.
+// - Make a proper service/class to handle Icecast streams.
 // - Backup active queues before shutdown. - Done but kinda scuffed? Metadata storage method needs to be reworked.
 // - Add Spotify support.
