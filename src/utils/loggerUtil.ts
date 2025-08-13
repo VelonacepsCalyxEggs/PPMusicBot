@@ -47,9 +47,21 @@ const consoleFormat = winston.format.combine(
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     winston.format.colorize({ all: true }),
     winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
-        const metaStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : '';
+        // Only stringify meta if it's a non-empty object
+        let metaStr = '';
+        if (meta && Object.keys(meta).length) {
+            // Remove internal winston symbols if present
+            const { [Symbol.for('splat')]: splat, ...rest } = meta;
+            if (splat && Array.isArray(splat)) {
+                metaStr = splat.map(item => typeof item === 'object' ? JSON.stringify(item, null, 2) : String(item)).join(' ');
+            }
+            if (Object.keys(rest).length) {
+                metaStr += ' ' + JSON.stringify(rest, null, 2);
+            }
+            metaStr = metaStr.trim();
+        }
         const serviceStr = service ? `[${service}]` : '';
-        return `${timestamp} ${level} ${serviceStr}: ${message} ${metaStr}`;
+        return `${timestamp} ${level} ${serviceStr}: ${message}${metaStr ? ' ' + metaStr : ''}`;
     })
 );
 
@@ -163,7 +175,7 @@ export const createContextLogger = (context: string) => {
     return {
         error: (message: string, meta?: any) => {
             try {
-                if (!isShuttingDown) logger.error(message, { ...meta });
+                if (!isShuttingDown) logger.error(message, meta && typeof meta === 'object' ? meta : { meta });
             } catch (err) {
                 console.error('Logging error:', err);
             }
