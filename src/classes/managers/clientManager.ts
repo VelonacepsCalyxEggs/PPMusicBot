@@ -402,7 +402,7 @@ export class ClientManager {
         });
 
         this.client.on('debug', (message: string) => {
-            discordLogger.debug('Discord Debug:', message);
+            discordLogger.debug(message);
         });
     }
 
