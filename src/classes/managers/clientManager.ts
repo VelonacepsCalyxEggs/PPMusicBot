@@ -100,6 +100,11 @@ export class ClientManager {
                         discordLogger.debug('[Cron] Running status update check...');
                         this.updateBotStatusMessage();
                     });
+                    // In case connection is lost
+                    cron.schedule('*/60 * * * *', () => {
+                        discordLogger.debug('[Cron] Running forced status update...');
+                        this.updateBotStatusMessage(true);
+                    });
                     discordLogger.info('Client is ready!');
                 }
                 catch (error) {
