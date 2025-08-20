@@ -1,3 +1,4 @@
+import { existsSync } from "fs";
 import { exit } from "process";
 import { workerData, parentPort } from "worker_threads";
 import YTDlpWrap from 'yt-dlp-wrap';
@@ -64,16 +65,18 @@ async function main() {
         const data = workerData as VideoDownloadWorkerData;
         const videoUrl = data.videoUrl;
         const filePath = data.filePath;
-        
+        if (!parentPort) throw new Error("Parent port is not available in this worker thread.");
+        if (existsSync(filePath)) {
+            parentPort.postMessage(filePath);
+            exit(0);
+        }
         console.log(`Starting download of: ${videoUrl}`);
         console.log(`Output path: ${filePath}`);
         
         await downloadVideo(videoUrl, filePath);
         
         // Send the file path back to the main thread
-        if (parentPort) {
-            parentPort.postMessage(filePath);
-        }
+        parentPort.postMessage(filePath);
         
         exit(0); // Exit the worker thread gracefully
     } catch (error) {
