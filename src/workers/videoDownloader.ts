@@ -10,7 +10,7 @@ interface VideoDownloadWorkerData {
 async function downloadVideo(url: string, filePath: string) {
     return new Promise<void>((resolve, reject) => {
         try {
-            const ytDlpWrap = new YTDlpWrap();
+            const ytDlpWrap = new YTDlpWrap(process.env.YTDLP_PATH || 'yt-dlp');
             
             ytDlpWrap
                 .exec([
