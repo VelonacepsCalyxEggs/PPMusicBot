@@ -16,11 +16,17 @@ async function downloadVideo(url: string, filePath: string) {
                 .exec([
                     url,
                     '-f',
-                    'bestaudio[ext=m4a]/bestaudio/best',
+                    'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best[height<=720]',
                     '-o',
                     filePath,
                     '--extract-audio',
-                    '--audio-format', 'mp3'
+                    '--audio-format', 'mp3',
+                    '--no-playlist',
+                    '--ignore-errors',
+                    '--no-warnings',
+                    '--embed-metadata',
+                    '--retries', '3',
+                    '--socket-timeout', '30'
                 ])
                 .on('progress', (progress) =>
                     console.log(
@@ -30,23 +36,25 @@ async function downloadVideo(url: string, filePath: string) {
                         `ETA: ${progress.eta}`
                     )
                 )
-                .on('ytDlpEvent', (eventType, eventData) =>
-                    console.log(eventType, eventData)
-                )
+                .on('ytDlpEvent', (eventType, eventData) => {
+                    console.log(`yt-dlp event: ${eventType}`, eventData);
+                })
                 .on('error', (error) => {
                     console.error('yt-dlp error:', error);
-                    reject(error);
+                    reject(new Error(`yt-dlp process error: ${error.message}`));
                 })
                 .on('close', (code) => {
+                    console.log(`yt-dlp process exited with code: ${code}`);
                     if (code === 0) {
                         console.log('Download completed successfully');
                         resolve();
                     } else {
-                        reject(new Error(`yt-dlp exited with code ${code}`));
+                        reject(new Error(`yt-dlp failed with exit code ${code}. Check if the video is available and not geo-blocked.`));
                     }
                 });
         } catch (error) {
-            reject(error);
+            console.error('Failed to initialize yt-dlp:', error);
+            reject(new Error(`Initialization error: ${error.message}`));
         }
     });
 }
@@ -57,18 +65,24 @@ async function main() {
         const videoUrl = data.videoUrl;
         const filePath = data.filePath;
         
+        console.log(`Starting download of: ${videoUrl}`);
+        console.log(`Output path: ${filePath}`);
+        
         await downloadVideo(videoUrl, filePath);
         
         // Send the file path back to the main thread
         if (parentPort) {
-            parentPort.postMessage(filePath);
+            parentPort.postMessage({ success: true, filePath });
         }
         
         exit(0); // Exit the worker thread gracefully
     } catch (error) {
         console.error('Worker error:', error);
         if (parentPort) {
-            parentPort.postMessage({ error: error.message });
+            parentPort.postMessage({ 
+                success: false, 
+                error: error.message || 'Unknown error occurred' 
+            });
         }
         exit(1);
     }
