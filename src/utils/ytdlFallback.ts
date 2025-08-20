@@ -7,7 +7,7 @@ import { GuildQueue, Player, QueryType, SearchResult, Track } from 'discord-play
 import { User } from 'discord.js';
 import { NoTrackFoundError } from '../types/ytdlServiceTypes';
 import { playerLogger, ytdlFallbackLogger } from '../utils/loggerUtil';
-import { readdirSync } from 'fs';
+import { existsSync, readdirSync, statSync } from 'fs';
 import YouTube from 'youtube-sr/dist/mod';
 import { Worker } from 'worker_threads';
 
@@ -166,6 +166,7 @@ export class YtdlFallback {
         }
         const cleanedUrl = await this.cleanVideoUrl(url);
         const videoFilePath = await this.downloadVideo(cleanedUrl, videoId);
+        this.checkFileValidity(videoFilePath);
         const videoMetadata = await this.extractMetadata(cleanedUrl);
         // So... If I want to make it a separate worker process, I need save the buffer first, and then save the metadata...
         // Which will require some refactoring.
@@ -423,5 +424,12 @@ export class YtdlFallback {
 
     private async delay(ms: number) {
         return new Promise( resolve => setTimeout(resolve, ms) );
+    }
+
+    private static checkFileValidity(filePath: string): void {
+        if (!existsSync(filePath) || statSync(filePath).size === 0) {
+            playerLogger.error(`File ${filePath} is invalid or empty.`);
+            throw new YoutubeDownloadFailedError(`File ${filePath} is invalid or empty.`);
+        }
     }
 }
