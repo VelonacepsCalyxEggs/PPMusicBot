@@ -27,6 +27,7 @@
     "velonaceps-music-shared": "^1.0.1",
     "winston": "^3.17.0",
     "youtube-sr": "^4.3.12",
+    "yt-dlp-wrap": "^2.3.12",
     "ytpl": "^2.3.0"
   },
   "overrides": {

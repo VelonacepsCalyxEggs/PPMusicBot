@@ -1,8 +1,6 @@
-import ytdl from "@distube/ytdl-core";
-import { createWriteStream } from "fs";
 import { exit } from "process";
-import Stream from "stream";
 import { workerData, parentPort } from "worker_threads";
+import YTDlpWrap from 'yt-dlp-wrap';
 
 interface VideoDownloadWorkerData {
     videoUrl: string;
@@ -11,41 +9,54 @@ interface VideoDownloadWorkerData {
 
 async function downloadVideo(url: string, filePath: string) {
     return new Promise<void>((resolve, reject) => {
-        const videoStream: Stream.Readable = ytdl(url, {
-            quality: 'highest',
-            filter: 'audioonly',
-            highWaterMark: 1 << 25, // 32MB buffer
-            requestOptions: {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                }
-            }
-        });
-        
-        const writeStream = createWriteStream(filePath);
-        
-        // Pipe the video stream directly to the file
-        videoStream.pipe(writeStream);
-        
-        writeStream.on('finish', () => {
-            resolve();
-        });
-        
-        writeStream.on('error', (error) => {
-            reject(new Error(`Error saving video to file: ${error.message}`));
-        });
-        
-        videoStream.on('error', (error) => {
-            writeStream.destroy();
-            reject(new Error(`Error downloading video: ${error.message}`));
-        });
+        try {
+            const ytDlpWrap = new YTDlpWrap();
+            
+            ytDlpWrap
+                .exec([
+                    url,
+                    '-f',
+                    'bestaudio[ext=m4a]/bestaudio/best',
+                    '-o',
+                    filePath,
+                    '--extract-audio',
+                    '--audio-format', 'mp3'
+                ])
+                .on('progress', (progress) =>
+                    console.log(
+                        `Progress: ${progress.percent}%`,
+                        `Size: ${progress.totalSize}`,
+                        `Speed: ${progress.currentSpeed}`,
+                        `ETA: ${progress.eta}`
+                    )
+                )
+                .on('ytDlpEvent', (eventType, eventData) =>
+                    console.log(eventType, eventData)
+                )
+                .on('error', (error) => {
+                    console.error('yt-dlp error:', error);
+                    reject(error);
+                })
+                .on('close', (code) => {
+                    if (code === 0) {
+                        console.log('Download completed successfully');
+                        resolve();
+                    } else {
+                        reject(new Error(`yt-dlp exited with code ${code}`));
+                    }
+                });
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
 async function main() {
+    try {
         const data = workerData as VideoDownloadWorkerData;
         const videoUrl = data.videoUrl;
         const filePath = data.filePath;
+        
         await downloadVideo(videoUrl, filePath);
         
         // Send the file path back to the main thread
@@ -54,6 +65,13 @@ async function main() {
         }
         
         exit(0); // Exit the worker thread gracefully
+    } catch (error) {
+        console.error('Worker error:', error);
+        if (parentPort) {
+            parentPort.postMessage({ error: error.message });
+        }
+        exit(1);
+    }
 }
 
-main()
+main();
