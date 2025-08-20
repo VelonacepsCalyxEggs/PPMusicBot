@@ -72,18 +72,12 @@ async function main() {
         
         // Send the file path back to the main thread
         if (parentPort) {
-            parentPort.postMessage({ success: true, filePath });
+            parentPort.postMessage(filePath);
         }
         
         exit(0); // Exit the worker thread gracefully
     } catch (error) {
         console.error('Worker error:', error);
-        if (parentPort) {
-            parentPort.postMessage({ 
-                success: false, 
-                error: error.message || 'Unknown error occurred' 
-            });
-        }
         exit(1);
     }
 }
