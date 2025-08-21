@@ -40,8 +40,7 @@ class BotApplication {
  
     private setupGlobalErrorHandlers() {
         // Handle unhandled promise rejections
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
-        process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+        process.on('unhandledRejection', (reason: unknown) => {
             console.error('Unhandled Rejection:', reason);
             
             // Try to log but don't crash if logging fails
