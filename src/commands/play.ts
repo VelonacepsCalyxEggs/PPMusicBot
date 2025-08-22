@@ -238,9 +238,9 @@ export default class PlayCommand extends CommandInterface {
         
         if ((input.includes('http') || input.includes('https')) &&
             !(input.includes('watch?v=') || input.includes('youtu.be') || input.includes('youtube.com'))) {
-            if (input.includes('stream') || input.includes(':')) {
-                return 'stream';
-            }
+            //if (input.includes('stream') || input.includes(':')) {
+            //    return 'stream';
+            //}
             return 'external_url';
         }
         

@@ -90,3 +90,7 @@ export class NetworkFileService implements ServiceDefinition {
         });
     }
 }
+
+// All of this can be a static Class like youtube download service.
+// Unless making a custom extractor is better? Like making a track object that has all data filled except the stream,
+// so there is no excessive traffic/data transfer.
