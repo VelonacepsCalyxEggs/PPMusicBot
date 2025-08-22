@@ -53,10 +53,10 @@ const consoleFormat = winston.format.combine(
             // Remove internal winston symbols if present
             const { [Symbol.for('splat')]: splat, ...rest } = meta;
             if (splat && Array.isArray(splat)) {
-                metaStr = splat.map(item => typeof item === 'object' ? JSON.stringify(item, null, 2) : String(item)).join(' ');
+                metaStr = splat.map(item => typeof item === 'object' ? stringifyNoBigInt(item) : String(item)).join(' ');
             }
             if (Object.keys(rest).length) {
-                metaStr += ' ' + JSON.stringify(rest, null, 2);
+                metaStr += ' ' + stringifyNoBigInt(rest);
             }
             metaStr = metaStr.trim();
         }
@@ -307,5 +307,12 @@ export const createPerformanceLogger = (operation: string) => {
         }
     };
 };
+
+export const bigintReplacer = (_key: string, value: unknown) =>
+typeof value === 'bigint' ? value.toString() : value;
+// Helper to strip / convert BigInts deeply (optional if you always pass replacer)
+function stringifyNoBigInt(obj: any) {
+return JSON.stringify(obj, bigintReplacer, 2);
+}
 
 export default logger;
