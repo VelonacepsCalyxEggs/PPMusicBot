@@ -14,10 +14,9 @@ import { commandLogger, logError, playerLogger } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
 import { YtdlFallback } from '../utils/ytdlFallback';
 import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } from '../types/ytdlServiceTypes';
-import { NetworkFileService } from '../services/networkFileService';
 import playTrack from '../helpers/playHelper';
 import ShuffleUtil from '../utils/shuffleUtil';
-import { MusicTrack } from 'velonaceps-music-shared/dist';
+import { KenobiAPIExtractor } from 'src/extractors/kenobiAPIExtractor';
 
 export default class PlayCommand extends CommandInterface {
     public static readonly commandName = 'play';
@@ -334,25 +333,6 @@ export default class PlayCommand extends CommandInterface {
         if (!process.env.API_URL) {
             return interaction.followUp('API URL is not set. Please contact the bot owner.');
         }
-        const networkFileService = client.diContainer.get<NetworkFileService>('NetworkFileService');
-        // Test connection if using webserver
-        if (process.env.USE_WEBSERVER === 'true') {
-            try {
-                const isConnected = await networkFileService.testConnection();
-                if (!isConnected) {
-                    return interaction.followUp({
-                        content: 'Music server is not accessible. Please try again later.',
-                        flags: ['Ephemeral']
-                    });
-                }
-            } catch (error) {
-                commandLogger.error(`Error testing network connection: ${error.message}`);
-                return interaction.followUp({
-                    content: 'Error connecting to music server. Please try again later.',
-                    flags: ['Ephemeral']
-                });
-            }
-        }
         try {
             commandLogger.http(`Searching database for query: ${interaction.options.get('dbquery')?.value}`);
             const response = await axios.request<SearchResultsDto>({
@@ -417,10 +397,10 @@ export default class PlayCommand extends CommandInterface {
             // Otherwise, proceed with the normal flow - play track or album based on which has higher score
             if (response.data.albums.length === 0 || highestTrackScore > highestAlbumScore) {
                 // Play single track
-                return await this.handleSingleTrack(networkFileService, player, interaction, guildQueue, response.data.tracks[0], response.data.tracks);
+                return await this.handleSingleTrack(player, interaction, guildQueue, response.data.tracks[0], response.data.tracks);
             } else if (response.data.albums.length > 0) {
                 // Play album
-                return await this.handleAlbum(networkFileService, player, interaction, guildQueue, response.data.albums[0], response.data.albums);
+                return await this.handleAlbum(player, interaction, guildQueue, response.data.albums[0], response.data.albums);
             }
             
         } catch (error) {
@@ -438,7 +418,6 @@ export default class PlayCommand extends CommandInterface {
 
     // Helper method for handling single track
     private async handleSingleTrack(
-        networkFileService: NetworkFileService,
         player: Player,
         interaction: ChatInputCommandInteraction,
         guildQueue: GuildQueue,
@@ -449,12 +428,9 @@ export default class PlayCommand extends CommandInterface {
             commandLogger.debug(`Found track: ${track.title}`);
             
             // Use NetworkFileService to get the appropriate file URL/path
-            const result = await networkFileService.searchTrack(
-                player,
-                track.MusicFile[0].id, // File ID from database
-                track.MusicFile[0].filePath, // Local path as fallback
-                interaction.user
-            );
+            const result = await player.search(`track:${track.MusicFile[0].id}`, {
+                searchEngine: `ext:${KenobiAPIExtractor.identifier}`,
+            });
 
             if (result.tracks.length === 0) {
                 // Show suggestions if there are other tracks
@@ -484,17 +460,14 @@ export default class PlayCommand extends CommandInterface {
                     )]
                 });
             }
-            result.tracks[0].title = track.title; // Ensure title is set correctly
-            result.tracks[0].author = track.artist?.name || 'Unknown Artist'; // Ensure author is set correctly
-            result.tracks[0].duration = (track.duration * 1000).toString(); // Convert seconds to milliseconds
             // If we get here, we have a valid track to play
-            await playTrack(result, guildQueue, interaction, track);
+            await playTrack(result, guildQueue, interaction);
             return interaction.followUp({ 
                 flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
                     `**${track.title}** has been added to the queue`, 
                     `https://www.funckenobi42.space/images/AlbumCoverArt/${track.album.coverArt[0]?.filePath?.split('\\').pop() || ''}`, // Use the cover from the first track if available
-                    `Duration: ${(formatDuration(track.duration * 1000))} Position: ${guildQueue.tracks.size}`
+                    `Duration: ${(formatDuration(parseInt(result.tracks[0].duration)))} Position: ${guildQueue.tracks.size}`
                 )]
             });
         } catch (error) {
@@ -513,7 +486,6 @@ export default class PlayCommand extends CommandInterface {
 
     // Helper method for handling album
     private async handleAlbum(
-        networkFileService: NetworkFileService,
         player: Player,
         interaction: ChatInputCommandInteraction,
         guildQueue: GuildQueue,
@@ -540,78 +512,34 @@ export default class PlayCommand extends CommandInterface {
                 });
             }
             
-            const albumResponse = await axios.request<{ data: MusicTrack[] }>({
-                method: 'GET',
-                url: `${process.env.API_URL}/music`,
-                params: { albumId: album.id, sortBy:"trackNumber", limit: 512, sortOrder: "asc" }
+            const result = await player.search(`album:${album.id}`, {
+                searchEngine: `ext:${KenobiAPIExtractor.identifier}`,
             });
-            
-            const foundAlbum = albumResponse.data.data;
-            if (!foundAlbum || foundAlbum.length === 0) {
-                commandLogger.debug('No tracks found in the album');
+
+            if (result.tracks.length === 0) {
                 return interaction.followUp({ 
                     flags: ['SuppressNotifications'],
                     embeds: [createEmbedUtil(
-                        'No tracks found in the album.',
+                        'Album found in database but no tracks are accessible.',
                         `https://www.funckenobi42.space/images/`, // Default thumbnail
                         'Please try a different query.'
                     )]
                 });
             }
 
-            // Sort tracks by disc number before playing
-            const sortedAlbumTracks = this.sortAlbumTracks(foundAlbum);
 
             if (interaction.options.getBoolean('shuffle', false)) {
                 commandLogger.debug('Shuffling album tracks');
-                ShuffleUtil.fisherYatesShuffle(sortedAlbumTracks);
-            }
-
-            // Process each track in the album using NetworkFileService
-            let successfulTracks = 0;
-            for (const track of sortedAlbumTracks) {
-                try {
-                    const result = await networkFileService.searchTrack(
-                        player,
-                        track.MusicFile[0].id, // File ID from database
-                        track.MusicFile[0].filePath, // Local path as fallback
-                        interaction.user
-                    );
-                    
-                    if (result.tracks.length === 0) {
-                        commandLogger.debug(`No results found for track: ${track.title}`);
-                        continue; // Skip this track and continue with the album
-                    }
-                    
-                    result.tracks[0].title = track.title // Ensure title is set correctly
-                    result.tracks[0].author = track.artist.name
-                    result.tracks[0].duration = (track.duration * 1000).toString(); // Convert seconds to milliseconds
-                    // If we get here, we have a valid track to play
-                    await playTrack(result, guildQueue, interaction, track as ScoredTrack);
-                    successfulTracks++;
-                } catch (error) {
-                    commandLogger.error(`Error processing track ${track.title}: ${(error as Error).message}`);
-                    continue; // Skip this track and continue with the album
-                }
+                ShuffleUtil.fisherYatesShuffle(result.tracks);
             }
             
-            if (successfulTracks === 0) {
-                return interaction.followUp({ 
-                    flags: ['SuppressNotifications'],
-                    embeds: [createEmbedUtil(
-                        'No tracks from the album could be loaded.',
-                        `https://www.funckenobi42.space/images/`, // Default thumbnail
-                        'The files may not be accessible on the server.'
-                    )]
-                });
-            }
-            
+            playTrack(result, guildQueue, interaction);
             return interaction.followUp({ 
                 flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
                     `**${album.name}** has been added to the queue`, 
                     `https://www.funckenobi42.space/images/AlbumCoverArt/${album.coverArt[0]?.filePath?.split('\\').pop() || ''}`, // Use the cover from the album
-                    `Tracks: ${successfulTracks}/${foundAlbum.length} loaded | Starting from position: ${(guildQueue.tracks.size - successfulTracks) + 1}`
+                    `Tracks: ${result.tracks.length} | Starting from position: ${(guildQueue.tracks.size - result.tracks.length) + 1}`
                 )]
             });
         } catch (error) {
@@ -625,57 +553,6 @@ export default class PlayCommand extends CommandInterface {
                 )]
             });
         }
-    }
-
-    // Helper method for sorting album tracks
-    private sortAlbumTracks(foundAlbum: MusicTrack[]): MusicTrack[] {
-        // Skip sorting if there's no data
-        if (!foundAlbum || foundAlbum.length === 0) return foundAlbum;
-        
-        // Group tracks by disc number
-        const discGroups = new Map<string | number | undefined, MusicTrack[]>();
-        
-        // Create groups based on disc number
-        for (const track of foundAlbum) {
-            let discNumber = track.MusicMetadata?.discNumber;
-            if (discNumber === null) discNumber = undefined;
-            if (!discGroups.has(discNumber)) {
-                discGroups.set(discNumber, []);
-            }
-            discGroups.get(discNumber)!.push(track);
-        }
-        
-        // Sort disc groups: numbers first (in numerical order), then strings (alphabetically)
-        const sortedGroups = Array.from(discGroups.entries()).sort((a, b) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const [discA, _] = a;
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const [discB, __] = b;
-            
-            // Handle undefined disc numbers
-            if (discA === undefined) return -1;
-            if (discB === undefined) return 1;
-            
-            // Check if both values can be treated as numbers
-            const numA = typeof discA === 'number' ? discA : Number(discA);
-            const numB = typeof discB === 'number' ? discB : Number(discB);
-            const aIsNumber = !isNaN(numA);
-            const bIsNumber = !isNaN(numB);
-            
-            // Numbers before strings
-            if (aIsNumber && !bIsNumber) return -1;
-            if (!aIsNumber && bIsNumber) return 1;
-            
-            // Both numbers - sort numerically
-            if (aIsNumber && bIsNumber) return numA - numB;
-            
-            // Both strings - sort alphabetically
-            return String(discA).localeCompare(String(discB));
-        });
-        
-        // Flatten back into a single array
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        return sortedGroups.flatMap(([_, tracks]) => tracks);
     }
     
     private async getfileMD5(filePath: string): Promise<string> {

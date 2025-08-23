@@ -4,6 +4,7 @@ import { Player, GuildQueue, Track } from "discord-player";
 import { Client, Interaction, TextChannel } from "discord.js";
 import TrackMetadata from "../../types/trackMetadata";
 import { playerLogger, logError, discordLogger, logPlayerEvent } from "../../utils/loggerUtil";
+import { KenobiAPIExtractor } from "src/extractors/kenobiAPIExtractor";
 
 export class PlayerManager {
     public player: Player;
@@ -20,7 +21,7 @@ export class PlayerManager {
                     skipFFmpeg: false,
                 });
                 this.player.extractors.loadMulti(DefaultExtractors);
-                
+                this.player.extractors.register(KenobiAPIExtractor, { baller: true });
                 // Initialize YouTube extractor with additional error handling
                 try {
                     this.player.extractors.register(YoutubeiExtractor, {

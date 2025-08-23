@@ -6,7 +6,6 @@ import {
     closeLogger,
 } from './utils/loggerUtil';
 import { AtGrokIsThisTrueService } from './services/atGrokIsThisTrueService';
-import { NetworkFileService } from './services/networkFileService';
 import { DIContainer } from './classes/diContainer';
 import { ClientManager } from './classes/managers/clientManager';
 import { DatabaseManager } from './classes/managers/databaseManager';
@@ -32,7 +31,6 @@ class BotApplication {
         const DatabasePoolWrapper = this.databaseManager.getPoolWrapper();
         this.diContainer.register('DatabasePool', DatabasePoolWrapper, [], true);
         this.diContainer.register('AtGrokIsThisTrueService', AtGrokIsThisTrueService, [], true);
-        this.diContainer.register('NetworkFileService', NetworkFileService, [], true);
 
         await this.diContainer.initialize();
         discordLogger.info('Dependency injection setup complete.');
