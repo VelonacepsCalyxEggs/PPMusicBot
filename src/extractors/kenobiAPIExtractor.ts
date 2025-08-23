@@ -58,7 +58,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
     }
     private async validateQuery(query: string): Promise<boolean> {
         if (typeof query !== "string") return false;
-        if (query.length === 42 && query.includes('-') || query.includes(this.baseUrl + 'createMusicStream/')) {
+        if (query.length === 42 && query.includes('-') || query.includes(this.baseUrl + '/file/createMusicStream/')) {
             return true;
         }
         return false;
