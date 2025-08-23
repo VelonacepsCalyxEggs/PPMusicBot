@@ -4,7 +4,7 @@ import { Player, GuildQueue, Track } from "discord-player";
 import { Client, Interaction, TextChannel } from "discord.js";
 import TrackMetadata from "../../types/trackMetadata";
 import { playerLogger, logError, discordLogger, logPlayerEvent } from "../../utils/loggerUtil";
-import { KenobiAPIExtractor } from "src/extractors/kenobiAPIExtractor";
+import { KenobiAPIExtractor } from "../../extractors/kenobiAPIExtractor";
 
 export class PlayerManager {
     public player: Player;
