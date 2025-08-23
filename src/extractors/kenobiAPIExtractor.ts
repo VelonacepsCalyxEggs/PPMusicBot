@@ -41,7 +41,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
             throw new Error('KenobiAPIExtractor: Unable to connect to the file server.');
         }
         // to register protocol, use
-        this.protocols = ['album:', 'track:'];
+        this.protocols = ['album', 'track'];
     }
     
     // discord-player calls this method when your extractor is removed from its registry
@@ -77,7 +77,6 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
             else {
                 kenobiAPIExtractorLogger.debug(`Direct track URL detected, how sophisticated: ${query}`);
                 url = `${this.baseUrl}/music?id=${query.split("/").pop()}`
-                kenobiAPIExtractorLogger.debug(`Fetching track data from Kenobi API for URL: ${url}`);
                 const response = await axios.request<{ data: MusicTrack[] }>({
                         method: 'GET',
                         url
@@ -105,6 +104,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
             );
             return this.createResponse(null, tracks);
             }
+            kenobiAPIExtractorLogger.debug(`Fetching track data from Kenobi API for URL: ${url}`);
             const response = await axios.request<{ data: MusicTrack[] }>({
                     method: 'GET',
                     url
