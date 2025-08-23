@@ -101,7 +101,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                 new Track<KenobiAPITrackMetadata>(this.context.player, {
                     title: track.title,
                     author: track.artist.name,
-                    url:  this.baseUrl + '/file/createMusicStream/' + track.MusicFile[0].id,
+                    url:  'track:' + this.baseUrl + '/file/createMusicStream/' + track.MusicFile[0].id,
                     thumbnail: (track.MusicMetadata?.coverArt?.filePath || response.data[0].album.coverArt[0]?.filePath)?.replace("C:\\\\xampp/htdocs\\\\", "https://www.funckenobi42.space/") || '',
                     duration: String(track.duration * 1000),
                     requestedBy: context.requestedBy,
