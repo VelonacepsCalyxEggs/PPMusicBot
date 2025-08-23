@@ -77,6 +77,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
             else {
                 kenobiAPIExtractorLogger.debug(`Direct track URL detected, how sophisticated: ${query}`);
                 url = `${this.baseUrl}/music?id=${query.split("/").pop()}`
+                kenobiAPIExtractorLogger.debug(`Fetching track data from Kenobi API for URL: ${url}`);
                 const response = await axios.request<{ data: MusicTrack[] }>({
                         method: 'GET',
                         url
