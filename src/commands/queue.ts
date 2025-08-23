@@ -3,7 +3,6 @@ import { EmbedBuilder, ChatInputCommandInteraction, Client, ActionRowBuilder, Bu
 import { useQueue, Track } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import formatDuration from '../utils/formatDurationUtil';
-import TrackMetadata from '../types/trackMetadata';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
 import { discordLogger } from '../utils/loggerUtil';
 
@@ -39,30 +38,19 @@ export default class QueueCommand extends CommandInterface {
         const end = page * multiple;
         const start = end - multiple;
 
-        const tracks = queue!.tracks.toArray().slice(start, end) as Track<TrackMetadata>[];
-        const allTracks = queue!.tracks.toArray() as Track<TrackMetadata>[];
+        const tracks = queue!.tracks.toArray().slice(start, end) as Track<unknown>[];
+        const allTracks = queue!.tracks.toArray() as Track<unknown>[];
         let totalDurationMs = 0;
 
         for (const track of allTracks) {
-            try {
-                const metadata = track.metadata as TrackMetadata;
-                const isFromDatabase = !!metadata.scoredTrack;
-                let durationMs: number;
+
+                // Regular track - parse from track duration string
+                const durationParts = track.duration.split(':').reverse();
+                const durationMs = durationParts.reduce((total, part, index) => {
+                    return total + parseInt(part, 10) * Math.pow(60, index) * 1000;
+                }, 0);
                 
-                if (isFromDatabase) {
-                    // Database track - use scoredTrack duration
-                    durationMs = metadata.scoredTrack!.duration * 1000;
-                } else {
-                    // Regular track - parse from track duration string
-                    const durationParts = track.duration.split(':').reverse();
-                    durationMs = durationParts.reduce((total, part, index) => {
-                        return total + parseInt(part, 10) * Math.pow(60, index) * 1000;
-                    }, 0);
-                }
                 totalDurationMs += durationMs;
-            } catch {
-                continue;
-            }
         }
 
         let totalDurationFormatted = formatDuration(totalDurationMs);
@@ -73,26 +61,9 @@ export default class QueueCommand extends CommandInterface {
         const description = tracks
             .map(
                 (track, i) => {
-                    const metadata = track.metadata as TrackMetadata;
-                    const isFromDatabase = !!metadata.scoredTrack;
-                    
-                    // Get track information based on source
-                    let title: string;
-                    let url: string;
-                    let duration: string;
-                    
-                    if (isFromDatabase) {
-                        // Database track - use scoredTrack data
-                        const dbTrack = metadata.scoredTrack!;
-                        title = dbTrack.title;
-                        url = `https://www.funckenobi42.space/music/tracks/${dbTrack.id}`;
-                        duration = formatDuration(dbTrack.duration * 1000);
-                    } else {
-                        // Regular track - use track data
-                        title = track.title || 'Unknown Title';
-                        url = track.url || '#';
-                        duration = track.duration || '??:??';
-                    }
+                    const title = track.title || 'Unknown Title';
+                    const url = track.url || '#';
+                    const duration = track.duration || '??:??';
                         
                     return `${start + ++i} - [${title}](${url}) ~ [${duration}] \n [${track.requestedBy ? track.requestedBy.toString() : 'Unknown'}]`;
                 }
@@ -154,30 +125,13 @@ export default class QueueCommand extends CommandInterface {
             const end = page * multiple;
             const start = end - multiple;
 
-            const tracks = queue!.tracks.toArray().slice(start, end) as Track<TrackMetadata>[];
+            const tracks = queue!.tracks.toArray().slice(start, end) as Track<unknown>[];
             const description = tracks
                 .map(
                     (track, i) => {
-                        const metadata = track.metadata as TrackMetadata;
-                        const isFromDatabase = !!metadata.scoredTrack;
-                        
-                        // Get track information based on source
-                        let title: string;
-                        let url: string;
-                        let duration: string;
-                        
-                        if (isFromDatabase) {
-                            // Database track - use scoredTrack data
-                            const dbTrack = metadata.scoredTrack!;
-                            title = dbTrack.title;
-                            url = `https://www.funckenobi42.space/music/tracks/${dbTrack.id}`;
-                            duration = formatDuration(dbTrack.duration * 1000);
-                        } else {
-                            // Regular track - use track data
-                            title = track.title || 'Unknown Title';
-                            url = track.url || '#';
-                            duration = track.duration || '??:??';
-                        }
+                            const title = track.title || 'Unknown Title';
+                            const url = track.url || '#';
+                            const duration = track.duration || '??:??';
                             
                         return `${start + ++i} - [${title}](${url}) ~ [${duration}] \n [${track.requestedBy ? track.requestedBy.toString() : 'Unknown'}]`;
                     }

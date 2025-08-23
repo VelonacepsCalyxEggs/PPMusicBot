@@ -4,13 +4,7 @@ import { kenobiAPIExtractorLogger } from "../utils/loggerUtil";
 import { Readable } from "stream";
 import { MusicTrack } from "velonaceps-music-shared/dist";
 import { createReadStream } from "fs";
-export interface KenobiAPITrackMetadata {
-    id: string;
-    fileId: string;
-    uploadedBy: string;
-    fromAlbum: string;
-    albumId: string;
-}
+import TrackMetadata from "src/types/trackMetadata";
 // Placeholder for now.
 export interface kenobiAPIExtractorOptions {
     baller: boolean;
@@ -57,6 +51,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
         return this.validateQuery(query);
     }
     private async validateQuery(query: string): Promise<boolean> {
+        kenobiAPIExtractorLogger.debug(`KenobiAPIExtractor: Validating query "${query}"`);
         if (typeof query !== "string") return false;
         if (query.length === 42 && query.includes('-') || query.includes(this.baseUrl + '/file/createMusicStream/')) {
             return true;
@@ -98,7 +93,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                 response.data.data = this.sortAlbumTracks(response.data.data);
             }
             const tracks = response.data.data.map(track => 
-                new Track<KenobiAPITrackMetadata>(this.context.player, {
+                new Track<TrackMetadata>(this.context.player, {
                     title: track.title,
                     author: track.artist.name,
                     url:  'track:' + this.baseUrl + '/file/createMusicStream/' + track.MusicFile[0].id,
@@ -106,6 +101,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                     duration: String(track.duration * 1000),
                     requestedBy: context.requestedBy,
                     metadata: {
+                        startedPlaying: new Date(),
                         id: track.id,
                         fileId: track.MusicFile[0].id,
                         uploadedBy: track.uploader?.username || 'Unknown',
@@ -138,9 +134,10 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
         return createReadStream(filePath);
     }
 
-    async stream(track: Track<KenobiAPITrackMetadata>): Promise<Readable> {
+    async stream(track: Track<TrackMetadata>): Promise<Readable> {
+        kenobiAPIExtractorLogger.debug(`KenobiAPIExtractor: Preparing to stream track "${track.title}" (${track.url})`);
         // If using the web server, return a live Readable stream
-        if (!track.metadata)
+        if (!track.metadata?.fileId)
             throw new Error('KenobiAPIExtractor: Track metadata is missing.');
         if (this.useWebserver) {
             return this.fetchRemoteStream(track.metadata.fileId);
@@ -152,7 +149,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
 
     // discord-player calls this method when it wants some tracks for autoplay mode.
     // Relate your ass, tf is this supposed to mean.
-    async getRelatedTracks(track: Track<KenobiAPITrackMetadata>): Promise<ExtractorInfo> {
+    async getRelatedTracks(track: Track<TrackMetadata>): Promise<ExtractorInfo> {
         return this.createResponse(null, [track]);
     }
 

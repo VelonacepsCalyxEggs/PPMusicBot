@@ -46,25 +46,7 @@ export default class SkipCommand extends CommandInterface {
             throw new Error('Missing track metadata.');
         }
 
-        // Check if this is a database track or a regular track
-        const isFromDatabase = !!metadata.scoredTrack;
-        
-        // Get track information based on source
-        let title: string;
-        let thumbnail: string;
-
-        if (isFromDatabase) {
-            // Database track - use scoredTrack data
-            const dbTrack = metadata.scoredTrack!;
-            title = dbTrack.title;
-            thumbnail = dbTrack.album?.coverArt[0]?.filePath?.split('\\').pop()
-                ? `https://www.funckenobi42.space/images/AlbumCoverArt/${dbTrack.album.coverArt[0].filePath.split('\\').pop()}`
-                : 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png';
-        } else {
-            // Regular track - use currentTrack data
-            title = currentSong.title;
-            thumbnail = currentSong.thumbnail || 'https://upload.wikimedia.org/wikipedia/commons/2/2a/ITunes_12.2_logo.png';
-        }
+        const currentTrack = queue!.currentTrack as Track<TrackMetadata>;
         
         // Skip the current song
         try {
@@ -75,8 +57,8 @@ export default class SkipCommand extends CommandInterface {
         }
         
         const embed = new EmbedBuilder()
-            .setDescription(`${title} has been skipped!`)
-            .setThumbnail(thumbnail);
+            .setDescription(`${currentTrack.title} has been skipped!`)
+            .setThumbnail(currentTrack.thumbnail);
 
         return interaction.reply({ flags: ['SuppressNotifications'], embeds: [embed] })
     }
