@@ -97,7 +97,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                     title: track.title,
                     author: track.artist.name,
                     url:  'track:' + this.baseUrl + '/file/createMusicStream/' + track.MusicFile[0].id,
-                    thumbnail: (track.MusicMetadata?.coverArt?.filePath || response.data[0].album.coverArt[0]?.filePath)?.replace("C:\\\\xampp/htdocs\\\\", "https://www.funckenobi42.space/") || '',
+                    thumbnail: (track.MusicMetadata?.coverArt?.filePath || response.data.data[0].album.coverArt[0]?.filePath)?.replace("C:\\\\xampp/htdocs\\\\", "https://www.funckenobi42.space/") || '',
                     duration: String(track.duration * 1000),
                     requestedBy: context.requestedBy,
                     metadata: {
@@ -105,8 +105,8 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                         id: track.id,
                         fileId: track.MusicFile[0].id,
                         uploadedBy: track.uploader?.username || 'Unknown',
-                        fromAlbum: response.data[0]?.album?.name || 'Unknown Album',
-                        albumId: response.data[0]?.album?.id || '',
+                        fromAlbum: response.data.data[0]?.album?.name || 'Unknown Album',
+                        albumId: response.data.data[0]?.album?.id || '',
                     },
                     engine: KenobiAPIExtractor.identifier,
                 })
