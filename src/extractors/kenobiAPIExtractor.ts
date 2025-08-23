@@ -6,6 +6,7 @@ import { MusicTrack } from "velonaceps-music-shared/dist";
 import { createReadStream } from "fs";
 export interface KenobiAPITrackMetadata {
     id: string;
+    fileId: string;
     uploadedBy: string;
     fromAlbum: string;
     albumId: string;
@@ -100,12 +101,13 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                 new Track<KenobiAPITrackMetadata>(this.context.player, {
                     title: track.title,
                     author: track.artist.name,
-                    url: this.getFileUrl(track.id, track.MusicFile[0].filePath),
+                    url: "https://www.funckenobi42.space/music/track/" + track.id,
                     thumbnail: (track.MusicMetadata?.coverArt?.filePath || response.data[0].album.coverArt[0]?.filePath)?.replace("C://xampp/htdocs//", "https://www.funckenobi42.space/") || '',
                     duration: String(track.duration * 1000),
                     requestedBy: context.requestedBy,
                     metadata: {
                         id: track.id,
+                        fileId: track.MusicFile[0].id,
                         uploadedBy: track.uploader?.username || 'Unknown',
                         fromAlbum: response.data[0]?.album?.name || 'Unknown Album',
                         albumId: response.data[0]?.album?.id || '',
@@ -141,7 +143,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
         if (!track.metadata)
             throw new Error('KenobiAPIExtractor: Track metadata is missing.');
         if (this.useWebserver) {
-            return this.fetchRemoteStream(track.metadata.id);
+            return this.fetchRemoteStream(track.metadata.fileId);
         }
         else {
             return this.fetchLocalStream(track.url);
