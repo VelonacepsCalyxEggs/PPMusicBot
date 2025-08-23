@@ -4,7 +4,6 @@ import { GuildQueue, Player, useQueue } from 'discord-player';
 import CommandInterface from '../types/commandInterface';
 import { commandLogger } from '../utils/loggerUtil';
 import playTrackHelper from '../helpers/playHelper';
-import { NetworkFileService } from '../services/networkFileService';
 
 export default class RestoreCommand extends CommandInterface {
     public static readonly commandName = 'restore';
@@ -43,25 +42,12 @@ export default class RestoreCommand extends CommandInterface {
             }
         }
         let embed: EmbedBuilder
-        const networkFileService = client.diContainer.get<NetworkFileService>('NetworkFileService') as NetworkFileService;
         if (client.cachedQueueStates && client.cachedQueueStates.length > 0) {
             const cachedState = client.cachedQueueStates.find(q => q.guildId === interaction.guild!.id);
             let loadedAmount = 0;
             if (cachedState) {
                 commandLogger.debug(`Restoring cached state for guild: ${interaction.guild.id}`);
                 for (const track of cachedState.tracks) {
-                    if (track.url.includes(process.env.FILEWEBSERVER_URL!)) {
-                        commandLogger.debug(`Webserver URL detected for track: ${track.url}`);
-                        const result = await networkFileService.searchTrack(player, track.url, track.url, interaction.user, true)
-                        if (result.tracks.length === 0) {
-                            commandLogger.warn(`No tracks found for cached URL: ${track.url}`);
-                            continue; // Skip this track if no results found
-                        }
-                        playTrackHelper(result, queue, interaction);
-                        loadedAmount++;
-                    }
-                    else {
-                        commandLogger.debug(`Regular track URL detected: ${track.url}`);
                         const result = await player.search(track.url)
                         if (result.tracks.length === 0) {
                             commandLogger.warn(`No tracks found for URL: ${track.url}`);
@@ -69,7 +55,6 @@ export default class RestoreCommand extends CommandInterface {
                         }
                         playTrackHelper(result, queue, interaction);
                         loadedAmount++;
-                    }
                 }
                 commandLogger.info(`Restored ${loadedAmount} out of ${cachedState.tracks.length} tracks from cache for guild: ${interaction.guild.id}`);
                 embed = new EmbedBuilder()

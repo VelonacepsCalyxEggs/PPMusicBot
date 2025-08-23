@@ -1,6 +1,6 @@
 import axios from "axios";
 import { BaseExtractor, ExtractorInfo, ExtractorSearchContext, Track } from "discord-player/dist";
-import { kenobiAPIExtractorLogger } from "src/utils/loggerUtil";
+import { kenobiAPIExtractorLogger } from "../utils/loggerUtil";
 import { Readable } from "stream";
 import { MusicTrack } from "velonaceps-music-shared/dist";
 import { createReadStream } from "fs";
@@ -57,7 +57,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
     }
     private async validateQuery(query: string): Promise<boolean> {
         if (typeof query !== "string") return false;
-        if (query.length === 42 && query.includes('-')) {
+        if (query.length === 42 && query.includes('-') || query.includes(this.baseUrl + 'createMusicStream/')) {
             return true;
         }
         return false;
@@ -69,8 +69,36 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
             if (query.startsWith("album:")) {
                 url = `${this.baseUrl}/music?albumId=${query.split(":").pop()}&limit=1000&sortBy=trackNumber&sortOrder=asc`
             }
-            else {
+            else if (query.startsWith("track:")) {
                 url = `${this.baseUrl}/music?id=${query.split(":").pop()}`
+            }
+            else {
+                url = `${this.baseUrl}/music?id=${query.split("/").pop()}`
+                const response = await axios.request<{ data: MusicTrack[] }>({
+                        method: 'GET',
+                        url
+                })
+                if (response.status !== 200) {
+                    throw new Error(`KenobiAPIExtractor: Failed to fetch album data, status code ${response.status}`);
+                }
+                const tracks = response.data.data.map(track => 
+                new Track(this.context.player, {
+                    title: track.title,
+                    author: track.artist.name,
+                    url: this.getFileUrl(track.id, track.MusicFile[0].filePath),
+                    thumbnail: (track.MusicMetadata?.coverArt?.filePath || response.data[0].album.coverArt[0]?.filePath)?.replace("C://xampp/htdocs//", "https://www.funckenobi42.space/") || '',
+                    duration: String(track.duration * 1000),
+                    requestedBy: context.requestedBy,
+                    metadata: {
+                        id: track.id,
+                        uploadedBy: track.uploader?.username || 'Unknown',
+                        fromAlbum: response.data[0]?.album?.name || 'Unknown Album',
+                        albumId: response.data[0]?.album?.id || '',
+                    },
+                    engine: KenobiAPIExtractor.identifier,
+                })
+            );
+            return this.createResponse(null, tracks);
             }
             const response = await axios.request<{ data: MusicTrack[] }>({
                     method: 'GET',

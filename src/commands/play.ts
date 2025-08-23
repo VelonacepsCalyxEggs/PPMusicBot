@@ -16,7 +16,7 @@ import { YtdlFallback } from '../utils/ytdlFallback';
 import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } from '../types/ytdlServiceTypes';
 import playTrack from '../helpers/playHelper';
 import ShuffleUtil from '../utils/shuffleUtil';
-import { KenobiAPIExtractor } from 'src/extractors/kenobiAPIExtractor';
+import { KenobiAPIExtractor } from '../extractors/kenobiAPIExtractor';
 
 export default class PlayCommand extends CommandInterface {
     public static readonly commandName = 'play';
