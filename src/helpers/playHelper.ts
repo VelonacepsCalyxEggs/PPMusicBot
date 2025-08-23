@@ -14,7 +14,7 @@ import { ChatInputCommandInteraction } from "discord.js";
      * 
      * @throws Error if track metadata is missing.
      */
-export default async function playTrackHelper(result: SearchResult | Track, queue: GuildQueue, interaction: ChatInputCommandInteraction ): Promise<void> {
+export default async function playTrackHelper(result: SearchResult | Track, queue: GuildQueue, interaction: ChatInputCommandInteraction, useKenobiAPI: boolean = false): Promise<void> {
         await queue.play(result, {
                 nodeOptions: {
                     metadata: interaction,
@@ -22,6 +22,7 @@ export default async function playTrackHelper(result: SearchResult | Track, queu
                     leaveOnEnd: false,
                     leaveOnEmpty: false,
                     leaveOnStop: false,
-                }
+                },
+                searchEngine: useKenobiAPI ? `ext:KenobiAPIExtractor` : undefined,
             });
     }

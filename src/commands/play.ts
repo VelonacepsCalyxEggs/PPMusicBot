@@ -460,7 +460,7 @@ export default class PlayCommand extends CommandInterface {
                 });
             }
             // If we get here, we have a valid track to play
-            await playTrack(result, guildQueue, interaction);
+            await playTrack(result, guildQueue, interaction, true);
             return interaction.followUp({ 
                 flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
@@ -532,7 +532,7 @@ export default class PlayCommand extends CommandInterface {
                 ShuffleUtil.fisherYatesShuffle(result.tracks);
             }
             
-            playTrack(result, guildQueue, interaction);
+            playTrack(result, guildQueue, interaction, true);
             return interaction.followUp({ 
                 flags: ['SuppressNotifications'],
                 embeds: [createEmbedUtil(
