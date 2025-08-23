@@ -427,8 +427,7 @@ export default class PlayCommand extends CommandInterface {
         try {
             commandLogger.debug(`Found track: ${track.title}`);
             
-            // Use NetworkFileService to get the appropriate file URL/path
-            const result = await player.search(`track:${track.MusicFile[0].id}`, {
+            const result = await player.search(`track:${track.id}`, {
                 searchEngine: `ext:${KenobiAPIExtractor.identifier}`,
             });
 
