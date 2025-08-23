@@ -67,12 +67,15 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
     async handle(query: string, context: ExtractorSearchContext): Promise<ExtractorInfo> {
             let url = '';
             if (query.startsWith("album:")) {
+                kenobiAPIExtractorLogger.debug(`Album query detected: ${query}`);
                 url = `${this.baseUrl}/music?albumId=${query.split(":").pop()}&limit=1000&sortBy=trackNumber&sortOrder=asc`
             }
             else if (query.startsWith("track:")) {
+                kenobiAPIExtractorLogger.debug(`Track query detected: ${query}`);
                 url = `${this.baseUrl}/music?id=${query.split(":").pop()}`
             }
             else {
+                kenobiAPIExtractorLogger.debug(`Direct track URL detected, how sophisticated: ${query}`);
                 url = `${this.baseUrl}/music?id=${query.split("/").pop()}`
                 const response = await axios.request<{ data: MusicTrack[] }>({
                         method: 'GET',
@@ -81,8 +84,9 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                 if (response.status !== 200) {
                     throw new Error(`KenobiAPIExtractor: Failed to fetch album data, status code ${response.status}`);
                 }
+                kenobiAPIExtractorLogger.debug(`KenobiAPIExtractor: Fetched ${response.data.data.length} tracks from Kenobi API"`);
                 const tracks = response.data.data.map(track => 
-                new Track(this.context.player, {
+                new Track<KenobiAPITrackMetadata>(this.context.player, {
                     title: track.title,
                     author: track.artist.name,
                     url: this.getFileUrl(track.id, track.MusicFile[0].filePath),
@@ -113,7 +117,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                 response.data.data = this.sortAlbumTracks(response.data.data);
             }
             const tracks = response.data.data.map(track => 
-                new Track(this.context.player, {
+                new Track<KenobiAPITrackMetadata>(this.context.player, {
                     title: track.title,
                     author: track.artist.name,
                     url: this.getFileUrl(track.id, track.MusicFile[0].filePath),
