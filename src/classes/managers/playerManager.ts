@@ -5,7 +5,7 @@ import { Client, Interaction, TextChannel } from "discord.js";
 import TrackMetadata from "../../types/trackMetadata";
 import { playerLogger, logError, discordLogger, logPlayerEvent } from "../../utils/loggerUtil";
 import { KenobiAPIExtractor } from "../../extractors/kenobiAPIExtractor";
-
+import { VoiceConnectionState } from "discord-voip";
 export class PlayerManager {
     public player: Player;
     private client?: Client;
@@ -53,139 +53,138 @@ export class PlayerManager {
     private initializePlayerEvents() {
             discordLogger.info('Initializing Discord Player events...');
 
-            // player debug
             this.player.on('debug', playerLogger.debug);
             this.player.events.on('debug', (_, m) => playerLogger.debug(m));
             
-            // Add error handler for extractor errors
+            // Voice connection state diagnostics per queue
+            this.player.events.on('connection', (queue) => {
+                const vc = queue.connection;
+                if (vc) {
+                    vc.on('stateChange', (oldState: VoiceConnectionState, newState: VoiceConnectionState) => {
+                        playerLogger.debug(`VoiceConnection ${queue.guild?.id} state ${oldState.status} -> ${newState.status}`);
+                    });
+                }
+            });
+
+            // Track timing
+            this.player.events.on('playerFinish', (queue: GuildQueue) => {
+                if (queue.tracks.size !== 0) {
+                    const track = queue.tracks.at(0) as Track<TrackMetadata>;
+                    if (track?.metadata) {
+                        track.metadata.startedPlaying = new Date();
+                    }
+                } else {
+                    const metadata = (queue.currentTrack as Track<TrackMetadata>)?.metadata;
+                    if (metadata) {
+                        metadata.startedPlaying = new Date();
+                    }
+                }
+            });
+
+            this.player.events.on('audioTrackAdd', (queue: GuildQueue) => {
+                if (queue.tracks.size !== 0) {
+                    const trackMeta = (queue.tracks.at(0) as Track<TrackMetadata>)?.metadata;
+                    if (trackMeta) {
+                        trackMeta.startedPlaying = new Date();
+                    }
+                }
+            });
+
+            // Unified error handler (removed duplicate)
             this.player.events.on('error', (queue: GuildQueue, error: Error) => {
                 logError(error, 'player_error', {
                     guildId: queue.guild?.id,
                     currentTrack: queue.currentTrack?.title,
                     queueSize: queue.tracks.size
                 });
-                
-                // Try to recover by skipping the current track if possible
-                if (queue.currentTrack && queue.tracks.size > 0) {
-                    try {
-                        queue.node.skip();
-                        playerLogger.info('Skipped problematic track and continued playback');
-                    } catch (skipError) {
-                        logError(skipError as Error, 'skip_after_error', { guildId: queue.guild?.id });
+                logPlayerEvent('queueError', queue.guild?.id, {
+                    error: error.message,
+                    currentTrack: queue.currentTrack?.title
+                });
+
+                const interaction = queue.metadata as Interaction;
+                const channel = interaction?.channel as TextChannel | undefined;
+
+                // AbortError: likely timed out stream fetch / invalid stream
+                if (error.name === 'AbortError') {
+                    if (channel) {
+                        channel.send({ content: 'Stream aborted (timeout). Attempting recovery...', flags: ['SuppressNotifications'] })
+                            .catch(() => {});
+                    }
+                    // Try skip to next valid track
+                    if (queue.tracks.size > 0) {
+                        try { queue.node.skip(); } catch (e) {
+                            logError(e as Error, 'abort_skip_fail', { guildId: queue.guild?.id });
+                        }
+                    } else {
+                        // Force small reconnect cycle if persistent
+                        try {
+                            if (queue.connection && queue.connection.state.status !== 'destroyed') {
+                                queue.connection.disconnect();
+                                setTimeout(() => {
+                                    try { queue.connect(queue.channel!); } catch { /* empty */ }
+                                }, 1500);
+                            }
+                        } catch (e) {
+                            logError(e as Error, 'abort_reconnect_fail', { guildId: queue.guild?.id });
+                        }
+                    }
+                    return;
+                }
+
+                // Extractor / network hints
+                if (/fetch failed|ConnectTimeoutError|youtubei/i.test(error.message)) {
+                    if (channel) {
+                        channel.send({
+                            content: 'Extractor/network error. Skipping track...',
+                            flags: ['SuppressNotifications']
+                        }).catch(() => {});
+                    }
+                    if (queue.tracks.size > 0) {
+                        try { queue.node.skip(); } catch (e) {
+                            logError(e as Error, 'recovery_skip_failed', { guildId: queue.guild?.id });
+                        }
                     }
                 }
             });
 
-            // This event is triggered when everyone leaves the voice channel
             this.player.events.on('emptyChannel', (queue: GuildQueue) => {
                 const interaction = queue.metadata as Interaction;
                 try {
-                    if ( queue.connection && queue.connection.state.status === 'destroyed') {
-                        return; 
-                    }
-                    (interaction.channel as TextChannel).send({content : `Everyone left the channel.`, flags: ['SuppressNotifications']});
+                    if (queue.connection && queue.connection.state.status === 'destroyed') return;
+                    (interaction.channel as TextChannel).send({ content: 'Everyone left the channel.', flags: ['SuppressNotifications']});
                 } catch (error) {
                     discordLogger.error('Error when handling emptyChannel:', error);
                 }
             });
-            
-            // This event is triggered when a track finishes playing
-            this.player.events.on('playerFinish', (queue: GuildQueue) => {
-                if (queue.tracks.size !== 0) {
-                    const track = queue.tracks.at(0) as Track<TrackMetadata>;
-                    if (track.metadata) {
-                        track.metadata.startedPlaying = new Date();
-                    }
-                } else {
-                    const metadata = (queue.currentTrack as Track<TrackMetadata>).metadata;
-                    if (metadata) {
-                        metadata.startedPlaying = new Date();
-                    }
-                }
-            });
-            
-            // This event is triggered when a track is added to the queue
-            this.player.events.on('audioTrackAdd', async (queue: GuildQueue) => {
-                if (queue.tracks.size !== 0) {
-                    const trackMeta = (queue.tracks.at(0) as Track<TrackMetadata>).metadata;
-                    if (trackMeta) {
-                        trackMeta.startedPlaying = new Date();
-                    }
-                }
-            });
-            
-            // This event is triggered when the player encounters a playback error
+
             this.player.events.on('playerError', (queue: GuildQueue, error: Error) => {
                 logPlayerEvent('playerError', queue.guild?.id, { error: error.message });
-                
-                // Check if it's a YouTube/extractor related error
-                if (error.message.includes('fetch failed') || error.message.includes('ConnectTimeoutError') || error.message.includes('youtubei')) {
-                    playerLogger.warn('YouTube extractor error detected, attempting recovery...');
-                    
-                    const interaction = queue.metadata as Interaction;
-                    if (interaction && interaction.channel) {
-                        try {
-                            (interaction.channel as TextChannel).send({
-                                content: '⚠️ Connection timeout occurred while fetching track data. Attempting to continue...',
-                                flags: ['SuppressNotifications']
-                            });
-                        } catch (sendError) {
-                            logError(sendError as Error, 'error_message_send', { guildId: queue.guild?.id });
-                        }
-                    }
-                    
-                    // Try to skip to next track if available
-                    if (queue.tracks.size > 0) {
-                        try {
-                            queue.node.skip();
-                            playerLogger.info('Skipped problematic track due to extractor error');
-                        } catch (skipError) {
-                            logError(skipError as Error, 'recovery_skip_failed', { guildId: queue.guild?.id });
-                        }
-                    }
-                }
+                // No duplicate skip here; unified logic above
             });
-            
-            // This event is triggered when the player encounters a regular error.
-            this.player.events.on('error', (queue: GuildQueue, error: Error) => {
-                logPlayerEvent('queueError', queue.guild?.id, { 
-                    error: error.message,
-                    currentTrack: queue.currentTrack?.title 
-                });
-            });
-            
-            // This event is triggered when the queue is empty
+
             this.player.events.on('emptyQueue', (queue: GuildQueue) => {
-                if ( queue.connection && queue.connection.state.status !== 'destroyed') {
+                if (queue.connection && queue.connection.state.status !== 'destroyed') {
                     const interaction = queue.metadata as Interaction;
-                    if (!interaction?.channel) {
-                        discordLogger.error("No interaction or channel found.");
-                        return;
-                    }
+                    if (!interaction?.channel) return;
                     try {
-                        (interaction.channel as TextChannel).send({ content: 'The queue is now empty.', flags: ['SuppressNotifications']},);
+                        (interaction.channel as TextChannel).send({ content: 'The queue is now empty.', flags: ['SuppressNotifications']});
                     } catch (error) {
                         logError(error as Error, 'Queue', { interaction });
                     }
                 }
             });
-        
-        // This event is triggered when the connection to the voice channel is destroyed
-        this.player.events.on('connectionDestroyed', (queue: GuildQueue) => {
-            const interaction = queue.metadata as Interaction;
-            if (!interaction?.channel) {
-                discordLogger.error("No interaction or channel found.");
-                return;
-            }
-            try {
-                if ( queue.connection && queue.connection.state.status !== 'destroyed') {
-                    (interaction.channel as TextChannel).send({ content: 'The connection to the voice channel was destroyed. The queue has been cleared.', flags: ['SuppressNotifications'] });
-                } else {
-                    return;
+
+            this.player.events.on('connectionDestroyed', (queue: GuildQueue) => {
+                const interaction = queue.metadata as Interaction;
+                if (!interaction?.channel) return;
+                try {
+                    if (queue.connection && queue.connection.state.status !== 'destroyed') {
+                        (interaction.channel as TextChannel).send({ content: 'Voice connection destroyed. Queue cleared.', flags: ['SuppressNotifications'] });
+                    }
+                } catch (error) {
+                    logError(error as Error, 'connectionDestroyed', { interaction });
                 }
-            } catch (error) {
-                logError(error as Error, 'connectionDestroyed', { interaction });
-            }
-        });
+            });
     }
 }
