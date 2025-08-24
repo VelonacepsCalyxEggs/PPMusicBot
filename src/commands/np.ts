@@ -5,7 +5,7 @@ import CommandInterface from '../types/commandInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import TrackMetadata from '../types/trackMetadata';
 import commandPreRunCheckUtil from '../utils/commandPreRunCheckUtil';
-import { commandLogger } from 'src/utils/loggerUtil';
+import { commandLogger } from '../utils/loggerUtil';
 
 export default class NowPlayingCommand extends CommandInterface {
     public static readonly commandName = 'np';
