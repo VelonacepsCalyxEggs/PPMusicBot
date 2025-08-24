@@ -23,6 +23,7 @@ export default async function playTrackHelper(result: SearchResult | Track, queu
                     leaveOnEmpty: false,
                     leaveOnStop: false,
                 },
+                requestedBy: interaction.user,
                 searchEngine: useKenobiAPI ? `ext:KenobiAPIExtractor` : undefined,
             });
     }

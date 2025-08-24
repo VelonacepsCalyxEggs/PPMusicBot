@@ -43,14 +43,7 @@ export default class QueueCommand extends CommandInterface {
         let totalDurationMs = 0;
 
         for (const track of allTracks) {
-
-                // Regular track - parse from track duration string
-                const durationParts = track.duration.split(':').reverse();
-                const durationMs = durationParts.reduce((total, part, index) => {
-                    return total + parseInt(part, 10) * Math.pow(60, index) * 1000;
-                }, 0);
-                
-                totalDurationMs += durationMs;
+                totalDurationMs += track.durationMS;
         }
 
         let totalDurationFormatted = formatDuration(totalDurationMs);
@@ -63,7 +56,7 @@ export default class QueueCommand extends CommandInterface {
                 (track, i) => {
                     const title = track.title || 'Unknown Title';
                     const url = track.url || '#';
-                    const duration = track.duration || '??:??';
+                    const duration = formatDuration(track.durationMS) || '??:??';
                         
                     return `${start + ++i} - [${title}](${url}) ~ [${duration}] \n [${track.requestedBy ? track.requestedBy.toString() : 'Unknown'}]`;
                 }

@@ -55,7 +55,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
         if (typeof query !== "string") return false;
         if ((query.length === 42 || query.length === 36) && query.includes('-') || 
             query.includes(this.baseUrl + '/file/createMusicStream/') || 
-                query.includes("www.funckenobi42.space/music/track/")) {
+                query.includes("www.funckenobi42.space/music/tracks/")) {
             return true;
         }
         return false;
@@ -99,9 +99,9 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                 new Track<TrackMetadata>(this.context.player, {
                     title: track.title,
                     author: track.artist.name,
-                    url:  "https://www.funckenobi42.space/music/track/" + track.id,
-                    thumbnail: "https://www.funckenobi42.space/" + response.data.data[0].album.id,
-                    duration: String(track.duration * 1000),
+                    url:  "https://www.funckenobi42.space/music/tracks/" + track.id,
+                    thumbnail: "https://www.funckenobi42.space/images/AlbumCoverArt/" + response.data.data[0].album.id,
+                    duration: String(track.duration),
                     requestedBy: context.requestedBy,
                     metadata: {
                         startedPlaying: new Date(),
@@ -117,7 +117,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
             if (tracks.length > 1) {
                 playlist = new Playlist(this.context.player, {
                     title: response.data.data[0].album.name || 'Unknown Album',
-                    thumbnail: "https://www.funckenobi42.space/" + response.data.data[0].album.id,
+                    thumbnail: "https://www.funckenobi42.space/images/AlbumCoverArt/" + response.data.data[0].album.id,
                     type: 'album',
                     tracks,
                     source: 'arbitrary',
