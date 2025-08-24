@@ -279,7 +279,7 @@ export class YtdlFallback {
         searchResult.tracks[0].title = videoData.metadata.videoDetails.title;
         searchResult.tracks[0].author = videoData.metadata.videoDetails.author.name;
         searchResult.tracks[0].thumbnail = videoData.metadata.videoDetails.thumbnails[0].url;
-        searchResult.tracks[0].url = videoData.metadata.videoDetails.video_url || '#';
+        searchResult.tracks[0].url = videoData.metadata.videoDetails.video_url || "https://www.youtube.com/watch?v=" + videoData.metadata.videoDetails.videoId;
         return searchResult;
     }
     
@@ -296,7 +296,7 @@ export class YtdlFallback {
             track.title = item.metadata.videoDetails.title;
             track.author = item.metadata.videoDetails.author.name;
             track.thumbnail = item.metadata.videoDetails.thumbnails[0]?.url;
-            track.url = item.metadata.videoDetails.video_url || '#';
+            track.url = item.metadata.videoDetails.video_url || "https://www.youtube.com/watch?v=" + item.metadata.videoDetails.videoId;
             tracks.push(track);
             }
         }
@@ -348,7 +348,7 @@ export class YtdlFallback {
                     track.title = video.metadata.videoDetails.title;
                     track.author = video.metadata.videoDetails.author.name;
                     track.thumbnail = video.metadata.videoDetails.thumbnails[0]?.url;
-                    track.url = video.metadata.videoDetails.video_url || '#';
+                    track.url = video.metadata.videoDetails.video_url || "https://www.youtube.com/watch?v=" + video.metadata.videoDetails.videoId;
                     firstTrack = track;
                 }
         }
@@ -390,7 +390,7 @@ export class YtdlFallback {
                     track.title = video.metadata.videoDetails.title;
                     track.author = video.metadata.videoDetails.author.name;
                     track.thumbnail = video.metadata.videoDetails.thumbnails[0]?.url;
-                    track.url = video.metadata.videoDetails.video_url || '#';
+                    track.url = video.metadata.videoDetails.video_url || "https://www.youtube.com/watch?v=" + video.metadata.videoDetails.videoId;
                     
                     guildQueue.addTrack(track);
                     playerLogger.debug(`Added ${track.title} to queue`);
