@@ -109,7 +109,8 @@ export class YtdlFallback {
                         thumbnails: videoData.videoDetails.thumbnails.map(thumbnail => ({ url: thumbnail.url })),
                         author: {
                             name: videoData.videoDetails.author.name
-                        }
+                        },
+                        video_url: videoData.videoDetails.video_url
                     }
                 },
             });
