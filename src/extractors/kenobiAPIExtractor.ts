@@ -72,7 +72,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                 kenobiAPIExtractorLogger.debug(`Track query detected: ${query}`);
                 url = `${this.baseUrl}/music?id=${query.split(":").pop()}`
             }
-            else if (query.includes(this.baseUrl) && query.includes('createMusicStream')) {
+            else if (query.includes(this.baseUrl) || query.includes("www.funckenobi42.space")) {
                 kenobiAPIExtractorLogger.debug(`Direct track URL detected, how sophisticated: ${query}`);
                 url = `${this.baseUrl}/music?id=${query.split("/").pop()}`
             }
