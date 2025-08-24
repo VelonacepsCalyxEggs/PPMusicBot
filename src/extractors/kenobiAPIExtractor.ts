@@ -1,5 +1,5 @@
 import axios from "axios";
-import { BaseExtractor, ExtractorInfo, ExtractorSearchContext, Track } from "discord-player/dist";
+import { BaseExtractor, ExtractorInfo, ExtractorSearchContext, Playlist, Track } from "discord-player/dist";
 import { kenobiAPIExtractorLogger } from "../utils/loggerUtil";
 import { Readable } from "stream";
 import { MusicTrack } from "velonaceps-music-shared/dist";
@@ -92,6 +92,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                 // If it's an album, sort the tracks properly
                 response.data.data = this.sortAlbumTracks(response.data.data);
             }
+            let playlist: Playlist | null = null;
             const tracks = response.data.data.map(track => 
                 new Track<TrackMetadata>(this.context.player, {
                     title: track.title,
@@ -111,7 +112,23 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                     engine: KenobiAPIExtractor.identifier,
                 })
             );
-            return this.createResponse(null, tracks);
+            if (tracks.length > 1) {
+                playlist = new Playlist(this.context.player, {
+                    title: response.data.data[0].album.name || 'Unknown Album',
+                    thumbnail: (response.data.data[0].album.coverArt[0]?.filePath || '').replace("C:\\\\xampp/htdocs\\\\", "https://www.funckenobi42.space/") || '',
+                    type: 'album',
+                    tracks,
+                    source: 'arbitrary',
+                    author: {
+                        name: response.data.data[0].album.Artists?.[0]?.name || response.data.data[0].artist?.name || 'Unknown Artist',
+                        url: '',
+                    },
+                    id: response.data.data[0].album.id || '',
+                    url: 'album:' + (response.data.data[0].album.id || ''),
+                    description: 'Album fetched from Kenobi API',
+                });
+            }
+            return this.createResponse(playlist, tracks);
     }
     private async fetchRemoteStream(fileId: string): Promise<Readable> {
         const url = `${this.baseUrl}/file/createMusicStream/${fileId}`;
