@@ -53,7 +53,9 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
     private async validateQuery(query: string): Promise<boolean> {
         kenobiAPIExtractorLogger.debug(`KenobiAPIExtractor: Validating query "${query}"`);
         if (typeof query !== "string") return false;
-        if ((query.length === 42 || query.length === 36) && query.includes('-') || query.includes(this.baseUrl + '/file/createMusicStream/')) {
+        if ((query.length === 42 || query.length === 36) && query.includes('-') || 
+            query.includes(this.baseUrl + '/file/createMusicStream/') || 
+                query.includes("www.funckenobi42.space/music/track/")) {
             return true;
         }
         return false;
@@ -97,8 +99,8 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
                 new Track<TrackMetadata>(this.context.player, {
                     title: track.title,
                     author: track.artist.name,
-                    url:  'track:' + this.baseUrl + '/file/createMusicStream/' + track.MusicFile[0].id,
-                    thumbnail: (track.MusicMetadata?.coverArt?.filePath || response.data.data[0].album.coverArt[0]?.filePath)?.replace("C:\\\\xampp/htdocs\\\\", "https://www.funckenobi42.space/") || '',
+                    url:  "https://www.funckenobi42.space/music/track/" + track.id,
+                    thumbnail: "https://www.funckenobi42.space/" + response.data.data[0].album.id,
                     duration: String(track.duration * 1000),
                     requestedBy: context.requestedBy,
                     metadata: {
@@ -115,7 +117,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
             if (tracks.length > 1) {
                 playlist = new Playlist(this.context.player, {
                     title: response.data.data[0].album.name || 'Unknown Album',
-                    thumbnail: (response.data.data[0].album.coverArt[0]?.filePath || '').replace("C:\\\\xampp/htdocs\\\\", "https://www.funckenobi42.space/") || '',
+                    thumbnail: "https://www.funckenobi42.space/" + response.data.data[0].album.id,
                     type: 'album',
                     tracks,
                     source: 'arbitrary',
