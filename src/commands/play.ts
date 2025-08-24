@@ -429,6 +429,7 @@ export default class PlayCommand extends CommandInterface {
             
             const result = await player.search(`track:${track.id}`, {
                 searchEngine: `ext:${KenobiAPIExtractor.identifier}`,
+                requestedBy: interaction.user,
             });
 
             if (result.tracks.length === 0) {
@@ -513,6 +514,7 @@ export default class PlayCommand extends CommandInterface {
             
             const result = await player.search(`album:${album.id}`, {
                 searchEngine: `ext:${KenobiAPIExtractor.identifier}`,
+                requestedBy: interaction.user,
             });
 
             if (result.tracks.length === 0) {
@@ -538,7 +540,7 @@ export default class PlayCommand extends CommandInterface {
                 embeds: [createEmbedUtil(
                     `**${album.name}** has been added to the queue`, 
                     `https://www.funckenobi42.space/images/AlbumCoverArt/${album.coverArt[0]?.filePath?.split('\\').pop() || ''}`, // Use the cover from the album
-                    `Tracks: ${result.tracks.length} | Starting from position: ${(guildQueue.tracks.size - result.tracks.length) + 1}`
+                    `Tracks: ${result.tracks.length} | Starting from position: ${(result.tracks.length - guildQueue.tracks.size) + 1}`
                 )]
             });
         } catch (error) {
