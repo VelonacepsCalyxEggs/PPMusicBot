@@ -32,7 +32,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
         // in order to access Player instance, use
         //const player = this.context.player;
         if (!await this.testConnection()) {
-            kenobiAPIExtractorLogger.warn('KenobiAPIExtractor: Unable to connect to the file server. Extractor will be disabled.');
+            kenobiAPIExtractorLogger.warn('Unable to connect to the file server. Extractor will be disabled.');
             throw new Error('KenobiAPIExtractor: Unable to connect to the file server.');
         }
         // to register protocol, use
@@ -51,7 +51,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
         return this.validateQuery(query);
     }
     private async validateQuery(query: string): Promise<boolean> {
-        kenobiAPIExtractorLogger.debug(`KenobiAPIExtractor: Validating query "${query}"`);
+        kenobiAPIExtractorLogger.debug(`Validating query "${query}"`);
         if (typeof query !== "string") return false;
         if ((query.length === 42 || query.length === 36) && query.includes('-') || 
             query.includes(this.baseUrl + '/file/createMusicStream/') || 
@@ -154,7 +154,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
     }
 
     async stream(track: Track<TrackMetadata>): Promise<Readable> {
-        kenobiAPIExtractorLogger.debug(`KenobiAPIExtractor: Preparing to stream track "${track.title}" (${track.url})`);
+        kenobiAPIExtractorLogger.debug(`Preparing to stream track "${track.title}" (${track.url})`);
         // If using the web server, return a live Readable stream
         if (!track.metadata?.fileId)
             throw new Error('KenobiAPIExtractor: Track metadata is missing.');
@@ -198,7 +198,7 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
             });
             return response.status === 200;
         } catch (error) {
-            kenobiAPIExtractorLogger.error('NetworkFileService connection test failed:', error);
+            kenobiAPIExtractorLogger.error('Connection test failed:', error);
             return false;
         }
     }

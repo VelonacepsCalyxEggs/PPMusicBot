@@ -231,6 +231,7 @@ export const playerLogger = createContextLogger('Player');
 export const databaseLogger = createContextLogger('Database');
 export const commandLogger = createContextLogger('Commands');
 export const kenobiAPIExtractorLogger = createContextLogger('kenobiAPIExtractor');
+export const icecastExtractorLogger = createContextLogger('IcecastExtractor');
 export const ytdlFallbackLogger = createContextLogger('YTDL-Fallback');
 export const errorLogger = createContextLogger('Error');
 
