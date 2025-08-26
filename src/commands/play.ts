@@ -17,7 +17,7 @@ import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } 
 import playTrack from '../helpers/playHelper';
 import ShuffleUtil from '../utils/shuffleUtil';
 import { KenobiAPIExtractor } from '../extractors/kenobiAPIExtractor';
-import { IcecastExtractor } from 'src/extractors/icecastExtractor';
+import { IcecastExtractor } from '../extractors/icecastExtractor';
 
 export default class PlayCommand extends CommandInterface {
     public static readonly commandName = 'play';
