@@ -151,7 +151,7 @@ startBot();
 // - Make play command more structured. - done
 // - Add more QoL to existing commands. - in progress
 // - Event listener for voice connection state changes (the bot voice connection, in case there is a timeout).
-// - This might be impossible without modifying the discord-player library?
+// - kinda done but needs to be tested, as it is random to catch.
 // - Make services use the proper dependency injection pattern. - Done
 // - Make atGrok service a separate command instead of a message listener. 
 // - Probably not possible, since you can't 'reply' with a command.
@@ -159,6 +159,7 @@ startBot();
 //   still better than a message listener.
 // - Make this use prisma instead of pg directly.
 // - Make NetworkFileService a proper extractor
+// - done, kenobiAPIextractor
 // - Make YTDLFallback have more flexibility.
 // - Make a proper service/class to handle Icecast streams.
 // - Backup active queues before shutdown. - Done but kinda scuffed? Metadata storage method needs to be reworked.
