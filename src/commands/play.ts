@@ -17,6 +17,7 @@ import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } 
 import playTrack from '../helpers/playHelper';
 import ShuffleUtil from '../utils/shuffleUtil';
 import { KenobiAPIExtractor } from '../extractors/kenobiAPIExtractor';
+import { IcecastExtractor } from 'src/extractors/icecastExtractor';
 
 export default class PlayCommand extends CommandInterface {
     public static readonly commandName = 'play';
@@ -162,7 +163,7 @@ export default class PlayCommand extends CommandInterface {
 
     private async handleStreamSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
         commandLogger.debug(`Stream URL detected: ${argument}`);
-        const result = await this.searchTrack(player, this.normalizeStreamUrl(argument), interaction.user);
+        const result = await this.searchTrack(player, argument, interaction.user);
         return { result, song: result.tracks[0], embed: this.createTrackEmbed(result.tracks[0], guildQueue.tracks.size) };
     }
 
@@ -234,12 +235,11 @@ export default class PlayCommand extends CommandInterface {
             !input.includes('playlist?list=')) {
             return 'youtube_video';
         }
-        
-        if ((input.includes('http') || input.includes('https')) &&
+        if (input.startsWith("icecast://")) {
+            return 'stream';
+        }
+        if ((input.startsWith('http') || input.startsWith('https')) &&
             !(input.includes('watch?v=') || input.includes('youtu.be') || input.includes('youtube.com'))) {
-            //if (input.includes('stream') || input.includes(':')) {
-            //    return 'stream';
-            //}
             return 'external_url';
         }
         
@@ -257,19 +257,11 @@ export default class PlayCommand extends CommandInterface {
         return url;
     }
 
-    // This is a hardcoded thing, which will be replaced with a proper implementation later...
-    private normalizeStreamUrl(url: string): string {
-        if (url.includes('funckenobi42.space')) {
-            return 'http://127.0.0.1:55060/stream.mp3';
-        }
-        return url;
-    }
-
-    // Helper to search for a track
+    // Helper to search for a stream
     private async searchTrack(player: Player, query: string, requestedBy: User): Promise<SearchResult> {
         return await player.search(query, {
             requestedBy,
-            searchEngine: QueryType.AUTO
+            searchEngine: `ext:${IcecastExtractor.identifier}`
         });
     }
 
