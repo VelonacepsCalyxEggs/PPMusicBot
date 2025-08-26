@@ -87,7 +87,7 @@ export class ClientManager {
             if (!this.diContainer) throw new Error('DI Container is not set in ClientManager');
             this.client.diContainer = this.diContainer;
 
-            this.client.on('ready', async () => {
+            this.client.on('clientReady', async () => {
                 try {
                     this.initializeRest();
                     this.intializeClientEvents();
