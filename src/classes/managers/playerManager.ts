@@ -6,6 +6,7 @@ import TrackMetadata from "../../types/trackMetadata";
 import { playerLogger, logError, discordLogger, logPlayerEvent } from "../../utils/loggerUtil";
 import { KenobiAPIExtractor } from "../../extractors/kenobiAPIExtractor";
 import { VoiceConnectionState } from "discord-voip";
+import { IcecastExtractor } from "src/extractors/icecastExtractor";
 export class PlayerManager {
     public player: Player;
     private client?: Client;
@@ -22,6 +23,7 @@ export class PlayerManager {
                 });
                 this.player.extractors.loadMulti(DefaultExtractors);
                 this.player.extractors.register(KenobiAPIExtractor, { baller: true });
+                this.player.extractors.register(IcecastExtractor, { baller: true });
                 // Initialize YouTube extractor with additional error handling
                 try {
                     this.player.extractors.register(YoutubeiExtractor, {
