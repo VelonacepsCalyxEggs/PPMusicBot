@@ -6,7 +6,7 @@ import TrackMetadata from "../../types/trackMetadata";
 import { playerLogger, logError, discordLogger, logPlayerEvent } from "../../utils/loggerUtil";
 import { KenobiAPIExtractor } from "../../extractors/kenobiAPIExtractor";
 import { VoiceConnectionState } from "discord-voip";
-import { IcecastExtractor } from "src/extractors/icecastExtractor";
+import { IcecastExtractor } from "../../extractors/icecastExtractor";
 export class PlayerManager {
     public player: Player;
     private client?: Client;
