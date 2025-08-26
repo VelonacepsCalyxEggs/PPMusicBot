@@ -46,6 +46,15 @@ export class IcecastExtractor extends BaseExtractor<IcecastExtractorOptions> {
     // discord-player calls this method when it wants a search result. It is called with the search query and a context parameter (options passed to player.search() method)
     async handle(query: string, context: ExtractorSearchContext): Promise<ExtractorInfo> {
         icecastExtractorLogger.debug(`Handling query "${query}"`);
+        if (!query.includes("://")) {
+            if (query.startsWith('//')) {
+                query = 'http:' + query;
+            }
+            else {
+                query = 'http://' + query;
+            }
+        }
+        icecastExtractorLogger.debug(`Processed query to "${query}"`);
         const name = await this.getStreamInfo(query);
         const track = new Track<TrackMetadata>(this.context.player, {
             title: name.serverName || "Unknown Stream",
