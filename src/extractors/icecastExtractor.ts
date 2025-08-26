@@ -2,7 +2,7 @@ import axios from "axios";
 import { BaseExtractor, ExtractorInfo, ExtractorSearchContext, Track } from "discord-player/dist";
 import { icecastExtractorLogger } from "../utils/loggerUtil";
 import { Readable } from "stream";
-import TrackMetadata from "src/types/trackMetadata";
+import TrackMetadata from "../types/trackMetadata";
 // Placeholder for now.
 export interface IcecastExtractorOptions {
     baller: boolean;
