@@ -7,6 +7,37 @@ import TrackMetadata from "../types/trackMetadata";
 export interface IcecastExtractorOptions {
     baller: boolean;
 }
+// Only for icecast 2.4.0 and up.
+interface StreamInfo {
+    icestats: {
+        admin: string;
+        host: string;
+        location: string;
+        server_id: string;
+        server_start: string;
+        server_start_iso8601: string;
+        source?: IcecastSource | IcecastSource[];
+    }
+}
+interface IcecastSource {
+    audio_info: string;
+    bitrate: number;
+    genre: string;
+    ice_bitrate: number;
+    ice_channels: number;
+    ice_samplerate: number;
+    listener_peak: number;
+    listeners: number;
+    listenurl: string;
+    server_description: string;
+    server_name: string;
+    server_type: string;
+    server_url: string;
+    stream_start: string;
+    stream_start_iso8601: string;
+    title: string;
+    dummy: null;
+}
 export class IcecastExtractor extends BaseExtractor<IcecastExtractorOptions> {
     static identifier = "icecastExtractor" as const;
     
@@ -84,6 +115,39 @@ export class IcecastExtractor extends BaseExtractor<IcecastExtractorOptions> {
     }
 
     private async getStreamInfo(url: string) {
+        const res = await axios.get<StreamInfo>(this.getLinkDomain(url) + '/status-json.xsl', { timeout: 10000 });
+        if (res.status !== 200) {
+            throw new Error(`Failed to fetch stream info (${res.status})`);
+        }
+        const streamInfo = res.data;
+        if (!streamInfo.icestats || !streamInfo.icestats.source) {
+            // Fallback to legacy method
+            return this.getStreamInfoLegacy(url);
+        }
+        else {
+            if (Array.isArray(streamInfo.icestats.source)) {
+                // Find the source that matches the URL path
+                const urlObj = new URL(url);
+                const path = urlObj.pathname;
+                const matchedSource = streamInfo.icestats.source.find(source => {
+                    const sourceUrlObj = new URL(source.listenurl, this.getLinkDomain(url));
+                    return sourceUrlObj.pathname === path;
+                });
+                if (matchedSource) {
+                    return { serverName: matchedSource.server_name };
+                }
+                else {
+                    // If no match, return the first source
+                    return { serverName: streamInfo.icestats.source[0].server_name };
+                }
+            }
+            else {
+                return { serverName: streamInfo.icestats.source.server_name };
+            }
+        }
+    }
+
+    private async getStreamInfoLegacy(url: string) {
         const res = await axios.get<string>(url + '.vclt', { timeout: 10000 });
         if (res.status !== 200) {
             throw new Error(`Failed to fetch stream info (${res.status})`);
