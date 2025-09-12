@@ -14,7 +14,7 @@ export default function commandPreRunCheckUtil(interaction: ChatInputCommandInte
         return false;
     }
 
-    if (!queue.connection) {
+    if (!queue.connection || queue.connection.state.status === 'destroyed' || queue.connection.state.status === 'disconnected') {
         interaction.reply({ content: 'I am not connected to a voice channel.', flags: ['Ephemeral'] });
         return false;
     }
