@@ -171,7 +171,6 @@ export class KenobiAPIExtractor extends BaseExtractor<kenobiAPIExtractorOptions>
     async getRelatedTracks(track: Track<TrackMetadata>): Promise<ExtractorInfo> {
         return this.createResponse(null, [track]);
     }
-
     /**
      * Get the appropriate file URL/path based on configuration
      */

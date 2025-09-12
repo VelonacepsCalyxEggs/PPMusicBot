@@ -38,6 +38,12 @@ interface IcecastSource {
     title: string;
     dummy: null;
 }
+
+//TODO: Make it support custom metadata updates, using icy metadata in the stream.
+// Possible implementation:
+// Store all active icecast streams in a map with their URLs as keys.
+// Use icy-metadata library to listen for metadata updates on those streams.
+// On metadata update, we will update the queue that has the track with that URL.
 export class IcecastExtractor extends BaseExtractor<IcecastExtractorOptions> {
     static identifier = "icecastExtractor" as const;
     
