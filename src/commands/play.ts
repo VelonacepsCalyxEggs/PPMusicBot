@@ -395,8 +395,8 @@ export default class PlayCommand extends CommandInterface {
                 });
                 if (highestScoringTracks.length > 1) {
                     commandLogger.debug('Multiple equally high scoring tracks found, making a choice response.');
-                    const choiceResponse = "Please be more specific, multiple tracks found with similar confidence:\n- " + highestScoringTracks.map(t => t.title).join('\n- ');
-                    const searchSuggestions = "\nYou may try searching for:\n- " + highestScoringTracks.map(t => `'${t.title} ${t.artist.name}'`).join('\n- ');
+                    const choiceResponse = "Please be more specific, multiple tracks found with similar confidence:\n- " + highestScoringTracks.map(t => t.title + ' |Score: ' + t.score).join('\n- ');
+                    const searchSuggestions = "\nYou may try searching for:\n- " + highestScoringTracks.map(t => `'${t.title}' '${t.artist.name}' '${t.album.name}'`).join('\n- ');
 
                     return await interaction.followUp({ 
                         flags: ['SuppressNotifications', 'Ephemeral'],
@@ -416,7 +416,7 @@ export default class PlayCommand extends CommandInterface {
                 if (highestScoringAlbums.length > 1) {
                     commandLogger.debug('Multiple equally high scoring albums found, making a choice response.');
                     const choiceResponse = "Please be more specific, multiple albums found with similar confidence:\n- " + highestScoringAlbums.map(a => a.name).join('\n- ');
-                    const searchSuggestions = "\nYou may try searching for:\n- " + highestScoringAlbums.map(a => `'${a.name} ${a.Artists[0].name}'`).join('\n- ');
+                    const searchSuggestions = "\nYou may try searching for:\n- " + highestScoringAlbums.map(a => `'${a.name}' '${a.Artists[0].name}'`).join('\n- ');
 
                     return await interaction.followUp({ 
                         flags: ['SuppressNotifications', 'Ephemeral'],
