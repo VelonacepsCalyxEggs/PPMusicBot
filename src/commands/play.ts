@@ -347,10 +347,9 @@ export default class PlayCommand extends CommandInterface {
                 });
             }
 
-            // Get the highest score from both tracks and albums
+            // Get the highest score from both tracks and albums (the backend returns sorted lists)
             const highestTrackScore = response.data.tracks.length > 0 ? response.data.tracks[0].score : 0;
             const highestAlbumScore = response.data.albums.length > 0 ? response.data.albums[0].score : 0;
-            
             // If the highest score is below confidence threshold, show combined suggestions
             if (Math.max(highestTrackScore, highestAlbumScore) <= PlayCommand.CONFIDENCE_THRESHOLDS.LOW_CONFIDENCE) {
                 commandLogger.debug('Low confidence match found, showing suggestions');
@@ -388,9 +387,42 @@ export default class PlayCommand extends CommandInterface {
 
             // Otherwise, proceed with the normal flow - play track or album based on which has higher score
             if (response.data.albums.length === 0 || highestTrackScore > highestAlbumScore) {
+                const highestScoringTracks: ScoredTrack[] = []
+                response.data.tracks.forEach(track => {
+                    if (track.score === highestTrackScore) {
+                        highestScoringTracks.push(track);
+                    }
+                });
+                if (highestScoringTracks.length > 1) {
+                    commandLogger.debug('Multiple equally high scoring tracks found, making a choice response.');
+                    const choiceResponse = "Please be more specific, multiple tracks found with similar confidence:\n- " + highestScoringTracks.map(t => t.title).join('\n- ');
+                    const searchSuggestions = "\nYou may try searching for:\n- " + highestScoringTracks.map(t => `'${t.title} ${t.artist.name}'`).join('\n- ');
+
+                    return await interaction.followUp({ 
+                        flags: ['SuppressNotifications', 'Ephemeral'],
+                        embeds: [createEmbedUtil(choiceResponse + searchSuggestions, 'https://www.funckenobi42.space/images/', "Please try a different query.") ]
+                    });
+                }
+
                 // Play single track
                 return await this.handleSingleTrack(player, interaction, guildQueue, response.data.tracks[0], response.data.tracks);
             } else if (response.data.albums.length > 0) {
+                const highestScoringAlbums: ScoredAlbum[] = []
+                response.data.albums.forEach(album => {
+                    if (album.score === highestAlbumScore) {
+                        highestScoringAlbums.push(album);
+                    }
+                });
+                if (highestScoringAlbums.length > 1) {
+                    commandLogger.debug('Multiple equally high scoring albums found, making a choice response.');
+                    const choiceResponse = "Please be more specific, multiple albums found with similar confidence:\n- " + highestScoringAlbums.map(a => a.name).join('\n- ');
+                    const searchSuggestions = "\nYou may try searching for:\n- " + highestScoringAlbums.map(a => `'${a.name} ${a.Artists[0].name}'`).join('\n- ');
+
+                    return await interaction.followUp({ 
+                        flags: ['SuppressNotifications', 'Ephemeral'],
+                        embeds: [createEmbedUtil(choiceResponse + searchSuggestions, 'https://www.funckenobi42.space/images/', "Please try a different query.") ]
+                    });
+                }
                 // Play album
                 return await this.handleAlbum(player, interaction, guildQueue, response.data.albums[0], response.data.albums);
             }
