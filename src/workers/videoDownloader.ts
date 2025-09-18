@@ -1,6 +1,7 @@
 import { existsSync } from "fs";
 import { exit } from "process";
-import { workerData, parentPort } from "worker_threads";
+import { CallbackEvent } from "src/services/YTDLFallbackService";
+import { workerData, parentPort, MessagePort } from "worker_threads";
 import YTDlpWrap from 'yt-dlp-wrap';
 
 interface VideoDownloadWorkerData {
@@ -8,7 +9,7 @@ interface VideoDownloadWorkerData {
     filePath: string;
 }
 
-async function downloadVideo(url: string, filePath: string) {
+async function downloadVideo(url: string, filePath: string, parentPort: MessagePort) {
     return new Promise<void>((resolve, reject) => {
         try {
             const ytDlpWrap = new YTDlpWrap(process.env.YTDLP_PATH || 'yt-dlp');
@@ -29,13 +30,20 @@ async function downloadVideo(url: string, filePath: string) {
                     '--retries', '3',
                     '--socket-timeout', '30'
                 ])
-                .on('progress', (progress) =>
-                    console.log(
-                        `Progress: ${progress.percent}%`,
-                        `Size: ${progress.totalSize}`,
-                        `Speed: ${progress.currentSpeed}`,
-                        `ETA: ${progress.eta}`
-                    )
+                .on('progress', (progress) => {
+                        console.log(
+                            `Progress: ${progress.percent}%`,
+                            `Size: ${progress.totalSize}`,
+                            `Speed: ${progress.currentSpeed}`,
+                            `ETA: ${progress.eta}`
+                        )
+                        if (progress.percent && progress.percent % 25 === 1) {
+                            parentPort.postMessage({
+                                videoUrl: url,
+                                message: `Progress: ${progress.percent}%`,
+                            } as CallbackEvent)
+                        } 
+                    }
                 )
                 .on('ytDlpEvent', (eventType, eventData) => {
                     console.log(`yt-dlp event: ${eventType}`, eventData);
@@ -55,16 +63,16 @@ async function downloadVideo(url: string, filePath: string) {
                 });
         } catch (error) {
             console.error('Failed to initialize yt-dlp:', error);
-            reject(new Error(`Initialization error: ${error.message}`));
+            reject(error);
         }
     });
 }
 
 async function main() {
+    const data = workerData as VideoDownloadWorkerData;
+    const videoUrl = data.videoUrl;
+    const filePath = data.filePath;
     try {
-        const data = workerData as VideoDownloadWorkerData;
-        const videoUrl = data.videoUrl;
-        const filePath = data.filePath;
         if (!parentPort) throw new Error("Parent port is not available in this worker thread.");
         if (existsSync(filePath)) {
             parentPort.postMessage(filePath);
@@ -73,14 +81,24 @@ async function main() {
         console.log(`Starting download of: ${videoUrl}`);
         console.log(`Output path: ${filePath}`);
         
-        await downloadVideo(videoUrl, filePath);
+        await downloadVideo(videoUrl, filePath, parentPort);
         
         // Send the file path back to the main thread
-        parentPort.postMessage(filePath);
+        parentPort.postMessage({
+                videoUrl: videoUrl,
+                message: `Download finished succsessfully.`,
+                filePath: filePath  
+            } as CallbackEvent)
         
         exit(0); // Exit the worker thread gracefully
     } catch (error) {
         console.error('Worker error:', error);
+        if (parentPort)
+            parentPort.postMessage({
+                videoUrl: videoUrl,
+                message: `Download failed with error: ${(error as Error).message}`,
+                error: (error as Error).message,   
+            } as CallbackEvent)
         exit(1);
     }
 }

@@ -12,12 +12,12 @@ import { ScoredAlbum, ScoredTrack, SearchResultsDto } from '../types/searchResul
 import formatDuration from '../utils/formatDurationUtil';
 import { commandLogger, logError, playerLogger } from '../utils/loggerUtil';
 import { randomUUID, createHash } from 'crypto';
-import { YtdlFallback } from '../utils/ytdlFallback';
 import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } from '../types/ytdlServiceTypes';
 import playTrack from '../helpers/playHelper';
 import ShuffleUtil from '../utils/shuffleUtil';
 import { KenobiAPIExtractor } from '../extractors/kenobiAPIExtractor';
 import { IcecastExtractor } from '../extractors/icecastExtractor';
+import { CallbackEvent, YTDLFallbackCallback, YtdlFallbackService } from 'src/services/YTDLFallbackService';
 
 export default class PlayCommand extends CommandInterface {
     public static readonly commandName = 'play';
@@ -104,7 +104,7 @@ export default class PlayCommand extends CommandInterface {
         commandLogger.debug(`Handling song command with interaction: ${interaction.id}`);
         const argument = interaction.options.getString('music', true);
         try {
-            const { result, song, embed } = await this.handleSourceType(argument, player, interaction, guildQueue);
+            const { result, song, embed } = await this.handleSourceType(argument, player, client, interaction, guildQueue);
 
             if (result) {
                 await playTrack(result, guildQueue, interaction);
@@ -135,63 +135,98 @@ export default class PlayCommand extends CommandInterface {
         }
     };
 
-    private async handleSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
+    private async handleSourceType(argument: string, player: Player, client: Client, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
         const sourceType = this.detectSourceType(argument);
         switch (sourceType) {
             case 'spotify':
-                return await this.handleSpotifySourceType(argument, player, interaction, guildQueue);
+                return await this.handleSpotifySourceType(argument, player, client, interaction, guildQueue);
             case 'stream':
-                return await this.handleStreamSourceType(argument, player, interaction, guildQueue);
+                return await this.handleStreamSourceType(argument, player, client, interaction, guildQueue);
             case 'external_url':
-                return await this.handleExternalUrlSourceType(argument, player, interaction, guildQueue);
+                return await this.handleExternalUrlSourceType(argument, player, client, interaction, guildQueue);
             case 'search_term':
-                return await this.handleSearchTermSourceType(argument, player, interaction, guildQueue);
+                return await this.handleSearchTermSourceType(argument, player, client, interaction, guildQueue);
             case 'youtube_video':
-                return await this.handleYoutubeVideoSourceType(argument, player, interaction, guildQueue);
+                return await this.handleYoutubeVideoSourceType(argument, player, client, interaction, guildQueue);
             case 'youtube_playlist':
-                return await this.handleYoutubePlaylistSourceType(argument, player, interaction, guildQueue);
+                return await this.handleYoutubePlaylistSourceType(argument, player, client, interaction, guildQueue);
             default:
                 throw new Error('Unknown source type');
         }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    private async handleSpotifySourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
+    private async handleSpotifySourceType(argument: string, player: Player, client: Client, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
         // This is a placeholder for future Spotify support.
         throw new Error('Spotify support is not implemented yet.');
     }
 
-    private async handleStreamSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
+    private async handleStreamSourceType(argument: string, player: Player, client: Client, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
         commandLogger.debug(`Stream URL detected: ${argument}`);
         const result = await this.searchTrack(player, argument, interaction.user);
         return { result, song: result.tracks[0], embed: this.createTrackEmbed(result.tracks[0], guildQueue.tracks.size) };
     }
 
-    private async handleExternalUrlSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
+    private async handleExternalUrlSourceType(argument: string, player: Player, client: Client, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
         commandLogger.debug(`External URL detected: ${argument}`);
         const result = await this.searchFile(player, await this.downloadFile(argument.split('?')[0], argument), interaction.user);
         return { result, song: result.tracks[0], embed: this.createTrackEmbed(result.tracks[0], guildQueue.tracks.size) };
     }
 
-    private async handleSearchTermSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
+    private async handleSearchTermSourceType(argument: string, player: Player, client: Client, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
         commandLogger.debug(`Search term detected: ${argument}`);
+
+        const progressCallback: YTDLFallbackCallback = (event: CallbackEvent) => {
+            interaction.editReply(event.message).catch(error => {
+                commandLogger.error('Failed to update progress message:', error);
+            });
+            return event;
+        };
+
         interaction.editReply("Downloading YouTube video, this might take a moment...");
-        const result = await YtdlFallback.playVideo(player, null, argument, interaction.user);
+        const ytdlFallbackInstance = client.diContainer.get<YtdlFallbackService>("YTDLFallbackService")
+        
+        const result = await ytdlFallbackInstance.playVideo(
+            player, 
+            null,
+            argument, 
+            interaction.user,
+            progressCallback
+        );
         return { result, song: result.tracks[0], embed: this.createTrackEmbed(result.tracks[0], guildQueue.tracks.size) };
     }
 
-    private async handleYoutubeVideoSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
+    private async handleYoutubeVideoSourceType(argument: string, player: Player, client: Client, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
         commandLogger.debug(`YouTube video URL detected: ${argument}`);
-        interaction.editReply("Downloading YouTube video, this might take a moment...");
-        const result = await YtdlFallback.playVideo(player, this.cleanYoutubeUrl(argument), null, interaction.user);
+        
+        // callback function
+        const progressCallback: YTDLFallbackCallback = (event: CallbackEvent) => {
+            interaction.editReply(event.message).catch(error => {
+                commandLogger.error('Failed to update progress message:', error);
+            });
+            return event;
+        };
+
+        await interaction.editReply("Downloading YouTube video, this might take a moment...");
+        const ytdlFallbackInstance = client.diContainer.get<YtdlFallbackService>("YTDLFallbackService")
+        
+        const result = await ytdlFallbackInstance.playVideo(
+            player, 
+            this.cleanYoutubeUrl(argument), 
+            null, 
+            interaction.user,
+            progressCallback
+        );
+        
         return { result, song: result.tracks[0], embed: this.createTrackEmbed(result.tracks[0], guildQueue.tracks.size) };
     }
 
-    private async handleYoutubePlaylistSourceType(argument: string, player: Player, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null,  embed: EmbedBuilder | null}> {
+    private async handleYoutubePlaylistSourceType(argument: string, player: Player, client: Client, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null,  embed: EmbedBuilder | null}> {
         commandLogger.debug(`YouTube playlist URL detected: ${argument}`);
         interaction.editReply("Loading playlist, this might take a moment...");
         let embed: EmbedBuilder | null = null;
-        const playlistResult = await YtdlFallback.playPlaylistWithBackground(argument, player, interaction.user, guildQueue);
+        const ytdlFallbackInstance = client.diContainer.get<YtdlFallbackService>("YTDLFallbackService")
+        const playlistResult = await ytdlFallbackInstance.playPlaylistWithBackground(argument, player, interaction.user, guildQueue);
         // Play the first track immediately if available
         if (playlistResult.firstTrack) {
             embed = createEmbedUtil(

@@ -11,6 +11,7 @@ import { ClientManager } from './classes/managers/clientManager';
 import { DatabaseManager } from './classes/managers/databaseManager';
 import { PlayerManager } from './classes/managers/playerManager';
 import { Player } from 'discord-player/dist';
+import { YtdlFallbackService } from './services/YTDLFallbackService';
 
 
 class BotApplication {
@@ -31,6 +32,7 @@ class BotApplication {
         const DatabasePoolWrapper = this.databaseManager.getPoolWrapper();
         this.diContainer.register('DatabasePool', DatabasePoolWrapper, [], true);
         this.diContainer.register('AtGrokIsThisTrueService', AtGrokIsThisTrueService, [], true);
+        this.diContainer.register('YTDLFallbackService', YtdlFallbackService, [], true);
 
         await this.diContainer.initialize();
         discordLogger.info('Dependency injection setup complete.');
