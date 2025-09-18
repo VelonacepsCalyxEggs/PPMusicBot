@@ -13,7 +13,13 @@ async function downloadVideo(url: string, filePath: string, parentPort: MessageP
     return new Promise<void>((resolve, reject) => {
         try {
             const ytDlpWrap = new YTDlpWrap(process.env.YTDLP_PATH || 'yt-dlp');
-            
+            const reportedThresholds = new Set<number>();
+            const thresholds = [25, 50, 75, 100];
+
+            parentPort.postMessage({
+                videoUrl: url,
+                message: `Beginning extraction process...`,
+            } as CallbackEvent);
             ytDlpWrap
                 .exec([
                     url,
@@ -37,12 +43,22 @@ async function downloadVideo(url: string, filePath: string, parentPort: MessageP
                             `Speed: ${progress.currentSpeed}`,
                             `ETA: ${progress.eta}`
                         )
-                        if (progress.percent && progress.percent % 25 === 1) {
-                            parentPort.postMessage({
-                                videoUrl: url,
-                                message: `Progress: ${progress.percent}%`,
-                            } as CallbackEvent)
-                        } 
+                        
+                        // Find which threshold we've passed
+                        if (progress.percent) {
+                            const currentPercent = Math.floor(progress.percent);
+                            for (const threshold of thresholds) {
+                                // If we crossed a threshold and haven't reported it yet
+                                if (currentPercent >= threshold && !reportedThresholds.has(threshold)) {
+                                    reportedThresholds.add(threshold);
+                                    parentPort.postMessage({
+                                        videoUrl: url,
+                                        message: `Progress: ${threshold}%`,
+                                    } as CallbackEvent);
+                                    break; // Only report one threshold at a time
+                                }
+                            }
+                        }
                     }
                 )
                 .on('ytDlpEvent', (eventType, eventData) => {
@@ -88,7 +104,7 @@ async function main() {
                 videoUrl: videoUrl,
                 message: `Download finished succsessfully.`,
                 filePath: filePath  
-            } as CallbackEvent)
+        } as CallbackEvent)
         
         exit(0); // Exit the worker thread gracefully
     } catch (error) {

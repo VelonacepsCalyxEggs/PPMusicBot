@@ -81,6 +81,7 @@ export class YtdlFallbackService implements ServiceDefinition {
                     resolve(event.filePath);
                 }
                 else if (callback) {
+                    playerLogger.info(`Worker posted a message: ${event.message}`);
                     callback(event)
                 }
             });
