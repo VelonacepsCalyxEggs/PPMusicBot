@@ -17,7 +17,7 @@ export default class LeaveCommand extends CommandInterface {
         }
         const queue = useQueue(interaction.guild);
 
-        if (!commandPreRunCheckUtil(interaction, queue)) return;
+        if (!commandPreRunCheckUtil(interaction, queue, false)) return;
 
         queue!.delete();
         
