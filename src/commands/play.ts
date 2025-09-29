@@ -3,7 +3,7 @@ import { ChatInputCommandInteraction, Client, EmbedBuilder, GuildMember, Message
 import { QueryType, useQueue, GuildQueue, Player, useMainPlayer, Track, SearchResult } from 'discord-player';
 import https from 'https';
 import http from 'http';
-import fs from 'fs';
+import fs, { existsSync } from 'fs';
 import path from 'path';
 import CommandInterface from '../types/commandInterface';
 import { createEmbedUtil } from '../utils/createEmbedUtil';
@@ -11,7 +11,7 @@ import axios from 'axios';
 import { ScoredAlbum, ScoredTrack, SearchResultsDto } from '../types/searchResultInterface';
 import formatDuration from '../utils/formatDurationUtil';
 import { commandLogger, logError, playerLogger } from '../utils/loggerUtil';
-import { randomUUID, createHash } from 'crypto';
+import { createHash } from 'crypto';
 import { NoTrackFoundError, PlaylistTooLargeError, YoutubeDownloadFailedError } from '../types/ytdlServiceTypes';
 import playTrack from '../helpers/playHelper';
 import ShuffleUtil from '../utils/shuffleUtil';
@@ -652,72 +652,30 @@ export default class PlayCommand extends CommandInterface {
                     fs.mkdirSync(cacheDir, { recursive: true });
                 }
 
-                // First, download to a temporary file to get MD5
-                const tempPath = path.join(cacheDir, `temp_${randomUUID().slice(0, 8)}${fileExtension}`);
-                const tempWriteStream = fs.createWriteStream(tempPath);
+                const filePath = path.join(cacheDir, `${baseFilename}${fileExtension}`);
+                if (existsSync(filePath)) {
+                    return resolve(filePath);
+                }
+                const writeStream = fs.createWriteStream(filePath);
                 const protocol = url.startsWith('https') ? https : http;
 
                 protocol.get(url, async (res) => {
-                    res.pipe(tempWriteStream);
+                    res.pipe(writeStream);
                     
-                    tempWriteStream.on('finish', async () => {
-                        tempWriteStream.close();
-                        
-                        try {
-                            // Get MD5 of the downloaded file
-                            const newFileMD5 = await this.getfileMD5(tempPath);
-                            
-                            // Check if a file with the same MD5 already exists
-                            const existingFiles = fs.readdirSync(cacheDir).filter(f => 
-                                f.endsWith(fileExtension) && f !== path.basename(tempPath)
-                            );
-                            
-                            // This is infefficient, but I am too lazy to make a database, so I'll wait till I get this to use Prisma.
-                            for (const existingFile of existingFiles) {
-                                const existingPath = path.join(cacheDir, existingFile);
-                                try {
-                                    const existingMD5 = await this.getfileMD5(existingPath);
-                                    if (existingMD5 === newFileMD5) {
-                                        // File already exists, delete temp file and return existing
-                                        fs.unlinkSync(tempPath);
-                                        commandLogger.info(`File already exists in cache: ${existingPath}`);
-                                        resolve(existingPath);
-                                        return;
-                                    }
-                                } catch (error) {
-                                    // If we can't read an existing file, skip it
-                                    commandLogger.warn(`Could not read existing file ${existingPath}: ${error}`);
-                                    continue;
-                                }
-                            }
-                            
-                            // No matching file found, move temp file to final location with UUID
-                            const finalPath = path.join(
-                                cacheDir,
-                                `${baseFilename}___${randomUUID().slice(0, 6)}${fileExtension}`
-                            );
-                            fs.renameSync(tempPath, finalPath);
-                            commandLogger.info(`Download completed! New file saved at: ${finalPath}`);
-                            resolve(finalPath);
-                            
-                        } catch (error) {
-                            // Clean up temp file on error
-                            if (fs.existsSync(tempPath)) {
-                                fs.unlinkSync(tempPath);
-                            }
-                            reject(error);
-                        }
+                    writeStream.on('finish', async () => {
+                        writeStream.close();
+                        resolve(filePath);
                     });
                     
-                    tempWriteStream.on('error', (err) => {
+                    writeStream.on('error', (err) => {
                         // Clean up temp file on error
-                        if (fs.existsSync(tempPath)) {
-                            fs.unlinkSync(tempPath);
+                        if (fs.existsSync(filePath)) {
+                            fs.unlinkSync(filePath);
                         }
                         reject(err);
                     });
                 }).on('error', (err) => {
-                    logError(err as Error, 'Download Error', { url, tempPath });
+                    logError(err as Error, 'Download Error', { url, filePath });
                     reject(err);
                 });
                 
