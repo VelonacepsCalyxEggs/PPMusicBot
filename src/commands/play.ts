@@ -653,17 +653,23 @@ export default class PlayCommand extends CommandInterface {
                 }
 
                 const filePath = path.join(cacheDir, `${baseFilename}${fileExtension}`);
-                if (existsSync(filePath)) {
-                    return resolve(filePath);
-                }
-                const writeStream = fs.createWriteStream(filePath);
+
+                const writeStream = fs.createWriteStream('temp_' + filePath);
                 const protocol = url.startsWith('https') ? https : http;
 
                 protocol.get(url, async (res) => {
                     res.pipe(writeStream);
-                    
                     writeStream.on('finish', async () => {
                         writeStream.close();
+                        const fileMD5 = await this.getfileMD5('temp_' + filePath);
+                        if (existsSync(fileMD5 + fileExtension)) {
+                            fs.unlinkSync('temp_' + filePath);
+                            commandLogger.debug(`File already exists in cache: ${fileMD5 + fileExtension}`);
+                            resolve(fileMD5 + fileExtension);
+                            return;
+                        }
+                        fs.renameSync('temp_' + filePath, fileMD5 + fileExtension);
+                        commandLogger.debug(`File downloaded and saved to: ${fileMD5 + fileExtension}`);
                         resolve(filePath);
                     });
                     
