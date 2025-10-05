@@ -113,23 +113,15 @@ export class PlayerManager {
                         channel.send({ content: 'Stream aborted (timeout). Attempting recovery...', flags: ['SuppressNotifications'] })
                             .catch(() => {});
                     }
-                    // Try skip to next valid track
-                    if (queue.tracks.size > 0) {
-                        try { queue.node.skip(); } catch (e) {
-                            logError(e as Error, 'abort_skip_fail', { guildId: queue.guild?.id });
+                    // Force small reconnect cycle if persistent
+                    try {
+                        if (queue.connection && queue.connection.state.status !== 'destroyed') {                           queue.connection.disconnect();
+                            setTimeout(() => {
+                                try { queue.connect(queue.channel!); } catch { /* empty */ }
+                            }, 1500);
                         }
-                    } else {
-                        // Force small reconnect cycle if persistent
-                        try {
-                            if (queue.connection && queue.connection.state.status !== 'destroyed') {
-                                queue.connection.disconnect();
-                                setTimeout(() => {
-                                    try { queue.connect(queue.channel!); } catch { /* empty */ }
-                                }, 1500);
-                            }
-                        } catch (e) {
-                            logError(e as Error, 'abort_reconnect_fail', { guildId: queue.guild?.id });
-                        }
+                    } catch (e) {
+                        logError(e as Error, 'abort_reconnect_fail', { guildId: queue.guild?.id });
                     }
                     return;
                 }

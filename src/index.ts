@@ -162,7 +162,7 @@ startBot();
 // - Make this use prisma instead of pg directly.
 // - Make NetworkFileService a proper extractor
 // - done, kenobiAPIextractor
-// - Remake YTDLExtractor into a service that uses DI.
+// - Remake YTDLExtractor into a service that uses DI. - done.
 // - Make a proper service/class to handle Icecast streams. kinda done, IcecastExtractor
 // - Backup active queues before shutdown. - Done but kinda scuffed? Metadata storage method needs to be reworked.
 // - Add Spotify support.
