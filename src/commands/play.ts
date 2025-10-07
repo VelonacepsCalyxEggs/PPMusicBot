@@ -3,7 +3,7 @@ import { ChatInputCommandInteraction, Client, EmbedBuilder, GuildMember, Message
 import { QueryType, useQueue, GuildQueue, Player, useMainPlayer, Track, SearchResult } from 'discord-player';
 import https from 'https';
 import http from 'http';
-import fs, { existsSync } from 'fs';
+import fs from 'fs';
 import path from 'path';
 import CommandInterface from '../types/commandInterface';
 import { createEmbedUtil } from '../utils/createEmbedUtil';
@@ -639,10 +639,9 @@ export default class PlayCommand extends CommandInterface {
         });
     };
 
-    private async downloadFile (file: string, url: string): Promise<string> {
+    private async downloadFile(file: string, url: string): Promise<string> {
         return new Promise((resolve, reject) => {
             try {
-                // Extract the original filename from the URL
                 const originalFilename = path.basename(file);
                 const fileExtension = path.extname(originalFilename);
                 const baseFilename = path.basename(originalFilename, fileExtension);
@@ -652,36 +651,54 @@ export default class PlayCommand extends CommandInterface {
                     fs.mkdirSync(cacheDir, { recursive: true });
                 }
 
-                const filePath = path.join(cacheDir, `${baseFilename}${fileExtension}`);
-
-                const writeStream = fs.createWriteStream('temp_' + filePath);
+                // Generate temp file path
+                const tempFilename = `temp_${Date.now()}_${baseFilename}${fileExtension}`;
+                const tempFilePath = path.join(cacheDir, tempFilename);
+                
+                const writeStream = fs.createWriteStream(tempFilePath);
                 const protocol = url.startsWith('https') ? https : http;
 
                 protocol.get(url, async (res) => {
                     res.pipe(writeStream);
+                    
                     writeStream.on('finish', async () => {
                         writeStream.close();
-                        const fileMD5 = await this.getfileMD5('temp_' + filePath);
-                        if (existsSync(fileMD5 + fileExtension)) {
-                            fs.unlinkSync('temp_' + filePath);
-                            commandLogger.debug(`File already exists in cache: ${fileMD5 + fileExtension}`);
-                            resolve(fileMD5 + fileExtension);
-                            return;
+                        try {
+                            const fileMD5 = await this.getfileMD5(tempFilePath);
+                            const finalFilename = `${fileMD5}${fileExtension}`;
+                            const finalFilePath = path.join(cacheDir, finalFilename);
+                            
+                            if (fs.existsSync(finalFilePath)) {
+                                fs.unlinkSync(tempFilePath); // Clean up temp file
+                                commandLogger.debug(`File already exists in cache: ${finalFilename}`);
+                                resolve(finalFilePath);
+                                return;
+                            }
+                            
+                            fs.renameSync(tempFilePath, finalFilePath);
+                            commandLogger.debug(`File downloaded and saved to: ${finalFilePath}`);
+                            resolve(finalFilePath);
+                            
+                        } catch (error) {
+                            if (fs.existsSync(tempFilePath)) {
+                                fs.unlinkSync(tempFilePath);
+                            }
+                            reject(error);
                         }
-                        fs.renameSync('temp_' + filePath, fileMD5 + fileExtension);
-                        commandLogger.debug(`File downloaded and saved to: ${fileMD5 + fileExtension}`);
-                        resolve(filePath);
                     });
                     
                     writeStream.on('error', (err) => {
-                        // Clean up temp file on error
-                        if (fs.existsSync(filePath)) {
-                            fs.unlinkSync(filePath);
+                        if (fs.existsSync(tempFilePath)) {
+                            fs.unlinkSync(tempFilePath);
                         }
                         reject(err);
                     });
+                    
                 }).on('error', (err) => {
-                    logError(err as Error, 'Download Error', { url, filePath });
+                    if (fs.existsSync(tempFilePath)) {
+                        fs.unlinkSync(tempFilePath);
+                    }
+                    logError(err as Error, 'Download Error', { url, tempFilePath });
                     reject(err);
                 });
                 
@@ -690,7 +707,7 @@ export default class PlayCommand extends CommandInterface {
                 reject(error);
             }
         });
-    };
+    }
 
     private async getQueue(client: Client, interaction: ChatInputCommandInteraction, player: Player): Promise<{ guildQueue: GuildQueue, voiceChannel: VoiceBasedChannel }> {
         if (!interaction.guild) {
