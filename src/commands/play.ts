@@ -104,7 +104,7 @@ export default class PlayCommand extends CommandInterface {
         commandLogger.debug(`Handling song command with interaction: ${interaction.id}`);
         const argument = interaction.options.getString('music', true);
         try {
-            const { result, song, embed } = await this.handleSourceType(argument, player, client, interaction, guildQueue);
+            const { result, song, embed } = await this. handleSourceType(argument, player, client, interaction, guildQueue);
 
             if (result) {
                 await playTrack(result, guildQueue, interaction);
@@ -169,7 +169,11 @@ export default class PlayCommand extends CommandInterface {
 
     private async handleExternalUrlSourceType(argument: string, player: Player, client: Client, interaction: ChatInputCommandInteraction, guildQueue: GuildQueue): Promise<{result: SearchResult | null, song: Track<unknown> | null, embed: EmbedBuilder | null}> {
         commandLogger.debug(`External URL detected: ${argument}`);
-        const result = await this.searchFile(player, await this.downloadFile(argument.split('?')[0], argument), interaction.user);
+        const localPath = await this.downloadFile(argument.split('?')[0], argument)
+        const result = await player.search(localPath, {
+            requestedBy: interaction.user,
+            searchEngine: QueryType.FILE,
+        });
         return { result, song: result.tracks[0], embed: this.createTrackEmbed(result.tracks[0], guildQueue.tracks.size) };
     }
 
@@ -307,15 +311,7 @@ export default class PlayCommand extends CommandInterface {
             searchEngine: QueryType.YOUTUBE_SEARCH
         });
     }
-
-    // Helper to search a file
-    private async searchFile(player: Player, filePath: string, requestedBy: User): Promise<SearchResult> {
-        return await player.search(filePath, {
-            requestedBy,
-            searchEngine: QueryType.FILE
-        });
-    }
-
+    
     // Helper to create a track embed
     private createTrackEmbed(track: Track | undefined, queueSize: number): EmbedBuilder {
         if (!track) {
