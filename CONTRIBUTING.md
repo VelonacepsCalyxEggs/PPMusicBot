@@ -1,4 +1,4 @@
-# Contributing to Illusion Test
+# Contributing to PPMusicBot
 
 ## How to Contribute
 
@@ -41,4 +41,4 @@ Please note we have a **code of conduct**, please follow it in all your interact
 
 Feel free to contact the project maintainers, either through the issue tracker or directly via email.
 
-Thank you for contributing to Illusion Test!
+Thank you for contributing to PPMusicBot!
