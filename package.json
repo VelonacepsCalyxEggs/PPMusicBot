@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "@eslint/js": "^9.31.0",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.10",
     "@types/winston": "^2.4.4",
